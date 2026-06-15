@@ -1314,7 +1314,8 @@ app.registerExtension({
         for (const [en, zh] of _danbooruIndex) {
           const enLow = en.toLowerCase();
           const zhLow = (zh || "").toLowerCase();
-          if (enLow.includes(term) || zhLow.includes(term)) {
+          const termAlt = term.includes(" ") ? term.replace(/\s+/g, "_") : term.includes("_") ? term.replace(/_/g, " ") : null;
+          if (enLow.includes(term) || zhLow.includes(term) || (termAlt && (enLow.includes(termAlt) || zhLow.includes(termAlt)))) {
             const key = enLow + "|" + zhLow;
             if (seen.has(key)) continue; seen.add(key);
             matches.push({ text: en, cnText: zh, source: "📦 danbooru" });
@@ -1364,11 +1365,19 @@ app.registerExtension({
       if (!terms.length) return;
       terms.forEach(t => {
         const low = t.toLowerCase();
+        const lowAlt = low.includes(" ") ? low.replace(/\s+/g, "_") : low.includes("_") ? low.replace(/_/g, " ") : null;
         // 先在用户词库匹配
-        let match = _presetIndex.find(w => (w.text || "").toLowerCase() === low && w.cnText);
+        let match = _presetIndex.find(w => {
+          const elow = (w.text || "").toLowerCase();
+          return elow === low || (lowAlt && elow === lowAlt);
+        })?.cnText;
+        if (match) match = { cnText: match };
         // 再在 danbooru 词库匹配
         if (!match && _danbooruIndex.length) {
-          const db = _danbooruIndex.find(([en]) => en.toLowerCase() === low);
+          const db = _danbooruIndex.find(([en]) => {
+            const elow = en.toLowerCase();
+            return elow === low || (lowAlt && elow === lowAlt);
+          });
           if (db && db[1]) match = { cnText: db[1] };
         }
         box.chips.push(mkChip(t, match ? match.cnText : null));
