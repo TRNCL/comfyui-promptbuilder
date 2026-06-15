@@ -4,6 +4,8 @@
 
 A ComfyUI custom node that lets you build prompts visually by dragging, clicking, and typing — no more typing commas in tiny text areas.
 
+![](screenshot.png)
+
 ## 功能特性 / Features
 
 - **可视化搭建 / Visual builder** — 分组 → 输入框 → 词语芯片，三级结构，拖拽排序
