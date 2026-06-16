@@ -1188,7 +1188,7 @@ app.registerExtension({
         if (e.key === "Enter" || e.key === "," || e.key === "，") {
           e.preventDefault(); const v = input.value; if (v.trim()) { _pendingFocusBox = box.id; addChipsToBox(box, v); input.value = ""; hideAc(); }
         }
-        else if (e.key === "Backspace" && !input.value && box.chips.length) { box.chips.pop(); commit(); }
+        else if (e.key === "Backspace" && !input.value && box.chips.length) { box.chips.pop(); _pendingFocusBox = box.id; commit(); }
       };
       input.onblur = () => { setTimeout(hideAc, 150); };
       area.appendChild(input);
@@ -1225,7 +1225,7 @@ app.registerExtension({
       el.querySelector(".adj-plus").onmousedown = e => e.preventDefault();
       el.querySelector(".adj-minus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight - 0.1).toFixed(1), 0.1, MAX_WEIGHT); commit(); };
       el.querySelector(".adj-plus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight + 0.1).toFixed(1), 0.1, MAX_WEIGHT); commit(); };
-      el.querySelector(".x").onclick = e => { e.stopPropagation(); box.chips = box.chips.filter(c => c.id !== chip.id); commit(); };
+      el.querySelector(".x").onclick = e => { e.stopPropagation(); _pendingFocusBox = box.id; box.chips = box.chips.filter(c => c.id !== chip.id); commit(); };
       // 双击编辑
       const startEdit = (targetEl, field, value) => {
         el.draggable = false;
@@ -1343,6 +1343,8 @@ app.registerExtension({
     function renderAcActive() {
       if (!_acLayer) return;
       _acLayer.querySelectorAll(".pb-ac-item").forEach((el, i) => el.classList.toggle("active", i === _acActive));
+      const active = _acLayer.children[_acActive];
+      if (active) active.scrollIntoView({ block: "nearest" });
     }
     // 选中第 idx 个候选：用词库词创建 chip（带 cnText），并从输入框移除当前片段
     function selectAc(input, box, idx) {
