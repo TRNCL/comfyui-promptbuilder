@@ -79,8 +79,15 @@ ComfyUI/
 
 ## 环境要求 / Requirements
 
-- ComfyUI（任意较新版本 / any recent version）
-- 无需额外 Python 依赖 / No extra dependencies
+- ComfyUI（需支持 `CLIP.encode_from_tokens_scheduled` 的版本，约 2024 年中之后的版本均可；旧版可能报 `AttributeError` / Requires a ComfyUI build with `CLIP.encode_from_tokens_scheduled` — any version from ~mid-2024 onward works; older builds may raise `AttributeError`）
+- 无需额外 Python 依赖 / No extra Python dependencies
+
+## 已知限制 / Known Limitations
+
+- **单实例设计 / Single shared instance** — 面板是全局单例，所有 `PromptBuilder CLIP Encode` 节点共享同一份提示词。同时挂多个节点时，它们会显示并同步同一组 positive/negative，节点间不独立。The floating panel is a global singleton: all `PromptBuilder CLIP Encode` nodes share one set of prompts. Multiple nodes are not independent — they all mirror the same positive/negative.
+- **Google 翻译端点 / Google translate endpoint** — "Google" 选项走的是免费非官方端点，受 CORS 和可用性影响，浏览器直连可能失败；如需稳定翻译请用 MyMemory 或自定义 API。The "Google" option uses a free unofficial endpoint subject to CORS/availability and may fail when called directly from the browser; for stable results use MyMemory or a custom API.
+- **Token 统计为近似值 / Token count is approximate** — CLIP token 数为前端粗估（英文约 1.3 token/词，中文按字计），仅供参考，不代表真实分词结果。The token count is a rough client-side estimate (≈1.3 token/word for English, per-character for Chinese) and does not reflect actual CLIP tokenization.
+- **节点与面板不完全同步 / Node fields are not fully synced back** — 在面板内编辑会自动写入节点；但直接在节点文本框里手动修改不会反向同步回面板，二者可能不一致，请优先在面板内编辑。Edits made in the panel are pushed to the node automatically, but manual edits in the node's own text area are not synced back to the panel and the two may diverge — prefer editing inside the panel.
 
 ## 许可证 / License
 

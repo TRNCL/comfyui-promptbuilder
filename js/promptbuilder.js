@@ -516,8 +516,11 @@ app.registerExtension({
       return path.split(".").reduce((cur, key) => (cur == null ? cur : cur[key]), obj);
     }
     // 占位符替换：{text} {src} {tgt}
-    function fillTemplate(tpl, text, src, tgt) {
-      return (tpl || "").replace(/\{text\}/g, text).replace(/\{src\}/g, src).replace(/\{tgt\}/g, tgt);
+    // jsonSafe=true 时对 {text} 的值做 JSON 字符串内容转义（仅用于 POST body 模板），
+    // 保证用户词语文本中的 " \ 换行等字符不会破坏 JSON 结构。{src}/{tgt} 为固定语言代码，无需转义。
+    function fillTemplate(tpl, text, src, tgt, jsonSafe) {
+      const textVal = jsonSafe ? text.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t") : text;
+      return (tpl || "").replace(/\{text\}/g, () => textVal).replace(/\{src\}/g, src).replace(/\{tgt\}/g, tgt);
     }
     // 返回 { ok, text?, reason? }：ok=true 且 text 为空表示"无需翻译"；reason 用于 toast
     async function translateText(text) {
@@ -544,7 +547,7 @@ app.registerExtension({
           const opt = { signal: ctrl.signal };
           if (ca.method === "POST") {
             opt.method = "POST"; opt.headers = { "Content-Type": "application/json" };
-            opt.body = fillTemplate(ca.body || "{}", text, src, tgt);
+            opt.body = fillTemplate(ca.body || "{}", text, src, tgt, true);
           }
           const res = await fetch(url, opt);
           if (!res.ok) throw new Error("HTTP " + res.status);

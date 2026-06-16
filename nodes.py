@@ -1,6 +1,6 @@
 class PromptBuilderCLIPEncode:
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {"required": {
             "clip": ("CLIP",),
             "positive": ("STRING", {"multiline": True, "default": ""}),
