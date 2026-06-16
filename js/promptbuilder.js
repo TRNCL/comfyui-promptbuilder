@@ -114,7 +114,7 @@ app.registerExtension({
 .pb-inputbox:hover .pb-inputbox-remove,.pb-inputbox-remove:focus{opacity:1}
 .pb-inputbox-remove:hover{color:var(--pb-danger)}
 .pb-chip-area{display:flex;flex-wrap:wrap;gap:4px;min-height:30px;padding:3px;border-radius:4px}
-.pb-chip{display:inline-flex;align-items:center;gap:1px;background:var(--pb-chip-bg);padding:3px 8px;border-radius:6px;font-size:12px;border:1px solid transparent;user-select:none}
+.pb-chip{display:inline-flex;align-items:center;gap:1px;background:var(--pb-chip-bg);padding:3px 6px;border-radius:6px;font-size:12px;border:1px solid transparent;user-select:none}
 .pb-chip .text{display:flex;flex-direction:column;padding:0 5px;line-height:1.3}
 .pb-chip .text .w{color:var(--pb-text-dim);font-size:10px}
 .pb-chip-main{white-space:nowrap}
@@ -127,6 +127,8 @@ app.registerExtension({
 .pb-chip .adj:hover{background:var(--pb-panel-2);color:var(--pb-accent)}
 .pb-chip .x{min-width:22px;align-self:stretch;text-align:center;border:none;background:transparent;color:var(--pb-text-dim);cursor:pointer;font-size:13px;padding:0 3px;border-radius:4px}
 .pb-chip .x:hover{background:var(--pb-panel-2);color:var(--pb-danger)}
+.pb-chip-x{border:none;background:transparent;color:var(--pb-text-dim);cursor:pointer;font-size:13px;padding:0 2px;border-radius:4px;flex-shrink:0;line-height:1}
+.pb-chip-x:hover{color:var(--pb-danger)}
 .pb-chip .w{color:var(--pb-text-dim);font-size:10px;margin-left:3px}
 .pb-chip.translating{opacity:.8}
 .pb-chip.translating::after{content:"⟳";font-size:10px;margin-left:2px;color:var(--pb-accent)}
@@ -136,7 +138,6 @@ app.registerExtension({
 .pb-chip-toolbar.show{opacity:1;visibility:visible;pointer-events:auto}
 .pb-chip-toolbar button{background:transparent;border:none;color:var(--pb-text-dim);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;min-width:22px;text-align:center;line-height:1}
 .pb-chip-toolbar button:hover{color:var(--pb-accent);background:var(--pb-panel)}
-.pb-chip-toolbar .pb-chiptb-del:hover{color:var(--pb-danger)}
 .pb-chip-input{background:transparent;border:none;color:var(--pb-text);font-size:12px;flex:1;min-width:80px;outline:none;padding:2px 3px}
 .pb-autocomplete{position:fixed;z-index:10006;background:var(--pb-panel-2);border:1px solid var(--pb-accent);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.5);max-height:240px;overflow:auto;min-width:180px;display:none}
 .pb-autocomplete.show{display:block}
@@ -1402,14 +1403,12 @@ app.registerExtension({
         tb.innerHTML = `
           <button class="pb-chiptb-wminus" title="减权 0.1">−</button>
           <button class="pb-chiptb-wplus" title="加权 0.1">+</button>
-          <button class="pb-chiptb-bypass" title="${bypassed ? "恢复输出" : "Bypass（不参与输出）"}">${bypassed ? "🚫" : "👁"}</button>
-          <button class="pb-chiptb-del" title="删除">×</button>`;
+          <button class="pb-chiptb-bypass" title="${bypassed ? "恢复输出" : "Bypass（不参与输出）"}">${bypassed ? "🚫" : "👁"}</button>`;
         tb.querySelector(".pb-chiptb-wminus").onmousedown = e => e.preventDefault();
         tb.querySelector(".pb-chiptb-wplus").onmousedown = e => e.preventDefault();
         tb.querySelector(".pb-chiptb-wminus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight - 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
         tb.querySelector(".pb-chiptb-wplus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight + 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
         tb.querySelector(".pb-chiptb-bypass").onclick = e => { e.stopPropagation(); chip.enabled = chip.enabled === false; commit(); };
-        tb.querySelector(".pb-chiptb-del").onclick = e => { e.stopPropagation(); _pendingFocusBox = box.id; box.chips = box.chips.filter(c => c.id !== chip.id); commit(); };
         showToolbar(el);
       });
       el.addEventListener("mouseleave", () => hideToolbar());
@@ -1425,7 +1424,8 @@ app.registerExtension({
       const hasCN = !!chip.cnText;
       const sub = hasCN ? `<small class="pb-chip-sub">${escapeHtml(chip.cnText)}</small>` : "";
       const w = chip.weight.toFixed(1) === "1.0" ? "" : `<span class="w">${chip.weight.toFixed(1)}</span>`;
-      el.innerHTML = `<span class="text"><span class="pb-chip-main">${escapeHtml(chip.text)}${w}</span>${sub}</span>`;
+      el.innerHTML = `<span class="text"><span class="pb-chip-main">${escapeHtml(chip.text)}${w}</span>${sub}</span><button class="pb-chip-x" title="删除">×</button>`;
+      el.querySelector(".pb-chip-x").onclick = e => { e.stopPropagation(); _pendingFocusBox = box.id; box.chips = box.chips.filter(c => c.id !== chip.id); commit(); };
       // 双击编辑
       const startEdit = (targetEl, field, value) => {
         el.draggable = false;
