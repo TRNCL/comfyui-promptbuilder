@@ -11,13 +11,15 @@ A ComfyUI custom node that lets you build prompts visually by dragging, clicking
 - **可视化搭建 / Visual builder** — 分组 → 输入框 → 词语芯片，三级结构，拖拽排序
 - **自定义词库 / Word bank** — 中英文词语仓库，支持分类、搜索，搭提示词像拼积木
 - **Danbooru 自动补全 / Danbooru auto-complete** — 内置 3.7 万标签 + 中文翻译，输入即搜（37K+ tags with CN translations）
-- **权重微调 / Weight adjustment** — ±0.1 按钮精确控制每个词的权重
+- **权重微调 / Weight adjustment** — ± 按钮精确控制每个词的权重
+- **Chip Bypass** — 鼠标悬停 chip 弹出浮动工具栏：旁路（不参与输出）、权重、删除
+- **BREAK 隔离 / BREAK isolation** — 分组级开关，打开后该分组前后自动插入 BREAK，隔断 75-token 区段避免信息外溢
 - **一键翻译 / One-click translation** — 批量翻译未翻译的词（MyMemory / Google / 自定义 API）
 - **Token 实时统计 / Token counter** — CLIP token 近似估算，超 75 标黄、超 150 标红
 - **Token 高亮定位 / Token highlight** — 可开关：高亮第 75 个 token 对应的词，方便控制提示词长度
 - **撤销/重做 / Undo/Redo** — 50 步历史（Ctrl+Z / Ctrl+Y）
-- **导入/导出（分离） / Import/Export (separated)** — 词库和提示词各自独立导出/导入，互不覆盖；导入自动识别格式。Word bank and prompt are exported/imported independently with auto-detection.
-- **暗色/亮色主题 / Dark/Light theme** — 可调缩放比例
+- **导出词库 / Export word bank** — 词库（分类 & 词语）导出为 JSON 文件，可备份或迁到其他机器；导入自动识别词库或提示词
+- **暗色/亮色主题 / Dark/Light theme** — 可调缩放比例，面板可收起为小条（− 按钮）
 
 ## 安装 / Installation
 
@@ -75,7 +77,7 @@ ComfyUI/
 
 - **Tab** 选中推荐补全 / accept suggestion
 - **Enter / 逗号** 直接输入原始内容 / add raw text
-- **± 按钮** 调整权重 / adjust weight
+- **悬停 chip** 弹出工具栏：± 权重、旁路、删除 / hover chip for toolbar: weight, bypass, delete
 - **拖拽芯片** 排序或跨输入框移动 / drag to reorder
 - **拖到左栏** 将芯片保存到词库 / drag to preset column to save
 

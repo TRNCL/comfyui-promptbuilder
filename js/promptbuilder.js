@@ -33,7 +33,17 @@ app.registerExtension({
 .pb-title-actions .pb-btn{cursor:pointer}
 .pb-titlebar .pb-close{cursor:pointer;color:var(--pb-text-dim);font-size:16px;padding:0 4px}
 .pb-titlebar .pb-close:hover{color:var(--pb-danger)}
-.pb-export-sel{appearance:auto;cursor:pointer;font-family:inherit}
+.pb-minimize{cursor:pointer;color:var(--pb-text-dim);font-size:16px;padding:0 4px;line-height:1}
+.pb-minimize:hover{color:var(--pb-accent)}
+.pb-min-grip{color:var(--pb-text-dim);font-size:13px;letter-spacing:2px;opacity:.45;margin-right:10px;flex-shrink:0;pointer-events:none}
+/* 收起态：只留 titlebar 小条 */
+.pb-panel.minimized{height:auto!important;width:auto!important;min-width:unset;min-height:unset;resize:none}
+.pb-panel.minimized .pb-body{display:none}
+.pb-panel.minimized .pb-statusbar{display:none}
+.pb-panel.minimized .pb-titlebar{border-radius:10px;border-bottom:none;padding:8px 18px;gap:14px}
+.pb-panel.minimized .pb-title-actions{gap:10px}
+.pb-panel.minimized .pb-title-actions .pb-btn:not(#pbGenerate){display:none}
+.pb-panel.minimized .pb-min-grip{opacity:.7;margin-right:16px}
 .pb-body{display:grid;grid-template-columns:280px 1fr 260px;flex:1;min-height:0;overflow:hidden}
 .pb-col{display:flex;flex-direction:column;background:var(--pb-panel);border-right:1px solid var(--pb-border);min-width:0;overflow:hidden}
 .pb-col:last-child{border-right:none;border-left:1px solid var(--pb-border)}
@@ -104,7 +114,7 @@ app.registerExtension({
 .pb-inputbox:hover .pb-inputbox-remove,.pb-inputbox-remove:focus{opacity:1}
 .pb-inputbox-remove:hover{color:var(--pb-danger)}
 .pb-chip-area{display:flex;flex-wrap:wrap;gap:4px;min-height:30px;padding:3px;border-radius:4px}
-.pb-chip{display:inline-flex;align-items:center;gap:1px;background:var(--pb-chip-bg);padding:2px 2px 2px 2px;border-radius:6px;font-size:12px;border:1px solid transparent;user-select:none}
+.pb-chip{display:inline-flex;align-items:center;gap:1px;background:var(--pb-chip-bg);padding:3px 8px;border-radius:6px;font-size:12px;border:1px solid transparent;user-select:none}
 .pb-chip .text{display:flex;flex-direction:column;padding:0 5px;line-height:1.3}
 .pb-chip .text .w{color:var(--pb-text-dim);font-size:10px}
 .pb-chip-main{white-space:nowrap}
@@ -120,6 +130,13 @@ app.registerExtension({
 .pb-chip .w{color:var(--pb-text-dim);font-size:10px;margin-left:3px}
 .pb-chip.translating{opacity:.8}
 .pb-chip.translating::after{content:"⟳";font-size:10px;margin-left:2px;color:var(--pb-accent)}
+.pb-chip.bypassed{opacity:.45;text-decoration:line-through}
+/* 浮动工具栏：单例，mouseenter 时定位到 chip 上方/下方 */
+.pb-chip-toolbar{position:fixed;z-index:10007;display:flex;align-items:center;gap:2px;background:var(--pb-panel-2);border:1px solid var(--pb-accent);border-radius:6px;padding:3px 6px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.5);opacity:0;visibility:hidden;transition:opacity .12s,visibility .12s;pointer-events:none}
+.pb-chip-toolbar.show{opacity:1;visibility:visible;pointer-events:auto}
+.pb-chip-toolbar button{background:transparent;border:none;color:var(--pb-text-dim);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;min-width:22px;text-align:center;line-height:1}
+.pb-chip-toolbar button:hover{color:var(--pb-accent);background:var(--pb-panel)}
+.pb-chip-toolbar .pb-chiptb-del:hover{color:var(--pb-danger)}
 .pb-chip-input{background:transparent;border:none;color:var(--pb-text);font-size:12px;flex:1;min-width:80px;outline:none;padding:2px 3px}
 .pb-autocomplete{position:fixed;z-index:10006;background:var(--pb-panel-2);border:1px solid var(--pb-accent);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.5);max-height:240px;overflow:auto;min-width:180px;display:none}
 .pb-autocomplete.show{display:block}
@@ -205,7 +222,7 @@ app.registerExtension({
     panel.className = "pb-panel";
     panel.id = "pbMainPanel";
     panel.innerHTML = `
-      <div class="pb-titlebar"><span class="pb-title-name">PromptBuilder</span><div class="pb-title-actions"><button class="pb-btn" id="pbUndo" title="撤销 (Ctrl+Z)">↶</button><button class="pb-btn" id="pbRedo" title="重做 (Ctrl+Y)">↷</button><select class="pb-btn pb-export-sel" id="pbExport" title="导出 JSON"><option value="" selected disabled hidden>⬆ 导出</option><option value="presets">导出词库…</option><option value="prompt">导出当前提示词…</option></select><button class="pb-btn" id="pbImport" title="导入 JSON（自动识别词库/提示词）">⬇ 导入</button><button class="pb-btn primary" id="pbGenerate" title="执行生成 (1 张)" style="margin-left:4px">▶ 生成</button><span class="pb-close">×</span></div></div>
+      <div class="pb-titlebar"><span class="pb-min-grip" title="拖拽移动">⋮⋮</span><span class="pb-title-name">PromptBuilder</span><div class="pb-title-actions"><button class="pb-btn" id="pbUndo" title="撤销 (Ctrl+Z)">↶</button><button class="pb-btn" id="pbRedo" title="重做 (Ctrl+Y)">↷</button><button class="pb-btn" id="pbExportPresets" title="导出词库（分类 & 词语）">⬆ 词库</button><button class="pb-btn" id="pbImport" title="导入 JSON（自动识别词库或提示词）">⬇ 导入</button><button class="pb-btn primary" id="pbGenerate" title="执行生成 (1 张)" style="margin-left:4px">▶ 生成</button><span class="pb-minimize" title="收起面板">−</span><span class="pb-close">×</span></div></div>
       <div class="pb-body">
         <div class="pb-col">
           <div class="pb-col-header"><span>预设词库</span></div>
@@ -287,8 +304,17 @@ app.registerExtension({
       const ro = new ResizeObserver(() => savePanelGeo());
       ro.observe(panel);
     } catch (e) {}
-    function closePanel() { panel.classList.remove("visible"); const p = document.querySelector(".pb-color-picker"); if (p) p.remove(); hideIndicator(); hideAc(); }
+    function closePanel() { panel.classList.remove("visible"); const p = document.querySelector(".pb-color-picker"); if (p) p.remove(); hideIndicator(); hideAc(); clearTimeout(_toolbarHideTimer); if (_toolbarEl) _toolbarEl.classList.remove("show"); }
     panel.querySelector(".pb-close").onclick = closePanel;
+    const minBtn = panel.querySelector(".pb-minimize");
+    if (minBtn) minBtn.onclick = (e) => {
+      e.stopPropagation();
+      panel.classList.toggle("minimized");
+      minBtn.textContent = panel.classList.contains("minimized") ? "⛶" : "−";
+      minBtn.title = panel.classList.contains("minimized") ? "展开面板" : "收起面板";
+      clearTimeout(_toolbarHideTimer); if (_toolbarEl) _toolbarEl.classList.remove("show");
+      savePanelGeo();
+    };
 
     /* ============================================================
        逻辑入口
@@ -304,11 +330,11 @@ app.registerExtension({
     /** 创建一个输入框（box） */
     function mkBox(title = "默认") { return { id: gid(), title, enabled: true, chips: [] }; }
     /** 创建一个普通分组（group） */
-    function mkGroup(name, color) { return { id: gid(), name, color, enabled: true, collapsed: false, inputboxes: [mkBox()] }; }
+    function mkGroup(name, color) { return { id: gid(), name, color, enabled: true, collapsed: false, break: false, inputboxes: [mkBox()] }; }
     /** 创建负面提示词分组（固定结构） */
-    function mkNegativeGroup() { return { id: "__neg__", name: "负面提示词", color: COLORS[3], enabled: true, collapsed: false, inputboxes: [mkBox()] }; }
+    function mkNegativeGroup() { return { id: "__neg__", name: "负面提示词", color: COLORS[3], enabled: true, collapsed: false, break: false, inputboxes: [mkBox()] }; }
     /** 创建一个 chip（weight 可选，默认 1.0） */
-    function mkChip(text, cnText, weight) { return { id: gid(), text, cnText: cnText || null, weight: weight == null ? 1.0 : +weight }; }
+    function mkChip(text, cnText, weight) { return { id: gid(), text, cnText: cnText || null, weight: weight == null ? 1.0 : +weight, enabled: true }; }
 
     /** 统一 group 迁移：删废弃 weight 死字段 + 补 enabled（分组/输入框两层）。
      *  幂等：对新数据无副作用。供节点状态反序列化、导入等多处复用。 */
@@ -317,7 +343,8 @@ app.registerExtension({
         if (!g) return;
         delete g.weight;                          // v1：清理死字段
         if (g.enabled === undefined) g.enabled = true;     // v2：分组级
-        (g.inputboxes || []).forEach(b => { if (b.enabled === undefined) b.enabled = true; }); // v3：输入框级
+        if (g.break === undefined) g.break = false;        // v4：分组级 BREAK 隔离
+        (g.inputboxes || []).forEach(b => { if (b.enabled === undefined) b.enabled = true; (b.chips || []).forEach(c => { if (c.enabled === undefined) c.enabled = true; }); }); // v3：输入框级 & chip 级
       });
     }
 
@@ -384,6 +411,7 @@ app.registerExtension({
     let _acLayer = null;       // 自动补全浮层元素（懒创建）
     let _acItems = [];         // 当前浮层显示的候选词对象数组
     let _acActive = -1;        // 当前高亮项索引
+    let _toolbarEl = null, _toolbarHideTimer = null; // chip 浮动工具栏
     let _persistTimer;
     // ==================== 撤销 / 恢复 ====================
     // 策略：以 persist() 的 200ms 防抖为快照边界 —— 连续输入会合并为一次可撤销操作，
@@ -795,6 +823,7 @@ app.registerExtension({
       el.addEventListener("dragstart", (e) => {
         chipDragCtx = { chip, fromBox: sourceBox };
         el.classList.add("dragging");
+        clearTimeout(_toolbarHideTimer); if (_toolbarEl) _toolbarEl.classList.remove("show");
         try { e.dataTransfer.setData("text/plain", "chip"); } catch (_) {}
         e.dataTransfer.effectAllowed = "move";
         e.stopPropagation();
@@ -952,11 +981,14 @@ app.registerExtension({
         if (box.enabled === false) return; // 显式禁用（输入框级 bypass）
         if (cur.focusedBox !== box.id && !box.chips.length) return;
         box.chips.forEach(c => {
+          if (c.enabled === false) return;
           const w = +c.weight.toFixed(1);
           if (w === 1.0) { parts.push(c.text); return; }
           parts.push(`(${c.text}:${w.toFixed(1)})`);
         });
       });
+      if (!parts.length) return [];
+      if (g.break) { parts.unshift("BREAK"); parts.push("BREAK"); }
       return parts;
     }
     function buildPositive() {
@@ -988,6 +1020,7 @@ app.registerExtension({
     function boxTokenHtml(box) {
       const parts = [];
       box.chips.forEach(c => {
+        if (c.enabled === false) return;
         const w = +(c.weight ?? 1).toFixed(1);
         parts.push(w === 1.0 ? c.text : `(${c.text}:${w.toFixed(1)})`);
       });
@@ -1024,6 +1057,7 @@ app.registerExtension({
         for (const box of g.inputboxes) {
           if (box.enabled === false) continue;
           for (const c of box.chips) {
+            if (c.enabled === false) continue;
             const term = c.weight.toFixed(1) !== "1.0"
               ? `(${c.text}:${c.weight.toFixed(1)})` : c.text;
             const tok = estimateTokens(term);
@@ -1203,10 +1237,11 @@ app.registerExtension({
       g.dataset.gid = ng.id; g._payload = ng;
       const bar = document.createElement("div"); bar.className = "pb-group-color-bar"; bar.style.background = ng.color; g.appendChild(bar);
       const header = document.createElement("div"); header.className = "pb-group-header";
-      header.innerHTML = `<span class="caret">▾</span><div class="pb-color-dot" style="background:${ng.color}"></div><div class="name">${escapeHtml(ng.name)}</div><button class="pb-btn pb-group-toggle" data-act="toggle" title="${ngEnabled ? "禁用输出" : "启用输出"}" style="font-size:11px;padding:2px 6px;margin-left:auto">${ngEnabled ? "👁" : "🚫"}</button><button class="pb-btn" data-act="clear" style="font-size:11px;padding:2px 6px;" title="一键清空">清空</button>`;
+      header.innerHTML = `<span class="caret">▾</span><div class="pb-color-dot" style="background:${ng.color}"></div><div class="name">${escapeHtml(ng.name)}</div><button class="pb-btn pb-group-break" data-act="break" title="${ng.break ? "取消隔离" : "隔离此分组"}" style="font-size:11px;padding:2px 6px;color:${ng.break ? 'var(--pb-accent)' : 'var(--pb-text-dim)'}">隔离</button><button class="pb-btn pb-group-toggle" data-act="toggle" title="${ngEnabled ? "禁用输出" : "启用输出"}" style="font-size:11px;padding:2px 6px;margin-left:auto">${ngEnabled ? "👁" : "🚫"}</button><button class="pb-btn" data-act="clear" style="font-size:11px;padding:2px 6px;" title="一键清空">清空</button>`;
       header.onclick = (e) => {
         if (e.target.dataset.act === "clear") { ng.inputboxes.forEach(box => box.chips = []); commit(); return; }
         if (e.target.dataset.act === "toggle") { ng.enabled = ng.enabled === false; commit(); return; }
+        if (e.target.dataset.act === "break") { ng.break = ng.break === false; commit(); return; }
         if (e.target.classList.contains("name")) return;
         if (e.target.classList.contains("pb-color-dot")) { openColorPicker(e.target, ng); return; }
         ng.collapsed = !ng.collapsed; commit();
@@ -1228,14 +1263,15 @@ app.registerExtension({
         const gEnabled = group.enabled !== false;
         g.classList.toggle("disabled", !gEnabled);
         const header = document.createElement("div"); header.className = "pb-group-header";
-        header.innerHTML = `<span class="caret">▾</span><div class="pb-color-dot" style="background:${group.color}"></div><div class="name">${escapeHtml(group.name)}</div><button class="pb-btn pb-group-toggle" data-act="toggle" title="${gEnabled ? "禁用输出" : "启用输出"}" style="font-size:11px;padding:2px 6px;">${gEnabled ? "👁" : "🚫"}</button><button class="pb-btn" data-act="del" style="font-size:11px;padding:2px 6px;" title="删除分组">删除</button>`;
-        header.onclick = (e) => {
-          if (e.target.dataset.act === "del") { cur.workspace = cur.workspace.filter(x => x.id !== group.id); commit(); return; }
-          if (e.target.dataset.act === "toggle") { group.enabled = group.enabled === false; commit(); return; }
-          if (e.target.classList.contains("name")) return;
-          if (e.target.classList.contains("pb-color-dot")) { openColorPicker(e.target, group); return; }
-          group.collapsed = !group.collapsed; renderWorkspace(); persist();
-        };
+      header.innerHTML = `<span class="caret">▾</span><div class="pb-color-dot" style="background:${group.color}"></div><div class="name">${escapeHtml(group.name)}</div><button class="pb-btn pb-group-break" data-act="break" title="${group.break ? "取消隔离" : "隔离此分组"}" style="font-size:11px;padding:2px 6px;color:${group.break ? 'var(--pb-accent)' : 'var(--pb-text-dim)'}">隔离</button><button class="pb-btn pb-group-toggle" data-act="toggle" title="${gEnabled ? "禁用输出" : "启用输出"}" style="font-size:11px;padding:2px 6px;">${gEnabled ? "👁" : "🚫"}</button><button class="pb-btn" data-act="del" style="font-size:11px;padding:2px 6px;" title="删除分组">删除</button>`;
+      header.onclick = (e) => {
+        if (e.target.dataset.act === "del") { cur.workspace = cur.workspace.filter(x => x.id !== group.id); commit(); return; }
+        if (e.target.dataset.act === "toggle") { group.enabled = group.enabled === false; commit(); return; }
+        if (e.target.dataset.act === "break") { group.break = group.break === false; commit(); return; }
+        if (e.target.classList.contains("name")) return;
+        if (e.target.classList.contains("pb-color-dot")) { openColorPicker(e.target, group); return; }
+        group.collapsed = !group.collapsed; renderWorkspace(); persist();
+      };
         header.querySelector(".name").ondblclick = (e) => { e.stopPropagation(); promptModal("分组新名称：", group.name, { title: "重命名分组" }).then(nn => { if (nn != null) { const v = nn.trim(); if (v) { group.name = v; renderWorkspace(); persist(); } } }); };
         g.appendChild(header);
         if (!group.collapsed) {
@@ -1333,20 +1369,63 @@ app.registerExtension({
       const box = inputbox?._payload;
       if (box) { const tokEl = inputbox.querySelector(".pb-box-token"); if (tokEl) tokEl.innerHTML = boxTokenHtml(box); }
     }
+    // ==================== chip 浮动工具栏（单例，mouseenter 定位到 chip 上方 / 下方） ====================
+    /** 浮动栏的创建与隐藏。参考 autocomplete 单例模式。 */
+    function getToolbar() {
+      if (!_toolbarEl) { _toolbarEl = document.createElement("div"); _toolbarEl.className = "pb-chip-toolbar"; document.body.appendChild(_toolbarEl); }
+      return _toolbarEl;
+    }
+    function hideToolbar() {
+      clearTimeout(_toolbarHideTimer);
+      _toolbarHideTimer = setTimeout(() => { if (_toolbarEl) _toolbarEl.classList.remove("show"); }, 160);
+    }
+    function showToolbar(chipEl) {
+      clearTimeout(_toolbarHideTimer);
+      const tb = getToolbar();
+      // 先显示才能量尺寸
+      tb.classList.add("show");
+      const cr = chipEl.getBoundingClientRect();
+      const tw = tb.offsetWidth, th = tb.offsetHeight;
+      let left = cr.left + cr.width / 2 - tw / 2;
+      let top = cr.top - th - 6;
+      if (top < 6) top = cr.bottom + 6; // 上方不够 → 下方
+      if (left < 6) left = 6;
+      if (left + tw > window.innerWidth - 6) left = window.innerWidth - tw - 6;
+      tb.style.left = left + "px"; tb.style.top = top + "px";
+    }
+    /** 绑定 chip → toolbar：mouseenter 显示 & 重建按钮；toolbar 自身 hover 取消延迟。 */
+    function attachToolbarToChip(el, box, chip) {
+      const tb = getToolbar();
+      el.addEventListener("mouseenter", () => {
+        if (el.classList.contains("dragging")) return;
+        const bypassed = chip.enabled === false;
+        tb.innerHTML = `
+          <button class="pb-chiptb-wminus" title="减权 0.1">−</button>
+          <button class="pb-chiptb-wplus" title="加权 0.1">+</button>
+          <button class="pb-chiptb-bypass" title="${bypassed ? "恢复输出" : "Bypass（不参与输出）"}">${bypassed ? "🚫" : "👁"}</button>
+          <button class="pb-chiptb-del" title="删除">×</button>`;
+        tb.querySelector(".pb-chiptb-wminus").onmousedown = e => e.preventDefault();
+        tb.querySelector(".pb-chiptb-wplus").onmousedown = e => e.preventDefault();
+        tb.querySelector(".pb-chiptb-wminus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight - 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
+        tb.querySelector(".pb-chiptb-wplus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight + 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
+        tb.querySelector(".pb-chiptb-bypass").onclick = e => { e.stopPropagation(); chip.enabled = chip.enabled === false; commit(); };
+        tb.querySelector(".pb-chiptb-del").onclick = e => { e.stopPropagation(); _pendingFocusBox = box.id; box.chips = box.chips.filter(c => c.id !== chip.id); commit(); };
+        showToolbar(el);
+      });
+      el.addEventListener("mouseleave", () => hideToolbar());
+      tb.addEventListener("mouseenter", () => clearTimeout(_toolbarHideTimer));
+      tb.addEventListener("mouseleave", () => hideToolbar());
+    }
     // ==================== 渲染：chip（权重 / 删除 / 双击编辑 / 拖拽排序） ====================
     function renderChip(chip, box) {
       const el = document.createElement("span");
-      el.className = "pb-chip" + (chip.translating ? " translating" : "") + (state.settings.tokenHighlight && chip.id === state._token75ChipId ? " tok-highlight" : "");
+      const bypassedClass = chip.enabled === false ? " bypassed" : "";
+      el.className = "pb-chip" + (chip.translating ? " translating" : "") + (state.settings.tokenHighlight && chip.id === state._token75ChipId ? " tok-highlight" : "") + bypassedClass;
       el.draggable = true; el.dataset.cid = chip.id; el._payload = chip;
       const hasCN = !!chip.cnText;
       const sub = hasCN ? `<small class="pb-chip-sub">${escapeHtml(chip.cnText)}</small>` : "";
       const w = chip.weight.toFixed(1) === "1.0" ? "" : `<span class="w">${chip.weight.toFixed(1)}</span>`;
-      el.innerHTML = `<button class="adj adj-minus" title="减权 0.1">−</button><span class="text"><span class="pb-chip-main">${escapeHtml(chip.text)}${w}</span>${sub}</span><button class="adj adj-plus" title="加权 0.1">+</button><button class="x" title="删除">×</button>`;
-      el.querySelector(".adj-minus").onmousedown = e => e.preventDefault();
-      el.querySelector(".adj-plus").onmousedown = e => e.preventDefault();
-      el.querySelector(".adj-minus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight - 0.1).toFixed(1), 0.1, MAX_WEIGHT); commit(); };
-      el.querySelector(".adj-plus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight + 0.1).toFixed(1), 0.1, MAX_WEIGHT); commit(); };
-      el.querySelector(".x").onclick = e => { e.stopPropagation(); _pendingFocusBox = box.id; box.chips = box.chips.filter(c => c.id !== chip.id); commit(); };
+      el.innerHTML = `<span class="text"><span class="pb-chip-main">${escapeHtml(chip.text)}${w}</span>${sub}</span>`;
       // 双击编辑
       const startEdit = (targetEl, field, value) => {
         el.draggable = false;
@@ -1374,6 +1453,7 @@ app.registerExtension({
           startEdit(el.querySelector(".pb-chip-sub"), "cnText", chip.cnText);
         };
       }
+      attachToolbarToChip(el, box, chip);
       attachChipDrag(el, box, chip);
       return el;
     }
@@ -1544,36 +1624,26 @@ app.registerExtension({
       };
     })();
 
-    // ==================== 导入 / 导出（词库 & 提示词分离） ====================
+    // ==================== 导入 / 导出 ====================
     (function bindIO() {
-      const exportSel = $("pbExport"), importBtn = $("pbImport");
-      /** 导出本地 JSON 文件的通用帮助函数。 */
-      function doDownload(jsonObj, filename) {
-        const blob = new Blob([JSON.stringify(jsonObj, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
-      }
-      if (exportSel) {
-        exportSel.onchange = (e) => {
+      const exportBtn = $("pbExportPresets"), importBtn = $("pbImport");
+      /** 导出词库 JSON 文件。 */
+      if (exportBtn) {
+        exportBtn.onclick = (e) => {
           e.stopPropagation();
-          const v = exportSel.value;
           try {
-            if (v === "presets") {
-              doDownload({ type: "presets", presets: state.presets, l1Cat: state.l1Cat, l2Cat: state.l2Cat },
-                `promptbuilder-presets-${new Date().toISOString().slice(0, 10)}.json`);
-              toast("词库已导出", "ok", 1500);
-            } else if (v === "prompt") {
-              doDownload({ type: "prompt", workspace: cur.workspace, negativeGroup: cur.negativeGroup, focusedBox: cur.focusedBox },
-                `promptbuilder-prompt-${new Date().toISOString().slice(0, 10)}.json`);
-              toast("提示词已导出", "ok", 1500);
-            }
+            const data = { type: "presets", presets: state.presets, l1Cat: state.l1Cat, l2Cat: state.l2Cat };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = `promptbuilder-presets-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(url);
+            toast("词库已导出", "ok", 1500);
           } catch (err) { toast("导出失败：" + err.message, "error"); }
-          exportSel.value = "";  // reset
         };
       }
+      /** 导入：自动识别词库（presets.children）或提示词（workspace）。 */
       if (importBtn) {
         importBtn.onclick = (e) => {
           e.stopPropagation();
@@ -1584,7 +1654,6 @@ app.registerExtension({
               const text = await file.text();
               const parsed = JSON.parse(text);
               if (!parsed || (!parsed.presets && !parsed.workspace)) throw new Error("文件格式不正确");
-              // 自动识别：有 presets → 词库；有 workspace → 提示词
               const isPresets = !!(parsed.presets?.children);
               const isPrompt = !!(parsed.workspace);
               const label = isPresets && isPrompt ? "词库 + 提示词" : isPresets ? "词库" : "提示词";
