@@ -2,12 +2,19 @@ import { app } from "../../scripts/app.js";
 
 /* ============================================================
    PromptBuilder ComfyUI 插件
-   浮动面板（三栏）+ 节点入口，修改自动同步到所有节点
-   - 左栏：预设词库（双行分类 / 词语 / 跨分类搜索 / 拖拽排序）
+   浮动面板（三栏）= 单例视图，绑定到「当前活动节点」
+   - 左栏：预设词库（全局共享；双行分类 / 词语 / 跨分类搜索 / 拖拽排序）
    - 中栏：工作区（分组 → 输入框 → chip，权重/翻译/bypass/拖拽排序）
-   - 右栏：输出（复制按钮 + 词条计数，自动 sync 到节点）
+   - 右栏：输出（复制按钮 + 词条计数，自动 sync 到活动节点）
    其它：撤销/恢复、导入/导出 JSON、面板位置记忆、拖拽指示线
-   状态持久化到 localStorage，带版本迁移（_v）
+   ============================================================
+   架构（v4 起）：
+   - 全局 state：presets（词库）/ l1Cat,l2Cat / settings —— 多节点共享，
+     存 localStorage（promptbuilder_presets / promptbuilder_settings）。
+   - 每个节点的提示词（workspace / negativeGroup / focusedBox）存在
+     node.properties.pb_state（JSON），随工作流保存、随拖图加载，节点间互相独立。
+   - 面板不直接持有提示词，而是加载到内存变量 cur；切换/打开节点时重载。
+   撤销/重做只跟当前节点；切换节点时清栈。
    ============================================================ */
 app.registerExtension({
   name: "promptbuilder.promptbuilder",
@@ -26,6 +33,7 @@ app.registerExtension({
 .pb-title-actions .pb-btn{cursor:pointer}
 .pb-titlebar .pb-close{cursor:pointer;color:var(--pb-text-dim);font-size:16px;padding:0 4px}
 .pb-titlebar .pb-close:hover{color:var(--pb-danger)}
+.pb-export-sel{appearance:auto;cursor:pointer;font-family:inherit}
 .pb-body{display:grid;grid-template-columns:280px 1fr 260px;flex:1;min-height:0;overflow:hidden}
 .pb-col{display:flex;flex-direction:column;background:var(--pb-panel);border-right:1px solid var(--pb-border);min-width:0;overflow:hidden}
 .pb-col:last-child{border-right:none;border-left:1px solid var(--pb-border)}
@@ -197,7 +205,7 @@ app.registerExtension({
     panel.className = "pb-panel";
     panel.id = "pbMainPanel";
     panel.innerHTML = `
-      <div class="pb-titlebar"><span class="pb-title-name">PromptBuilder</span><div class="pb-title-actions"><button class="pb-btn" id="pbUndo" title="撤销 (Ctrl+Z)">↶</button><button class="pb-btn" id="pbRedo" title="重做 (Ctrl+Y)">↷</button><button class="pb-btn" id="pbExport" title="导出 JSON 备份">⬆ 导出</button><button class="pb-btn" id="pbImport" title="导入 JSON">⬇ 导入</button><button class="pb-btn primary" id="pbGenerate" title="执行生成 (1 张)" style="margin-left:4px">▶ 生成</button><span class="pb-close">×</span></div></div>
+      <div class="pb-titlebar"><span class="pb-title-name">PromptBuilder</span><div class="pb-title-actions"><button class="pb-btn" id="pbUndo" title="撤销 (Ctrl+Z)">↶</button><button class="pb-btn" id="pbRedo" title="重做 (Ctrl+Y)">↷</button><select class="pb-btn pb-export-sel" id="pbExport" title="导出 JSON"><option value="" selected disabled hidden>⬆ 导出</option><option value="presets">导出词库…</option><option value="prompt">导出当前提示词…</option></select><button class="pb-btn" id="pbImport" title="导入 JSON（自动识别词库/提示词）">⬇ 导入</button><button class="pb-btn primary" id="pbGenerate" title="执行生成 (1 张)" style="margin-left:4px">▶ 生成</button><span class="pb-close">×</span></div></div>
       <div class="pb-body">
         <div class="pb-col">
           <div class="pb-col-header"><span>预设词库</span></div>
@@ -290,58 +298,85 @@ app.registerExtension({
     const COLORS = ["#6aa9ff","#8b6aff","#ff6b9d","#ff9f6a","#ffd86a","#6affb6","#6ae0ff","#ff6b6b","#b46aff","#6a8aff","#9aff6a","#ff6ad8"];
     const MAX_WEIGHT = 5.0;
 
+    // ==================== 数据模型工厂 ====================
+    // 函数声明会被提升，故放在此处也可被前面的 state 初始化代码调用
+    function gid() { return Math.random().toString(36).slice(2, 9); }
+    /** 创建一个输入框（box） */
+    function mkBox(title = "默认") { return { id: gid(), title, enabled: true, chips: [] }; }
+    /** 创建一个普通分组（group） */
+    function mkGroup(name, color) { return { id: gid(), name, color, enabled: true, collapsed: false, inputboxes: [mkBox()] }; }
+    /** 创建负面提示词分组（固定结构） */
+    function mkNegativeGroup() { return { id: "__neg__", name: "负面提示词", color: COLORS[3], enabled: true, collapsed: false, inputboxes: [mkBox()] }; }
+    /** 创建一个 chip（weight 可选，默认 1.0） */
+    function mkChip(text, cnText, weight) { return { id: gid(), text, cnText: cnText || null, weight: weight == null ? 1.0 : +weight }; }
+
+    /** 统一 group 迁移：删废弃 weight 死字段 + 补 enabled（分组/输入框两层）。
+     *  幂等：对新数据无副作用。供节点状态反序列化、导入等多处复用。 */
+    function migrateGroups(groups) {
+      (groups || []).forEach(g => {
+        if (!g) return;
+        delete g.weight;                          // v1：清理死字段
+        if (g.enabled === undefined) g.enabled = true;     // v2：分组级
+        (g.inputboxes || []).forEach(b => { if (b.enabled === undefined) b.enabled = true; }); // v3：输入框级
+      });
+    }
+
+    // ==================== 全局共享 state（词库 / UI 设置）====================
+    // 仅保存多节点共享的数据。节点专属的提示词（workspace/negativeGroup/focusedBox）
+    // 不在此处，而是存到 node.properties.pb_state。
     let state = {
       _v: 3,
       presets: { items: [], children: {} },
       l1Cat: null, l2Cat: null,
-      workspace: [mkGroup("人物", COLORS[0])],
-      focusedBox: null,
       settings: { scale: "mid", translator: "mymemory", theme: "dark", tokenHighlight: false, customApi: { url: "", method: "GET", body: "", responseField: "" } },
       _token75ChipId: null
     };
-    state.negativeGroup = mkNegativeGroup();
 
+    // ==================== 当前编辑态（从活动节点加载到内存）====================
+    let activeNode = null;            // 当前绑定的 PromptBuilderCLIPEncode 节点
+    let cur = {
+      workspace: [mkGroup("人物", COLORS[0])],
+      negativeGroup: mkNegativeGroup(),
+      focusedBox: null,
+    };
+
+    // ==================== 共享 state 从 localStorage 加载（带迁移）====================
+    // 老版本（≤v3）把全部数据塞在一个 promptbuilder_comfy_state 键里；v4 拆键后，
+    // 旧键里的 presets/settings 仍被读取迁移到新键，workspace/negativeGroup 按既定
+    // 决策丢弃（每个节点从此自带状态，不再有"全局默认提示词"概念）。
     try {
-      const saved = JSON.parse(localStorage.getItem("promptbuilder_comfy_state"));
-      if (saved) {
-        // 兼容旧数据：按 _v 版本号顺序迁移（v0=最旧，当前=3）
-        // 每个版本步骤幂等：对新数据无副作用，对旧数据补齐缺失字段
-        saved._v = saved._v || 0;
-        // v0 → v1：清理已废弃的 group.weight 死字段
-        if (saved._v < 1) {
-          const stripWeight = (g) => { if (g) delete g.weight; };
-          (saved.workspace || []).forEach(stripWeight);
-          stripWeight(saved.negativeGroup);
-        }
-        // v1 → v2：为每个 group 补 enabled=true（默认参与输出）
-        if (saved._v < 2) {
-          const ensureEnabled = (g) => { if (g && g.enabled === undefined) g.enabled = true; };
-          (saved.workspace || []).forEach(ensureEnabled);
-          ensureEnabled(saved.negativeGroup);
-        }
-        // v2 → v3：为每个 inputbox 补 enabled=true（默认参与输出）
-        if (saved._v < 3) {
-          const ensureBoxEnabled = (g) => { (g?.inputboxes || []).forEach(b => { if (b.enabled === undefined) b.enabled = true; }); };
-          (saved.workspace || []).forEach(ensureBoxEnabled);
-          ensureBoxEnabled(saved.negativeGroup);
-        }
-        saved._v = 3;
-        if (saved.presets?.children) {
-          state.presets = saved.presets;
-          state.l1Cat = saved.l1Cat || state.l1Cat;
-          state.l2Cat = saved.l2Cat || state.l2Cat;
-        }
-        if (saved.workspace) state.workspace = saved.workspace;
-        if (saved.negativeGroup) state.negativeGroup = saved.negativeGroup;
-        if (saved.focusedBox != null) state.focusedBox = saved.focusedBox;
-        if (saved.settings) state.settings = Object.assign(state.settings, saved.settings);
+      const oldSaved = JSON.parse(localStorage.getItem("promptbuilder_comfy_state"));
+      if (oldSaved && oldSaved.presets?.children) {
+        state.presets = oldSaved.presets;
+        state.l1Cat = oldSaved.l1Cat || Object.keys(state.presets.children)[0] || null;
+        state.l2Cat = oldSaved.l2Cat || Object.keys(state.presets.children[state.l1Cat]?.children || {})[0] || null;
+        if (oldSaved.settings) state.settings = Object.assign(state.settings, oldSaved.settings);
       }
     } catch (e) {}
-    if (!state.negativeGroup?.inputboxes?.length) {
-      state.negativeGroup = mkNegativeGroup();
+    try {
+      const pSaved = JSON.parse(localStorage.getItem("promptbuilder_presets"));
+      if (pSaved?.presets?.children) {
+        state.presets = pSaved.presets;
+        state.l1Cat = pSaved.l1Cat || Object.keys(state.presets.children)[0] || null;
+        state.l2Cat = pSaved.l2Cat || Object.keys(state.presets.children[state.l1Cat]?.children || {})[0] || null;
+      }
+    } catch (e) {}
+    try {
+      const sSaved = JSON.parse(localStorage.getItem("promptbuilder_settings"));
+      if (sSaved?.settings) state.settings = Object.assign(state.settings, sSaved.settings);
+    } catch (e) {}
+    // 兜底：词库没有任何 L1 分类时补一个默认空分类，避免左栏空白
+    if (!Object.keys(state.presets.children).length) {
+      state.presets.children["我的词库"] = { items: [], children: { "默认": { items: [], children: {} } } };
+      state.l1Cat = "我的词库"; state.l2Cat = "默认";
+    }
+    if (!state.l1Cat || !state.presets.children[state.l1Cat]) {
+      state.l1Cat = Object.keys(state.presets.children)[0] || null;
+    }
+    if (state.l1Cat && (!state.l2Cat || !state.presets.children[state.l1Cat]?.children?.[state.l2Cat])) {
+      state.l2Cat = Object.keys(state.presets.children[state.l1Cat]?.children || {})[0] || null;
     }
 
-    function gid() { return Math.random().toString(36).slice(2, 9); }
     let _presetIndex = [];     // 词库扁平索引，renderPresets 末尾重建
     let _danbooruIndex = [];   // danbooru 标签索引 [[en, zh], ...]，init 时异步加载
     let _danbooruLoading = false;
@@ -349,14 +384,6 @@ app.registerExtension({
     let _acLayer = null;       // 自动补全浮层元素（懒创建）
     let _acItems = [];         // 当前浮层显示的候选词对象数组
     let _acActive = -1;        // 当前高亮项索引
-    /** 创建一个输入框（box） */
-    function mkBox(title = "默认") { return { id: gid(), title, enabled: true, chips: [] }; }
-    /** 创建一个普通分组（group） */
-    function mkGroup(name, color) { return { id: gid(), name, color, enabled: true, collapsed: false, inputboxes: [mkBox()] }; }
-    /** 创建负面提示词分组（固定结构） */
-    function mkNegativeGroup() { return { id: "__neg__", name: "负面提示词", color: COLORS[3], enabled: true, collapsed: false, inputboxes: [mkBox()] }; }
-    /** 创建一个 chip */
-    function mkChip(text, cnText) { return { id: gid(), text, cnText: cnText || null, weight: 1.0 }; }
     let _persistTimer;
     // ==================== 撤销 / 恢复 ====================
     // 策略：以 persist() 的 200ms 防抖为快照边界 —— 连续输入会合并为一次可撤销操作，
@@ -364,21 +391,20 @@ app.registerExtension({
     const UNDO_LIMIT = 50;
     let undoStack = [];   // 历史快照（较旧 → 较新）
     let redoStack = [];
-    let _lastSnapshot = null; // 最近一次持久化后的快照
+    let _lastSnapshot = null; // 最近一次持久化后的快照（仅含 cur 节点态）
+    /** 快照当前节点的编辑态（workspace/negativeGroup/focusedBox）。
+     *  不含共享的 presets/settings —— 它们不进撤销栈（改它们会影响所有节点）。 */
     function snapshotState() {
-      // 只快照用户数据，避免捕获临时态
       return JSON.parse(JSON.stringify({
-        _v: state._v, presets: state.presets, l1Cat: state.l1Cat, l2Cat: state.l2Cat,
-        workspace: state.workspace, negativeGroup: state.negativeGroup, focusedBox: state.focusedBox,
-        settings: state.settings
+        workspace: cur.workspace, negativeGroup: cur.negativeGroup, focusedBox: cur.focusedBox
       }));
     }
+    /** 切换节点时清空撤销栈：A 节点的撤销不应作用于 B 节点。 */
+    function clearUndoStacks() { undoStack = []; redoStack = []; _lastSnapshot = null; }
     function restoreSnapshot(snap) {
       if (!snap) return;
-      state._v = snap._v; state.presets = snap.presets; state.l1Cat = snap.l1Cat; state.l2Cat = snap.l2Cat;
-      state.workspace = snap.workspace; state.negativeGroup = snap.negativeGroup; state.focusedBox = snap.focusedBox;
-      if (snap.settings) state.settings = snap.settings;
-      applySettings(); renderPresets(); renderWorkspace(); renderOutput();
+      cur.workspace = snap.workspace; cur.negativeGroup = snap.negativeGroup; cur.focusedBox = snap.focusedBox;
+      renderWorkspace(); renderOutput();
     }
     function undo() {
       if (!undoStack.length) { toast("没有可撤销的操作", "", 1200); return; }
@@ -386,7 +412,7 @@ app.registerExtension({
       const prev = undoStack.pop();
       _lastSnapshot = prev;
       restoreSnapshot(prev);
-      saveState();
+      saveCurrentNodeState();
       toast("已撤销", "ok", 1000);
     }
     function redo() {
@@ -395,12 +421,17 @@ app.registerExtension({
       const next = redoStack.pop();
       _lastSnapshot = next;
       restoreSnapshot(next);
-      saveState();
+      saveCurrentNodeState();
       toast("已重做", "ok", 1000);
     }
-    /** 统一的 state 写入，带配额超限容错 */
-    function saveState() {
-      try { localStorage.setItem("promptbuilder_comfy_state", JSON.stringify(state)); }
+    /** 写共享数据（词库 + 设置）到 localStorage，分两个键。 */
+    function saveSharedState() {
+      try {
+        localStorage.setItem("promptbuilder_presets", JSON.stringify({
+          _v: state._v, presets: state.presets, l1Cat: state.l1Cat, l2Cat: state.l2Cat
+        }));
+        localStorage.setItem("promptbuilder_settings", JSON.stringify({ settings: state.settings }));
+      }
       catch (e) { toast("存储空间不足，部分更改未能保存", "warn", 3000); }
     }
     let _snapshotTimer = null;
@@ -416,14 +447,106 @@ app.registerExtension({
         redoStack = []; // 新操作清空 redo
       }, 600);
     }
+    /** persist：共享数据落 localStorage + 当前节点态写回 node.properties + 排撤销快照。
+     *  任何编辑收口都走这里，确保两边都不漏。 */
     function persist() {
       clearTimeout(_persistTimer);
-      _persistTimer = setTimeout(() => { saveState(); scheduleSnapshot(); }, 200);
+      _persistTimer = setTimeout(() => { saveSharedState(); saveCurrentNodeState(); scheduleSnapshot(); }, 200);
     }
     /** 统一的"重新渲染 + 持久化"收口，绝大多数状态变更后调用 */
     function commit() { if (state.settings.tokenHighlight) findToken75Chip(); renderWorkspace(); renderOutput(); persist(); }
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
     function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+    // ==================== 节点状态序列化 / 反序列化（核心）====================
+    // 每个节点的提示词存到 node.properties.pb_state（JSON 字符串），随工作流保存、
+    // 随拖图加载。面板打开/切换节点时把它反序列化到内存 cur。
+    const PB_STATE_VERSION = 3;
+    /** 把当前 cur 拍平成 JSON 字符串（供写入 node.properties.pb_state）。 */
+    function serializeNodeState() {
+      return JSON.stringify({
+        _v: PB_STATE_VERSION,
+        workspace: cur.workspace,
+        negativeGroup: cur.negativeGroup,
+        focusedBox: cur.focusedBox
+      });
+    }
+    /** 把节点状态写回活动节点，并标记工作流已修改（保证 ComfyUI 存盘带上 properties）。
+     *  空操作：没有活动节点时直接返回。 */
+    function saveCurrentNodeState() {
+      if (!activeNode) return;
+      try {
+        activeNode.properties.pb_state = serializeNodeState();
+        app.graph?.change?.();
+      } catch (e) {}
+    }
+    /** 扁平提示词文本 → chip 数组（fallback 用：旧版/外部工作流只有 positive/negative 文本）。
+     *  识别 "(text:权重)" 语法还原权重；不识别的按 weight=1.0。无法还原分组/颜色/中英对照。 */
+    function parseFlatToChips(text) {
+      const chips = [];
+      String(text || "").split(/[,\n]/).map(s => s.trim()).filter(Boolean).forEach(term => {
+        const m = term.match(/^\((.+):(-?\d+(?:\.\d+)?)\)$/);  // (text:1.2)
+        if (m) {
+          const w = clamp(+parseFloat(m[2]).toFixed(1), 0.1, MAX_WEIGHT);
+          chips.push(mkChip(m[1].trim(), null, w));
+        } else {
+          chips.push(mkChip(term, null, 1.0));
+        }
+      });
+      return chips;
+    }
+    /** 从节点读出状态并写入 cur。三层 fallback：
+     *  1) node.properties.pb_state（结构化，含分组/权重/颜色）→ 完整还原
+     *  2) 节点的 positive/negative widget 文本 → 扁平解析成单个"导入"分组 + 负面
+     *  3) 都没有 → 默认空白 workspace + 默认 negativeGroup
+     *  返回是否走了结构化路径（用于 UI 提示）。 */
+    function deserializeNodeState(node) {
+      // 1) 结构化
+      try {
+        const raw = node.properties?.pb_state;
+        if (raw) {
+          const s = JSON.parse(raw);
+          if (s && (s.workspace || s.negativeGroup)) {
+            cur.workspace = Array.isArray(s.workspace) && s.workspace.length ? s.workspace : [mkGroup("人物", COLORS[0])];
+            cur.negativeGroup = s.negativeGroup || mkNegativeGroup();
+            cur.focusedBox = s.focusedBox ?? null;
+            migrateGroups(cur.workspace);
+            migrateGroups([cur.negativeGroup]);
+            if (!cur.negativeGroup?.inputboxes?.length) cur.negativeGroup = mkNegativeGroup();
+            return true;
+          }
+        }
+      } catch (e) {}
+      // 2) 扁平文本 fallback
+      const posWidget = node.widgets?.find(w => w.name === "positive");
+      const negWidget = node.widgets?.find(w => w.name === "negative");
+      const posText = (posWidget?.value || "").trim();
+      const negText = (negWidget?.value || "").trim();
+      if (posText || negText) {
+        const g = mkGroup("导入", COLORS[0]);
+        g.inputboxes = [{ id: gid(), title: "默认", enabled: true, chips: parseFlatToChips(posText) }];
+        cur.workspace = [g];
+        const ng = mkNegativeGroup();
+        ng.inputboxes[0].chips = parseFlatToChips(negText);
+        cur.negativeGroup = ng;
+        cur.focusedBox = g.inputboxes[0].id;
+        return false;
+      }
+      // 3) 默认空白
+      cur.workspace = [mkGroup("人物", COLORS[0])];
+      cur.negativeGroup = mkNegativeGroup();
+      cur.focusedBox = cur.workspace[0].inputboxes[0].id;
+      return false;
+    }
+    /** 绑定某节点为活动节点：切 activeNode → 重载 cur → 清撤销栈 → 全量重渲染。 */
+    function loadNodeIntoPanel(node) {
+      activeNode = node;
+      panel.dataset.activeNode = String(node.id);
+      clearUndoStacks();
+      deserializeNodeState(node);
+      applySettings(); renderPresets(); renderWorkspace(); renderOutput();
+      _lastSnapshot = snapshotState(); // 撤销基准
+    }
 
     // ==================== 设置：界面缩放 / 翻译引擎 / 主题 ====================
     function applySettings() {
@@ -741,7 +864,7 @@ app.registerExtension({
           hideIndicator();
           const w = dragCtx.payload;
           box.chips.push(mkChip(w.text, w.cnText));
-          state.focusedBox = box.id;
+          cur.focusedBox = box.id;
           dragCtx = null;
           commit();
           return;
@@ -827,7 +950,7 @@ app.registerExtension({
       const parts = [];
       g.inputboxes.forEach(box => {
         if (box.enabled === false) return; // 显式禁用（输入框级 bypass）
-        if (state.focusedBox !== box.id && !box.chips.length) return;
+        if (cur.focusedBox !== box.id && !box.chips.length) return;
         box.chips.forEach(c => {
           const w = +c.weight.toFixed(1);
           if (w === 1.0) { parts.push(c.text); return; }
@@ -838,11 +961,11 @@ app.registerExtension({
     }
     function buildPositive() {
       const parts = [];
-      state.workspace.forEach(g => { parts.push(...buildGroup(g)); });
+      cur.workspace.forEach(g => { parts.push(...buildGroup(g)); });
       return parts.join(", ");
     }
     function buildNegative() {
-      return buildGroup(state.negativeGroup).join(", ");
+      return buildGroup(cur.negativeGroup).join(", ");
     }
     /** CLIP token 近似估算：英文约 1.3 token/word，中文约 1 token/字，权重语法 +2 */
     function estimateTokens(text) {
@@ -896,7 +1019,7 @@ app.registerExtension({
     }
     function findToken75Chip() {
       let acc = 0;
-      for (const g of state.workspace) {
+      for (const g of cur.workspace) {
         if (g.enabled === false) continue;
         for (const box of g.inputboxes) {
           if (box.enabled === false) continue;
@@ -914,20 +1037,15 @@ app.registerExtension({
       }
       state._token75ChipId = null;
     }
-    let _pbNodes = null; // 缓存 PromptBuilderCLIPEncode 节点（惰性失效）
+    /** 把构建出的文本同步到【活动节点】的 positive/negative widget。
+     *  只写当前绑定节点，不再广播到所有节点（每节点状态独立）。 */
     function syncToNode(field, text) {
-      if (!app.graph?._nodes) return;
-      // 惰性清理：过滤掉已从图中移除的节点；缓存为空时回退全量扫描并重建
-      if (_pbNodes) _pbNodes = _pbNodes.filter(n => app.graph._nodes.includes(n));
-      if (!_pbNodes || !_pbNodes.length) {
-        _pbNodes = app.graph._nodes.filter(n => n.comfyClass === "PromptBuilderCLIPEncode");
+      if (!activeNode) return;
+      const widget = activeNode.widgets?.find(w => w.name === field);
+      if (widget && widget.value !== text) {
+        widget.value = text;
+        try { app.graph?.change?.(); } catch (e) {}
       }
-      let changed = false;
-      _pbNodes.forEach(node => {
-        const widget = node.widgets?.find(w => w.name === field);
-        if (widget && widget.value !== text) { widget.value = text; changed = true; }
-      });
-      if (changed) app.graph.change();
     }
 
     let _copyTimer;
@@ -1078,7 +1196,7 @@ app.registerExtension({
     // ==================== 渲染：负面提示词（固定在底部） ====================
     function renderNegativeGroup() {
       const root = $("pbWorkspace");
-      const ng = state.negativeGroup;
+      const ng = cur.negativeGroup;
       const ngEnabled = ng.enabled !== false;
       const g = document.createElement("div");
       g.className = "pb-group negative-fixed" + (ng.collapsed ? " collapsed" : "") + (ngEnabled ? "" : " disabled");
@@ -1101,18 +1219,18 @@ app.registerExtension({
     // ==================== 渲染：工作区（分组 → 输入框 → chip） ====================
     function renderWorkspace() {
       const root = $("pbWorkspace"); root.innerHTML = "";
-      state.workspace.forEach(group => {
+      cur.workspace.forEach(group => {
         const g = document.createElement("div");
         g.className = "pb-group" + (group.collapsed ? " collapsed" : "");
         g.dataset.gid = group.id; g._payload = group; g.draggable = true;
-        attachListDrag(g, state.workspace, () => { commit(); }, "group");
+        attachListDrag(g, cur.workspace, () => { commit(); }, "group");
         const bar = document.createElement("div"); bar.className = "pb-group-color-bar"; bar.style.background = group.color; g.appendChild(bar);
         const gEnabled = group.enabled !== false;
         g.classList.toggle("disabled", !gEnabled);
         const header = document.createElement("div"); header.className = "pb-group-header";
         header.innerHTML = `<span class="caret">▾</span><div class="pb-color-dot" style="background:${group.color}"></div><div class="name">${escapeHtml(group.name)}</div><button class="pb-btn pb-group-toggle" data-act="toggle" title="${gEnabled ? "禁用输出" : "启用输出"}" style="font-size:11px;padding:2px 6px;">${gEnabled ? "👁" : "🚫"}</button><button class="pb-btn" data-act="del" style="font-size:11px;padding:2px 6px;" title="删除分组">删除</button>`;
         header.onclick = (e) => {
-          if (e.target.dataset.act === "del") { state.workspace = state.workspace.filter(x => x.id !== group.id); commit(); return; }
+          if (e.target.dataset.act === "del") { cur.workspace = cur.workspace.filter(x => x.id !== group.id); commit(); return; }
           if (e.target.dataset.act === "toggle") { group.enabled = group.enabled === false; commit(); return; }
           if (e.target.classList.contains("name")) return;
           if (e.target.classList.contains("pb-color-dot")) { openColorPicker(e.target, group); return; }
@@ -1130,7 +1248,7 @@ app.registerExtension({
         root.appendChild(g);
       });
       const add = document.createElement("button"); add.className = "pb-add-group"; add.textContent = "+ 添加输入分组";
-      add.onclick = () => { state.workspace.push(mkGroup("新分组", COLORS[(state.workspace.length) % COLORS.length])); commit(); };
+      add.onclick = () => { cur.workspace.push(mkGroup("新分组", COLORS[(cur.workspace.length) % COLORS.length])); commit(); };
       root.appendChild(add);
       renderNegativeGroup();
       const ae = document.activeElement;
@@ -1147,10 +1265,10 @@ app.registerExtension({
 
     // ==================== 渲染：输入框 ====================
     function renderInputBox(group, box) {
-      const isFixed = group === state.negativeGroup;
+      const isFixed = group === cur.negativeGroup;
       const boxEnabled = box.enabled !== false;
       const el = document.createElement("div");
-      el.className = "pb-inputbox" + (state.focusedBox === box.id ? " focused" : "") + (!isFixed && !boxEnabled ? " disabled" : "");
+      el.className = "pb-inputbox" + (cur.focusedBox === box.id ? " focused" : "") + (!isFixed && !boxEnabled ? " disabled" : "");
       el.dataset.bid = box.id; el._payload = box;
       // 注入分组色为 CSS 变量，供 .pb-inputbox.focused 的边框/竖条/outline 取色（与分组色条一致）
       el.style.setProperty("--pb-box-color", group.color || "var(--pb-accent)");
@@ -1163,10 +1281,10 @@ app.registerExtension({
         if (skip) return;
         // 移除其它输入框的聚焦态
         document.querySelectorAll(".pb-inputbox.focused").forEach(el2 => el2.classList.remove("focused"));
-        state.focusedBox = box.id; el.classList.add("focused");
+        cur.focusedBox = box.id; el.classList.add("focused");
       };
       el.querySelector(".pb-inputbox-title").oninput = (e) => { box.title = e.target.value; renderOutput(); persist(); };
-      if (!isFixed) el.querySelector(".pb-inputbox-remove").onclick = (e) => { e.stopPropagation(); group.inputboxes = group.inputboxes.filter(b => b.id !== box.id); if (state.focusedBox === box.id) state.focusedBox = null; commit(); };
+      if (!isFixed) el.querySelector(".pb-inputbox-remove").onclick = (e) => { e.stopPropagation(); group.inputboxes = group.inputboxes.filter(b => b.id !== box.id); if (cur.focusedBox === box.id) cur.focusedBox = null; commit(); };
       const area = el.querySelector(".pb-chip-area");
       attachChipAreaDrop(area, box);
       box.chips.forEach(chip => area.appendChild(renderChip(chip, box)));
@@ -1261,20 +1379,20 @@ app.registerExtension({
     }
 
     async function addChipsToFocused(word) {
-      if (!state.focusedBox) {
+      if (!cur.focusedBox) {
         // 自动聚焦第一个可用输入框；若一个都没有则 toast 提示
-        const firstBox = state.workspace[0]?.inputboxes?.[0];
+        const firstBox = cur.workspace[0]?.inputboxes?.[0];
         if (firstBox) {
-          state.focusedBox = firstBox.id;
+          cur.focusedBox = firstBox.id;
           renderWorkspace();
-          toast("已自动聚焦到「" + (state.workspace[0].name) + " / " + (firstBox.title || "默认") + "」", "ok", 1600);
+          toast("已自动聚焦到「" + (cur.workspace[0].name) + " / " + (firstBox.title || "默认") + "」", "ok", 1600);
         } else {
           toast("请先在工作区添加一个输入框", "warn");
           return;
         }
       }
-      for (const g of [...state.workspace, state.negativeGroup]) {
-        const box = g.inputboxes.find(b => b.id === state.focusedBox);
+      for (const g of [...cur.workspace, cur.negativeGroup]) {
+        const box = g.inputboxes.find(b => b.id === cur.focusedBox);
         if (!box) continue;
         if (typeof word === "object") {
           box.chips.push(mkChip(word.text, word.cnText));
@@ -1396,7 +1514,7 @@ app.registerExtension({
       toggle.classList.remove("on"); toggle.textContent = "🌐 翻译";
       toggle.onclick = () => {
         toggle.textContent = "🌐 翻译中…"; toggle.classList.add("on");
-        const allChips = []; [...state.workspace, state.negativeGroup].forEach(g => g.inputboxes.forEach(b => b.chips.forEach(c => { if (!c.cnText && !c.translating) allChips.push(c); })));
+        const allChips = []; [...cur.workspace, cur.negativeGroup].forEach(g => g.inputboxes.forEach(b => b.chips.forEach(c => { if (!c.cnText && !c.translating) allChips.push(c); })));
         if (!allChips.length) { toggle.textContent = "🌐 翻译"; toggle.classList.remove("on"); toast("没有需要翻译的词语", "", 1400); return; }
         allChips.forEach(c => c.translating = true); renderWorkspace(); renderOutput();
         let done = 0, failed = 0;
@@ -1419,28 +1537,41 @@ app.registerExtension({
       const btn = $("pbClearAll");
       if (!btn) return;
       btn.onclick = () => {
-        state.workspace = [mkGroup("人物", COLORS[0])];
-        state.negativeGroup = mkNegativeGroup();
-        state.focusedBox = null;
+        cur.workspace = [mkGroup("人物", COLORS[0])];
+        cur.negativeGroup = mkNegativeGroup();
+        cur.focusedBox = null;
         commit();
       };
     })();
 
-    // ==================== 导入 / 导出 ====================
+    // ==================== 导入 / 导出（词库 & 提示词分离） ====================
     (function bindIO() {
-      const exportBtn = $("pbExport"), importBtn = $("pbImport");
-      if (exportBtn) {
-        exportBtn.onclick = (e) => {
+      const exportSel = $("pbExport"), importBtn = $("pbImport");
+      /** 导出本地 JSON 文件的通用帮助函数。 */
+      function doDownload(jsonObj, filename) {
+        const blob = new Blob([JSON.stringify(jsonObj, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      }
+      if (exportSel) {
+        exportSel.onchange = (e) => {
           e.stopPropagation();
+          const v = exportSel.value;
           try {
-            const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url; a.download = `promptbuilder-${new Date().toISOString().slice(0, 10)}.json`;
-            document.body.appendChild(a); a.click(); a.remove();
-            URL.revokeObjectURL(url);
-            toast("已导出备份", "ok", 1600);
+            if (v === "presets") {
+              doDownload({ type: "presets", presets: state.presets, l1Cat: state.l1Cat, l2Cat: state.l2Cat },
+                `promptbuilder-presets-${new Date().toISOString().slice(0, 10)}.json`);
+              toast("词库已导出", "ok", 1500);
+            } else if (v === "prompt") {
+              doDownload({ type: "prompt", workspace: cur.workspace, negativeGroup: cur.negativeGroup, focusedBox: cur.focusedBox },
+                `promptbuilder-prompt-${new Date().toISOString().slice(0, 10)}.json`);
+              toast("提示词已导出", "ok", 1500);
+            }
           } catch (err) { toast("导出失败：" + err.message, "error"); }
+          exportSel.value = "";  // reset
         };
       }
       if (importBtn) {
@@ -1453,20 +1584,33 @@ app.registerExtension({
               const text = await file.text();
               const parsed = JSON.parse(text);
               if (!parsed || (!parsed.presets && !parsed.workspace)) throw new Error("文件格式不正确");
-              const ok = await confirmModal("导入将覆盖当前所有数据，确定继续？", { okText: "覆盖导入", title: "导入 JSON" });
+              // 自动识别：有 presets → 词库；有 workspace → 提示词
+              const isPresets = !!(parsed.presets?.children);
+              const isPrompt = !!(parsed.workspace);
+              const label = isPresets && isPrompt ? "词库 + 提示词" : isPresets ? "词库" : "提示词";
+              const ok = await confirmModal(`检测到「${label}」备份，导入将覆盖当前对应数据，确定继续？`, {
+                okText: "覆盖导入", title: "导入 " + label
+              });
               if (!ok) return;
-              // 合并：用导入数据覆盖，并跑一遍迁移确保字段齐全
-              if (parsed.presets) state.presets = parsed.presets;
-              if (parsed.workspace) state.workspace = parsed.workspace;
-              if (parsed.negativeGroup) state.negativeGroup = parsed.negativeGroup;
-              state.l1Cat = parsed.l1Cat || Object.keys(state.presets.children)[0] || null;
-              state.l2Cat = parsed.l2Cat || Object.keys(state.presets.children[state.l1Cat]?.children || {})[0] || null;
-              // 统一跑迁移补字段（weight 清理 + group/box enabled）
-              const migrate = (g) => { if (!g) return; delete g.weight; if (g.enabled === undefined) g.enabled = true; (g.inputboxes || []).forEach(b => { if (b.enabled === undefined) b.enabled = true; }); };
-              state.workspace.forEach(migrate); migrate(state.negativeGroup);
-              state._v = 3;
-              state.focusedBox = state.workspace[0]?.inputboxes?.[0]?.id || null;
-              renderPresets(); commit();
+              if (isPresets) {
+                state.presets = parsed.presets;
+                state.l1Cat = parsed.l1Cat || Object.keys(state.presets.children)[0] || null;
+                state.l2Cat = parsed.l2Cat || Object.keys(state.presets.children[state.l1Cat]?.children || {})[0] || null;
+                saveSharedState();
+                renderPresets();
+              }
+              if (isPrompt) {
+                cur.workspace = parsed.workspace;
+                cur.negativeGroup = parsed.negativeGroup || mkNegativeGroup();
+                cur.focusedBox = parsed.focusedBox ?? null;
+                migrateGroups(cur.workspace);
+                migrateGroups([cur.negativeGroup]);
+                if (!cur.negativeGroup?.inputboxes?.length) cur.negativeGroup = mkNegativeGroup();
+                if (!cur.workspace.length) cur.workspace = [mkGroup("人物", COLORS[0])];
+                cur.focusedBox = cur.focusedBox || cur.workspace[0]?.inputboxes?.[0]?.id || null;
+                saveCurrentNodeState();
+                renderWorkspace(); renderOutput();
+              }
               toast("导入成功", "ok", 1800);
             } catch (err) { toast("导入失败：" + err.message, "error"); }
           };
@@ -1605,7 +1749,9 @@ app.registerExtension({
 
     renderPresets(); renderWorkspace(); renderOutput();
     _lastSnapshot = snapshotState(); // 撤销基准：记录初始状态
-    (function autoFocus() { if (state.workspace.length && state.workspace[0].inputboxes.length) { state.focusedBox = state.workspace[0].inputboxes[0].id; $("pbWorkspace").querySelector(".pb-chip-input")?.focus(); } })();
+    (function autoFocus() { if (cur.workspace.length && cur.workspace[0].inputboxes.length) { cur.focusedBox = cur.workspace[0].inputboxes[0].id; $("pbWorkspace").querySelector(".pb-chip-input")?.focus(); } })();
+    // 暴露给 extension 层的其他钩子（nodeCreated / getNodeMenuItems / beforeRegisterNodeDef）
+    panel._loadNodeIntoPanel = loadNodeIntoPanel;
   },
 
   // ==================== 节点集成：按钮入口 + 右键菜单 ====================
@@ -1614,7 +1760,7 @@ app.registerExtension({
     const panel = document.querySelector(".pb-panel");
     if (!panel) return;
     node.addWidget("button", "✏️ 在 PromptBuilder 中编辑", null, () => {
-      panel.dataset.activeNode = String(node.id);
+      if (panel._loadNodeIntoPanel) panel._loadNodeIntoPanel(node);
       panel.classList.add("visible");
     });
     // 节点上只预览不可编辑
@@ -1633,7 +1779,29 @@ app.registerExtension({
     const panel = document.querySelector(".pb-panel");
     return [{
       content: "✏️ 在 PromptBuilder 中编辑",
-      callback: () => { if (panel) { panel.dataset.activeNode = String(node.id); panel.classList.add("visible"); } }
+      callback: () => { if (panel && panel._loadNodeIntoPanel) { panel._loadNodeIntoPanel(node); panel.classList.add("visible"); } }
     }];
+  },
+
+  // 工作流加载 / 拖图后：若面板已打开且绑定节点已失效，自动刷新
+  beforeRegisterNodeDef(nodeType, nodeData, app) {
+    if (nodeData.name !== "PromptBuilderCLIPEncode") return;
+    const origOnConfigure = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function(o) {
+      const r = origOnConfigure?.apply(this, arguments);
+      try {
+        const panel = document.querySelector(".pb-panel");
+        if (!panel?.classList.contains("visible") || !panel._loadNodeIntoPanel) return r;
+        const activeId = panel.dataset.activeNode;
+        // 若当前绑定节点已不在图中（工作流重载 / 拖图），或本节点就是绑定节点，则重载面板
+        const activeStillExists = activeId != null && app.graph?._nodes?.some(n =>
+          String(n.id) === activeId && n.comfyClass === "PromptBuilderCLIPEncode"
+        );
+        if (!activeStillExists || activeId === String(this.id)) {
+          panel._loadNodeIntoPanel(this);
+        }
+      } catch (e) {}
+      return r;
+    };
   }
 });
