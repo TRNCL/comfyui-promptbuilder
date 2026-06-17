@@ -6,7 +6,7 @@ import { app } from "../../scripts/app.js";
    - 左栏：预设词库（全局共享；双行分类 / 词语 / 跨分类搜索 / 拖拽排序）
    - 中栏：工作区（分组 → 输入框 → chip，权重/翻译/bypass/拖拽排序）
    - 右栏：输出（复制按钮 + 词条计数，自动 sync 到活动节点）
-   其它：撤销/恢复、导入/导出 JSON、面板位置记忆、拖拽指示线
+   其它：撤销/恢复、导出词库 JSON / 导入（自动识别）、面板位置记忆、拖拽指示线
    ============================================================
    架构（v4 起）：
    - 全局 state：presets（词库）/ l1Cat,l2Cat / settings —— 多节点共享，
@@ -25,7 +25,7 @@ app.registerExtension({
     style.textContent = `
 .pb-panel *{box-sizing:border-box}
 :root{--pb-bg:#0f1115;--pb-panel:#161a22;--pb-panel-2:#1c2230;--pb-border:#262d3b;--pb-text:#e6e9ef;--pb-text-dim:#8a93a6;--pb-accent:#6aa9ff;--pb-accent-2:#8b6aff;--pb-danger:#ff6b6b;--pb-chip-bg:#2a3142;--pb-chip-bg-focus:#324063}
-.pb-panel{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,Arial,sans-serif;font-size:14px;position:fixed;top:50px;left:50px;width:950px;height:620px;z-index:9999;display:none;flex-direction:column;border:1px solid var(--pb-border);border-radius:10px;background:var(--pb-bg);color:var(--pb-text);box-shadow:0 8px 32px rgba(0,0,0,.6);resize:both;overflow:hidden;min-width:600px;min-height:400px}
+.pb-panel{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,Arial,sans-serif;font-size:14px;position:fixed;top:50px;left:50px;width:950px;height:620px;z-index:9999;display:none;flex-direction:column;border:1px solid var(--pb-border);border-radius:10px;background:var(--pb-bg);color:var(--pb-text);box-shadow:0 8px 32px rgba(0,0,0,.6);resize:both;overflow:hidden;min-width:900px;min-height:400px}
 .pb-panel.visible{display:flex}
 .pb-titlebar{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--pb-panel-2);border-bottom:1px solid var(--pb-border);cursor:move;user-select:none;font-size:13px;font-weight:600;flex-shrink:0}
 .pb-title-name{pointer-events:none}
@@ -44,11 +44,17 @@ app.registerExtension({
 .pb-panel.minimized .pb-title-actions{gap:10px}
 .pb-panel.minimized .pb-title-actions .pb-btn:not(#pbGenerate){display:none}
 .pb-panel.minimized .pb-min-grip{opacity:.7;margin-right:16px}
-.pb-body{display:grid;grid-template-columns:280px 1fr 260px;flex:1;min-height:0;overflow:hidden}
+.pb-body{display:grid;grid-template-columns:280px 4px 1fr 4px 260px;flex:1;min-height:0;overflow:hidden}
 .pb-col{display:flex;flex-direction:column;background:var(--pb-panel);border-right:1px solid var(--pb-border);min-width:0;overflow:hidden}
+.pb-col:nth-child(1){min-width:240px}
+.pb-col:nth-child(3){min-width:400px}
+.pb-col:nth-child(5){min-width:240px}
 .pb-col:last-child{border-right:none;border-left:1px solid var(--pb-border)}
+.pb-col-divider{background:var(--pb-border);cursor:col-resize;transition:background .15s}
+.pb-col-divider:hover,.pb-col-divider.active{background:var(--pb-accent)}
 .pb-col-header{display:flex;align-items:center;justify-content:space-between;padding:0 10px;gap:6px;border-bottom:1px solid var(--pb-border);font-weight:600;font-size:13px;background:var(--pb-panel-2);flex-shrink:0;height:36px}
-.pb-col-body{flex:1;overflow:auto;padding:8px 10px;min-height:0}
+.pb-col-body{flex:1;overflow:auto;padding:8px 10px;min-height:0;scrollbar-width:none}
+.pb-col-body::-webkit-scrollbar{width:0;height:0;display:none}
 .pb-btn{border:1px solid var(--pb-border);background:var(--pb-panel-2);color:var(--pb-text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;transition:all .15s;white-space:nowrap}
 .pb-btn:hover{border-color:var(--pb-accent);color:var(--pb-accent)}
 .pb-btn.primary{background:var(--pb-accent);color:#0b1020;border-color:var(--pb-accent);font-weight:600}
@@ -122,11 +128,6 @@ app.registerExtension({
 .pb-chip-path{font-size:9px;color:var(--pb-text-dim);opacity:.7;line-height:1.2;margin-top:1px;font-style:italic}
 .pb-chip.translating .pb-chip-sub{color:var(--pb-accent)}
 .pb-chip.dragging{opacity:.4}
-.pb-chip.tok-highlight{background:#3d2a1f;border-color:#ff9f6a;box-shadow:0 0 6px rgba(255,159,106,.3)}
-.pb-chip .adj{min-width:16px;align-self:stretch;text-align:center;border:none;background:transparent;color:var(--pb-text-dim);cursor:pointer;font-size:12px;padding:0 3px;border-radius:4px}
-.pb-chip .adj:hover{background:var(--pb-panel-2);color:var(--pb-accent)}
-.pb-chip .x{min-width:22px;align-self:stretch;text-align:center;border:none;background:transparent;color:var(--pb-text-dim);cursor:pointer;font-size:13px;padding:0 3px;border-radius:4px}
-.pb-chip .x:hover{background:var(--pb-panel-2);color:var(--pb-danger)}
 .pb-chip-x{border:none;background:transparent;color:var(--pb-text-dim);cursor:pointer;font-size:13px;padding:0 2px;border-radius:4px;flex-shrink:0;line-height:1}
 .pb-chip-x:hover{color:var(--pb-danger)}
 .pb-chip .w{color:var(--pb-text-dim);font-size:10px;margin-left:3px}
@@ -162,12 +163,6 @@ app.registerExtension({
 .pb-seg button:hover:not(.active){color:var(--pb-accent)}
 .pb-setting-select{background:var(--pb-panel-2);color:var(--pb-text);border:1px solid var(--pb-border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;outline:none;flex:1;max-width:130px}
 .pb-setting-select:focus{border-color:var(--pb-accent)}
-.pb-toggle{display:inline-flex;align-items:center;cursor:pointer}
-.pb-toggle input{display:none}
-.pb-toggle-slider{width:32px;height:18px;background:var(--pb-border);border-radius:9px;position:relative;transition:background .2s}
-.pb-toggle-slider::after{content:"";width:14px;height:14px;background:var(--pb-text-dim);border-radius:50%;position:absolute;top:2px;left:2px;transition:all .2s}
-.pb-toggle input:checked+.pb-toggle-slider{background:var(--pb-accent)}
-.pb-toggle input:checked+.pb-toggle-slider::after{background:#0b1020;left:16px}
 .pb-add-inputbox{width:100%;padding:5px;font-size:12px;background:#1b291b;border:1px dashed var(--pb-border);border-radius:4px;color:var(--pb-text-dim);cursor:pointer}
 .pb-add-inputbox:hover{border-color:var(--pb-accent);color:var(--pb-accent)}
 .pb-add-group{width:100%;padding:8px;font-size:13px;background:transparent;border:1px dashed var(--pb-border);border-radius:8px;color:var(--pb-text-dim);cursor:pointer}
@@ -232,6 +227,7 @@ app.registerExtension({
           <div class="pb-preset-cats pb-l2" id="pbPresetCatsL2"></div>
           <div class="pb-col-body" style="padding:0"><div class="pb-preset-list" id="pbPresetList"></div><div class="pb-preset-list" id="pbPresetSearchResults" style="display:none"></div></div>
         </div>
+        <div class="pb-col-divider"></div>
         <div class="pb-col">
           <div class="pb-col-header">
             <span>工作区</span>
@@ -242,6 +238,7 @@ app.registerExtension({
           </div>
           <div class="pb-col-body" id="pbWorkspace"></div>
         </div>
+        <div class="pb-col-divider"></div>
         <div class="pb-col">
           <div class="pb-col-header">输出</div>
           <div class="pb-col-body">
@@ -254,7 +251,6 @@ app.registerExtension({
             <div class="pb-setting-row"><span class="label">翻译引擎</span><select id="pbSelTranslator" class="pb-setting-select"><option value="mymemory">MyMemory</option><option value="google">Google</option><option value="custom">自定义</option></select></div>
             <div class="pb-setting-row" id="pbCustomApiRow" style="display:none"><span class="label">自定义 API</span><button class="pb-btn" id="pbCustomApiCfg" title="配置自定义翻译 API" style="font-size:11px;padding:2px 8px">⚙ 配置</button></div>
             <div class="pb-setting-row"><span class="label">主题</span><div class="pb-seg" id="pbSegTheme"><button data-v="dark" class="active">暗色</button><button data-v="light">亮色</button></div></div>
-            <div class="pb-setting-row"><span class="label">Token 高亮</span><label class="pb-toggle"><input type="checkbox" id="pbToggleToken75"><span class="pb-toggle-slider"></span></label></div>
           </div>
         </div>
       </div>
@@ -300,12 +296,63 @@ app.registerExtension({
     }
     bindDrag(panel.querySelector(".pb-titlebar"), ".pb-close");
     bindDrag(panel.querySelector(".pb-statusbar"), null);
-    // ResizeObserver 监听尺寸变化
+    // ==================== 列宽可拖拽分隔条 ====================
+    const COL_WIDTH_KEY = "promptbuilder_comfy_colwidths";
+    const bodyEl = panel.querySelector(".pb-body");
+    function saveColWidths() {
+      try {
+        const allCols = [...bodyEl.querySelectorAll(".pb-col")];
+        const val = `${allCols[0].offsetWidth}px 4px 1fr 4px ${allCols[2].offsetWidth}px`;
+        bodyEl.style.gridTemplateColumns = val;
+        localStorage.setItem(COL_WIDTH_KEY, val);
+      } catch (e) {}
+    }
+    function restoreColWidths() {
+      try {
+        const w = localStorage.getItem(COL_WIDTH_KEY);
+        if (w) bodyEl.style.gridTemplateColumns = w;
+      } catch (e) {}
+    }
+    restoreColWidths();
+    function bindColumnResize(divider, leftIdx) {
+      divider.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const allCols = [...bodyEl.querySelectorAll(".pb-col")];
+        const w = allCols.map(c => c.offsetWidth);
+        const startLeft = w[leftIdx], startRight = w[leftIdx + 1];
+        const MINS = [240, 400, 240];
+        divider.classList.add("active");
+        bodyEl.style.userSelect = "none";
+        const onMove = (ev) => {
+          const dx = ev.clientX - startX;
+          // 钳定 delta：任一侧触底时分隔条停止移动
+          const maxDx = startRight - MINS[leftIdx + 1];
+          const minDx = MINS[leftIdx] - startLeft;
+          const clamped = Math.max(minDx, Math.min(maxDx, dx));
+          w[leftIdx] = Math.max(MINS[leftIdx], startLeft + clamped);
+          w[leftIdx + 1] = Math.max(MINS[leftIdx + 1], startRight - clamped);
+          bodyEl.style.gridTemplateColumns = `${w[0]}px 4px ${w[1]}px 4px ${w[2]}px`;
+        };
+        const onUp = () => {
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+          divider.classList.remove("active");
+          bodyEl.style.userSelect = "";
+          saveColWidths();
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      });
+    }
+    bindColumnResize(bodyEl.querySelector(".pb-col-divider"), 0);
+    bindColumnResize(bodyEl.querySelectorAll(".pb-col-divider")[1], 1);
+    // ==================== 面板位置/大小持久化 ====================
     try {
       const ro = new ResizeObserver(() => savePanelGeo());
       ro.observe(panel);
     } catch (e) {}
-    function closePanel() { panel.classList.remove("visible"); const p = document.querySelector(".pb-color-picker"); if (p) p.remove(); hideIndicator(); hideAc(); clearTimeout(_toolbarHideTimer); if (_toolbarEl) _toolbarEl.classList.remove("show"); }
+    function closePanel() { panel.classList.remove("visible"); const p = document.querySelector(".pb-color-picker"); if (p) p.remove(); hideIndicator(); hideAc(); clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer); if (_toolbarEl) _toolbarEl.classList.remove("show"); _activeChipEl = null; }
     panel.querySelector(".pb-close").onclick = closePanel;
     const minBtn = panel.querySelector(".pb-minimize");
     if (minBtn) minBtn.onclick = (e) => {
@@ -313,7 +360,7 @@ app.registerExtension({
       panel.classList.toggle("minimized");
       minBtn.textContent = panel.classList.contains("minimized") ? "⛶" : "−";
       minBtn.title = panel.classList.contains("minimized") ? "展开面板" : "收起面板";
-      clearTimeout(_toolbarHideTimer); if (_toolbarEl) _toolbarEl.classList.remove("show");
+      clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer); if (_toolbarEl) _toolbarEl.classList.remove("show"); _activeChipEl = null;
       savePanelGeo();
     };
 
@@ -356,8 +403,7 @@ app.registerExtension({
       _v: 3,
       presets: { items: [], children: {} },
       l1Cat: null, l2Cat: null,
-      settings: { scale: "mid", translator: "mymemory", theme: "dark", tokenHighlight: false, customApi: { url: "", method: "GET", body: "", responseField: "" } },
-      _token75ChipId: null
+      settings: { scale: "mid", translator: "mymemory", theme: "dark", customApi: { url: "", method: "GET", body: "", responseField: "" } },
     };
 
     // ==================== 当前编辑态（从活动节点加载到内存）====================
@@ -412,7 +458,7 @@ app.registerExtension({
     let _acLayer = null;       // 自动补全浮层元素（懒创建）
     let _acItems = [];         // 当前浮层显示的候选词对象数组
     let _acActive = -1;        // 当前高亮项索引
-    let _toolbarEl = null, _toolbarHideTimer = null; // chip 浮动工具栏
+    let _toolbarEl = null, _toolbarHideTimer = null, _activeChipEl = null, _switchTimer = null; // chip 浮动工具栏
     let _persistTimer;
     // ==================== 撤销 / 恢复 ====================
     // 策略：以 persist() 的 200ms 防抖为快照边界 —— 连续输入会合并为一次可撤销操作，
@@ -483,7 +529,7 @@ app.registerExtension({
       _persistTimer = setTimeout(() => { saveSharedState(); saveCurrentNodeState(); scheduleSnapshot(); }, 200);
     }
     /** 统一的"重新渲染 + 持久化"收口，绝大多数状态变更后调用 */
-    function commit() { if (state.settings.tokenHighlight) findToken75Chip(); renderWorkspace(); renderOutput(); persist(); }
+    function commit() { renderWorkspace(); renderOutput(); persist(); }
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
     function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
@@ -591,8 +637,6 @@ app.registerExtension({
       syncSeg("pbSegTheme", st.theme);
       // 自定义 API 配置行仅在选中"自定义"时显示
       const customRow = $("pbCustomApiRow"); if (customRow) customRow.style.display = (st.translator === "custom") ? "" : "none";
-      // 同步 token 高亮开关
-      const tokToggle = $("pbToggleToken75"); if (tokToggle) tokToggle.checked = st.tokenHighlight;
     }
     function syncSeg(segId, value) {
       const seg = $(segId); if (!seg) return;
@@ -612,8 +656,6 @@ app.registerExtension({
     const selTrans = $("pbSelTranslator");
     if (selTrans) selTrans.onchange = (e) => { e.stopPropagation(); state.settings.translator = selTrans.value; applySettings(); persist(); };
     bindSeg("pbSegTheme", "theme");
-    const tokToggle = $("pbToggleToken75");
-    if (tokToggle) tokToggle.onchange = () => { state.settings.tokenHighlight = tokToggle.checked; commit(); };
     // 自定义 API 配置弹窗
     const cfgBtn = $("pbCustomApiCfg");
     if (cfgBtn) cfgBtn.onclick = (e) => {
@@ -824,7 +866,7 @@ app.registerExtension({
       el.addEventListener("dragstart", (e) => {
         chipDragCtx = { chip, fromBox: sourceBox };
         el.classList.add("dragging");
-        clearTimeout(_toolbarHideTimer); if (_toolbarEl) _toolbarEl.classList.remove("show");
+        clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer); if (_toolbarEl) _toolbarEl.classList.remove("show"); _activeChipEl = null;
         try { e.dataTransfer.setData("text/plain", "chip"); } catch (_) {}
         e.dataTransfer.effectAllowed = "move";
         e.stopPropagation();
@@ -1051,27 +1093,6 @@ app.registerExtension({
       syncToNode("positive", pos);
       syncToNode("negative", neg);
     }
-    function findToken75Chip() {
-      let acc = 0;
-      for (const g of cur.workspace) {
-        if (g.enabled === false) continue;
-        for (const box of g.inputboxes) {
-          if (box.enabled === false) continue;
-          for (const c of box.chips) {
-            if (c.enabled === false) continue;
-            const term = c.weight.toFixed(1) !== "1.0"
-              ? `(${c.text}:${c.weight.toFixed(1)})` : c.text;
-            const tok = estimateTokens(term);
-            if (acc < 75 && acc + tok >= 75) {
-              state._token75ChipId = c.id;
-              return;
-            }
-            acc += tok;
-          }
-        }
-      }
-      state._token75ChipId = null;
-    }
     /** 把构建出的文本同步到【活动节点】的 positive/negative widget。
      *  只写当前绑定节点，不再广播到所有节点（每节点状态独立）。 */
     function syncToNode(field, text) {
@@ -1131,7 +1152,7 @@ app.registerExtension({
       words.forEach((w) => {
         listEl.appendChild(renderPresetWord(w, { items: words, draggable: true, onDeleted: () => { renderPresets(); persist(); } }));
       });
-      // 新建词语（同上，不变）
+      // 新建词语行
       const addBtn = document.createElement("button"); addBtn.className = "pb-preset-add-btn"; addBtn.textContent = "+ 新建词语";
       const addRow = document.createElement("div"); addRow.className = "pb-preset-add-row"; addRow.style.display = "none";
       const addCN = document.createElement("input"); addCN.placeholder = "中文"; addCN.className = "pb-preset-cn";
@@ -1378,48 +1399,56 @@ app.registerExtension({
     }
     function hideToolbar() {
       clearTimeout(_toolbarHideTimer);
-      _toolbarHideTimer = setTimeout(() => { if (_toolbarEl) _toolbarEl.classList.remove("show"); }, 160);
+      clearTimeout(_switchTimer);
+      _toolbarHideTimer = setTimeout(() => {
+        if (_toolbarEl) _toolbarEl.classList.remove("show");
+        _activeChipEl = null;
+      }, 200);
     }
     function showToolbar(chipEl) {
-      clearTimeout(_toolbarHideTimer);
+      clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer);
       const tb = getToolbar();
-      // 先显示才能量尺寸
       tb.classList.add("show");
       const cr = chipEl.getBoundingClientRect();
       const tw = tb.offsetWidth, th = tb.offsetHeight;
       let left = cr.left + cr.width / 2 - tw / 2;
       let top = cr.top - th - 6;
-      if (top < 6) top = cr.bottom + 6; // 上方不够 → 下方
+      if (top < 6) top = cr.bottom + 6;
       if (left < 6) left = 6;
       if (left + tw > window.innerWidth - 6) left = window.innerWidth - tw - 6;
       tb.style.left = left + "px"; tb.style.top = top + "px";
     }
-    /** 绑定 chip → toolbar：mouseenter 显示 & 重建按钮；toolbar 自身 hover 取消延迟。 */
+    /** 绑定 chip → toolbar：mouseenter 延时切换（150ms 防抖，避免路过 chip 抢 toolbar）。 */
     function attachToolbarToChip(el, box, chip) {
       const tb = getToolbar();
       el.addEventListener("mouseenter", () => {
         if (el.classList.contains("dragging")) return;
-        const bypassed = chip.enabled === false;
-        tb.innerHTML = `
-          <button class="pb-chiptb-wminus" title="减权 0.1">−</button>
-          <button class="pb-chiptb-wplus" title="加权 0.1">+</button>
-          <button class="pb-chiptb-bypass" title="${bypassed ? "恢复输出" : "Bypass（不参与输出）"}">${bypassed ? "🚫" : "👁"}</button>`;
-        tb.querySelector(".pb-chiptb-wminus").onmousedown = e => e.preventDefault();
-        tb.querySelector(".pb-chiptb-wplus").onmousedown = e => e.preventDefault();
-        tb.querySelector(".pb-chiptb-wminus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight - 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
-        tb.querySelector(".pb-chiptb-wplus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight + 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
-        tb.querySelector(".pb-chiptb-bypass").onclick = e => { e.stopPropagation(); chip.enabled = chip.enabled === false; commit(); };
-        showToolbar(el);
+        if (_activeChipEl === el) { clearTimeout(_toolbarHideTimer); return; }
+        clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer);
+        _switchTimer = setTimeout(() => {
+          _activeChipEl = el;
+          const bypassed = chip.enabled === false;
+          tb.innerHTML = `
+            <button class="pb-chiptb-wminus" title="减权 0.1">−</button>
+            <button class="pb-chiptb-wplus" title="加权 0.1">+</button>
+            <button class="pb-chiptb-bypass" title="${bypassed ? "恢复输出" : "Bypass（不参与输出）"}">${bypassed ? "🚫" : "👁"}</button>`;
+          tb.querySelector(".pb-chiptb-wminus").onmousedown = e => e.preventDefault();
+          tb.querySelector(".pb-chiptb-wplus").onmousedown = e => e.preventDefault();
+          tb.querySelector(".pb-chiptb-wminus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight - 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
+          tb.querySelector(".pb-chiptb-wplus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight + 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
+          tb.querySelector(".pb-chiptb-bypass").onclick = e => { e.stopPropagation(); chip.enabled = chip.enabled === false; commit(); };
+          showToolbar(el);
+        }, _activeChipEl ? 150 : 0);
       });
       el.addEventListener("mouseleave", () => hideToolbar());
-      tb.addEventListener("mouseenter", () => clearTimeout(_toolbarHideTimer));
+      tb.addEventListener("mouseenter", () => { clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer); });
       tb.addEventListener("mouseleave", () => hideToolbar());
     }
     // ==================== 渲染：chip（权重 / 删除 / 双击编辑 / 拖拽排序） ====================
     function renderChip(chip, box) {
       const el = document.createElement("span");
       const bypassedClass = chip.enabled === false ? " bypassed" : "";
-      el.className = "pb-chip" + (chip.translating ? " translating" : "") + (state.settings.tokenHighlight && chip.id === state._token75ChipId ? " tok-highlight" : "") + bypassedClass;
+      el.className = "pb-chip" + (chip.translating ? " translating" : "") + bypassedClass;
       el.draggable = true; el.dataset.cid = chip.id; el._payload = chip;
       const hasCN = !!chip.cnText;
       const sub = hasCN ? `<small class="pb-chip-sub">${escapeHtml(chip.cnText)}</small>` : "";
