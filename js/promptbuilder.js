@@ -1883,7 +1883,9 @@ app.registerExtension({
     if (!panel) return;
     node.addWidget("button", "✏️ 在 PromptBuilder 中编辑", null, () => {
       if (panel._loadNodeIntoPanel) panel._loadNodeIntoPanel(node);
+      panel.classList.remove("minimized");
       panel.classList.add("visible");
+      const mb = panel.querySelector(".pb-minimize"); if (mb) { mb.textContent = "−"; mb.title = "收起面板"; }
     });
     // 节点上只预览不可编辑
     setTimeout(() => {
@@ -1901,7 +1903,7 @@ app.registerExtension({
     const panel = document.querySelector(".pb-panel");
     return [{
       content: "✏️ 在 PromptBuilder 中编辑",
-      callback: () => { if (panel && panel._loadNodeIntoPanel) { panel._loadNodeIntoPanel(node); panel.classList.add("visible"); } }
+      callback: () => { if (panel && panel._loadNodeIntoPanel) { panel._loadNodeIntoPanel(node); panel.classList.remove("minimized"); panel.classList.add("visible"); const mb = panel.querySelector(".pb-minimize"); if (mb) { mb.textContent = "−"; mb.title = "收起面板"; } } }
     }];
   },
 
