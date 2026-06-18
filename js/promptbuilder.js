@@ -299,18 +299,44 @@ app.registerExtension({
     // ==================== 列宽可拖拽分隔条 ====================
     const COL_WIDTH_KEY = "promptbuilder_comfy_colwidths";
     const bodyEl = panel.querySelector(".pb-body");
+    const COL_MINS = [240, 400, 240];
     function saveColWidths() {
       try {
         const allCols = [...bodyEl.querySelectorAll(".pb-col")];
-        const val = `${allCols[0].offsetWidth}px 4px 1fr 4px ${allCols[2].offsetWidth}px`;
-        bodyEl.style.gridTemplateColumns = val;
-        localStorage.setItem(COL_WIDTH_KEY, val);
+        localStorage.setItem(COL_WIDTH_KEY, `${allCols[0].offsetWidth} ${allCols[1].offsetWidth} ${allCols[2].offsetWidth}`);
       } catch (e) {}
+    }
+    function applyLayout() {
+      const avail = panel.offsetWidth; if (!avail) return;
+      const allCols = [...bodyEl.querySelectorAll(".pb-col")];
+      const w = allCols.map(c => c.offsetWidth || COL_MINS[0]);
+      const total = w[0] + w[1] + w[2] + 8;
+      if (avail >= total) {
+        // 扩大：只增加中间列
+        bodyEl.style.gridTemplateColumns = `${w[0]}px 4px ${avail - w[0] - w[2] - 8}px 4px ${w[2]}px`;
+        return;
+      }
+      // 缩小：中间 → 右侧 → 左侧
+      let surplus = total - avail;
+      if (w[1] - surplus >= COL_MINS[1]) {
+        bodyEl.style.gridTemplateColumns = `${w[0]}px 4px ${w[1] - surplus}px 4px ${w[2]}px`; return;
+      }
+      surplus -= w[1] - COL_MINS[1];
+      if (w[2] - surplus >= COL_MINS[2]) {
+        bodyEl.style.gridTemplateColumns = `${w[0]}px 4px ${COL_MINS[1]}px 4px ${w[2] - surplus}px`; return;
+      }
+      surplus -= w[2] - COL_MINS[2];
+      bodyEl.style.gridTemplateColumns = `${Math.max(COL_MINS[0], w[0] - surplus)}px 4px ${COL_MINS[1]}px 4px ${COL_MINS[2]}px`;
     }
     function restoreColWidths() {
       try {
-        const w = localStorage.getItem(COL_WIDTH_KEY);
-        if (w) bodyEl.style.gridTemplateColumns = w;
+        const raw = localStorage.getItem(COL_WIDTH_KEY);
+        if (raw) {
+          const parts = raw.split(" ").map(Number);
+          if (parts.length === 3 && parts.every(p => p > 0)) {
+            bodyEl.style.gridTemplateColumns = `${parts[0]}px 4px ${parts[1]}px 4px ${parts[2]}px`;
+          }
+        }
       } catch (e) {}
     }
     restoreColWidths();
@@ -321,17 +347,15 @@ app.registerExtension({
         const allCols = [...bodyEl.querySelectorAll(".pb-col")];
         const w = allCols.map(c => c.offsetWidth);
         const startLeft = w[leftIdx], startRight = w[leftIdx + 1];
-        const MINS = [240, 400, 240];
         divider.classList.add("active");
         bodyEl.style.userSelect = "none";
         const onMove = (ev) => {
           const dx = ev.clientX - startX;
-          // 钳定 delta：任一侧触底时分隔条停止移动
-          const maxDx = startRight - MINS[leftIdx + 1];
-          const minDx = MINS[leftIdx] - startLeft;
+          const maxDx = startRight - COL_MINS[leftIdx + 1];
+          const minDx = COL_MINS[leftIdx] - startLeft;
           const clamped = Math.max(minDx, Math.min(maxDx, dx));
-          w[leftIdx] = Math.max(MINS[leftIdx], startLeft + clamped);
-          w[leftIdx + 1] = Math.max(MINS[leftIdx + 1], startRight - clamped);
+          w[leftIdx] = Math.max(COL_MINS[leftIdx], startLeft + clamped);
+          w[leftIdx + 1] = Math.max(COL_MINS[leftIdx + 1], startRight - clamped);
           bodyEl.style.gridTemplateColumns = `${w[0]}px 4px ${w[1]}px 4px ${w[2]}px`;
         };
         const onUp = () => {
@@ -349,7 +373,7 @@ app.registerExtension({
     bindColumnResize(bodyEl.querySelectorAll(".pb-col-divider")[1], 1);
     // ==================== 面板位置/大小持久化 ====================
     try {
-      const ro = new ResizeObserver(() => savePanelGeo());
+      const ro = new ResizeObserver(() => { savePanelGeo(); applyLayout(); });
       ro.observe(panel);
     } catch (e) {}
     function closePanel() { panel.classList.remove("visible"); const p = document.querySelector(".pb-color-picker"); if (p) p.remove(); hideIndicator(); hideAc(); clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer); if (_toolbarEl) _toolbarEl.classList.remove("show"); _activeChipEl = null; }
