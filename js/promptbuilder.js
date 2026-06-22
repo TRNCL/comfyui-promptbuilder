@@ -431,7 +431,7 @@ app.registerExtension({
     };
 
     // ==================== 当前编辑态（从活动节点加载到内存）====================
-    let activeNode = null;            // 当前绑定的 PromptBuilderCLIPEncode 节点
+    let activeNode = null;            // 当前绑定的 PromptBuilder 节点（CLIP Encode 或 Text）
     let cur = {
       workspace: [mkGroup("人物", COLORS[0])],
       negativeGroup: mkNegativeGroup(),
@@ -1552,31 +1552,39 @@ app.registerExtension({
       const term = currentTerm(input).toLowerCase();
       if (!term) { hideAc(); return; }
       const seen = new Set(); const matches = [];
+      const limit = 20;
       // 1. 用户词库匹配
       for (const w of _presetIndex) {
         const en = (w.text || "").toLowerCase();
         const cn = (w.cnText || "").toLowerCase();
         if (en.includes(term) || cn.includes(term)) {
-          const key = en + "|" + cn;
+          const key = en;
           if (seen.has(key)) continue; seen.add(key);
           matches.push({ text: w.text, cnText: w.cnText, source: null });
-          if (matches.length >= 10) break;
+          if (matches.length >= limit) break;
         }
       }
-      // 2. danbooru 词库匹配（用户词库不够 10 条时补充）
-      if (matches.length < 10 && _danbooruIndex.length) {
+      // 2. danbooru 词库匹配（用户词库不够 limit 条时补充）
+      if (matches.length < limit && _danbooruIndex.length) {
         for (const [en, zh] of _danbooruIndex) {
           const enLow = en.toLowerCase();
           const zhLow = (zh || "").toLowerCase();
           const termAlt = term.includes(" ") ? term.replace(/\s+/g, "_") : term.includes("_") ? term.replace(/_/g, " ") : null;
           if (enLow.includes(term) || zhLow.includes(term) || (termAlt && (enLow.includes(termAlt) || zhLow.includes(termAlt)))) {
-            const key = enLow + "|" + zhLow;
+            const key = enLow;
             if (seen.has(key)) continue; seen.add(key);
             matches.push({ text: en, cnText: zh, source: "📦 danbooru" });
-            if (matches.length >= 10) break;
+            if (matches.length >= limit) break;
           }
         }
       }
+      // 排序：英文前缀 > 英文子串 > 仅中文，同级按词条长度升序
+      matches.sort((a, b) => {
+        const ea = (a.text || "").toLowerCase(), eb = (b.text || "").toLowerCase();
+        const sa = ea.startsWith(term) ? 0 : ea.includes(term) ? 1 : 2;
+        const sb = eb.startsWith(term) ? 0 : eb.includes(term) ? 1 : 2;
+        return sa - sb || a.text.length - b.text.length;
+      });
       _acItems = matches; _acActive = matches.length ? 0 : -1;
       const layer = getAcLayer();
       if (!matches.length) { hideAc(); return; }
@@ -1878,7 +1886,7 @@ app.registerExtension({
 
   // ==================== 节点集成：按钮入口 + 右键菜单 ====================
   nodeCreated(node) {
-    if (node.comfyClass !== "PromptBuilderCLIPEncode") return;
+    if (node.comfyClass !== "PromptBuilderCLIPEncode" && node.comfyClass !== "PromptBuilderText") return;
     const panel = document.querySelector(".pb-panel");
     if (!panel) return;
     node.addWidget("button", "✏️ 在 PromptBuilder 中编辑", null, () => {
@@ -1899,7 +1907,7 @@ app.registerExtension({
   },
 
   getNodeMenuItems(node) {
-    if (node.comfyClass !== "PromptBuilderCLIPEncode") return [];
+    if (node.comfyClass !== "PromptBuilderCLIPEncode" && node.comfyClass !== "PromptBuilderText") return [];
     const panel = document.querySelector(".pb-panel");
     return [{
       content: "✏️ 在 PromptBuilder 中编辑",
@@ -1909,7 +1917,7 @@ app.registerExtension({
 
   // 工作流加载 / 拖图后：若面板已打开且绑定节点已失效，自动刷新
   beforeRegisterNodeDef(nodeType, nodeData, app) {
-    if (nodeData.name !== "PromptBuilderCLIPEncode") return;
+    if (nodeData.name !== "PromptBuilderCLIPEncode" && nodeData.name !== "PromptBuilderText") return;
     const origOnConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function(o) {
       const r = origOnConfigure?.apply(this, arguments);
@@ -1919,7 +1927,7 @@ app.registerExtension({
         const activeId = panel.dataset.activeNode;
         // 若当前绑定节点已不在图中（工作流重载 / 拖图），或本节点就是绑定节点，则重载面板
         const activeStillExists = activeId != null && app.graph?._nodes?.some(n =>
-          String(n.id) === activeId && n.comfyClass === "PromptBuilderCLIPEncode"
+          String(n.id) === activeId && (n.comfyClass === "PromptBuilderCLIPEncode" || n.comfyClass === "PromptBuilderText")
         );
         if (!activeStillExists || activeId === String(this.id)) {
           panel._loadNodeIntoPanel(this);
