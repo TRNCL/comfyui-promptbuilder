@@ -1,1939 +1,6997 @@
+// PromptBuilder — generated file, do not edit directly
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// src/model/types.ts
+var LS_KEYS, GROUP_COLORS, GROUP_COLORS_LIGHT, STATE_VERSION, UNDO_LIMIT, PANEL_DEFAULTS, COLUMN_MINS, PRESET_COLLAPSE_THRESHOLD, NODE_TYPES;
+var init_types = __esm({
+  "src/model/types.ts"() {
+    "use strict";
+    LS_KEYS = {
+      presets: "promptbuildernext_presets",
+      settings: "promptbuildernext_settings",
+      cats: "promptbuildernext_state",
+      panelGeo: "promptbuildernext_panelgeo",
+      colWidths: "promptbuildernext_colwidths"
+    };
+    GROUP_COLORS = [
+      "#FF6B6B",
+      // 红 · 高
+      "#C92A2A",
+      // 红 · 低
+      "#FFE066",
+      // 黄 · 高
+      "#E6A800",
+      // 黄 · 低
+      "#69DB7C",
+      // 绿 · 高
+      "#2F9E44",
+      // 绿 · 低
+      "#74C0FC",
+      // 蓝 · 高
+      "#1C7ED6",
+      // 蓝 · 低
+      "#B197FC",
+      // 紫 · 高
+      "#7048E8",
+      // 紫 · 低
+      "#CED4DA",
+      // 灰 · 高
+      "#868E96"
+      // 灰 · 低
+    ];
+    GROUP_COLORS_LIGHT = [
+      "#E03131",
+      // 红 · 高
+      "#9B1C1C",
+      // 红 · 低
+      "#E6B800",
+      // 黄 · 高
+      "#A67C00",
+      // 黄 · 低
+      "#2F9E44",
+      // 绿 · 高
+      "#1B6B2E",
+      // 绿 · 低
+      "#1C7ED6",
+      // 蓝 · 高
+      "#0B4F9C",
+      // 蓝 · 低
+      "#7950F2",
+      // 紫 · 高
+      "#5F3DC4",
+      // 紫 · 低
+      "#868E96",
+      // 灰 · 高
+      "#495057"
+      // 灰 · 低
+    ];
+    STATE_VERSION = 5;
+    UNDO_LIMIT = 50;
+    PANEL_DEFAULTS = {
+      minWidth: 600,
+      minHeight: 400,
+      defaultWidth: 900,
+      defaultHeight: 600
+    };
+    COLUMN_MINS = {
+      presetMinHeight: 120,
+      workspaceMinHeight: 200,
+      rightMinWidth: 220
+    };
+    PRESET_COLLAPSE_THRESHOLD = 60;
+    NODE_TYPES = [
+      "PromptBuilderCLIPEncode",
+      "PromptBuilderText",
+      "PromptBuilderNextCLIPEncode",
+      "PromptBuilderNextText"
+    ];
+  }
+});
+
+// src/utils/dom.ts
+function $(id) {
+  return document.getElementById(id);
+}
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  if (attrs) {
+    for (const [key, val] of Object.entries(attrs)) {
+      if (key === "className") el.className = val;
+      else el.setAttribute(key, val);
+    }
+  }
+  for (const child of children) {
+    el.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+  }
+  return el;
+}
+function div(className, ...children) {
+  return h("div", className ? { className } : {}, ...children);
+}
+function span(className, ...children) {
+  return h("span", className ? { className } : {}, ...children);
+}
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function gid() {
+  return Math.random().toString(36).slice(2, 11);
+}
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+var init_dom = __esm({
+  "src/utils/dom.ts"() {
+    "use strict";
+  }
+});
+
+// src/model/factory.ts
+function mkChip(text, cnText = "", weight = 1, categoryColor) {
+  return {
+    id: gid(),
+    text,
+    cnText,
+    weight,
+    enabled: true,
+    categoryColor
+  };
+}
+function mkBox() {
+  return { id: gid(), enabled: true, break: false, chips: [] };
+}
+function mkGroup(name, color, theme = "dark") {
+  const palette = theme === "light" ? GROUP_COLORS_LIGHT : GROUP_COLORS;
+  return {
+    id: gid(),
+    name,
+    color: color || palette[Math.floor(Math.random() * palette.length)],
+    enabled: true,
+    collapsed: false,
+    break: false,
+    inputboxes: [mkBox()]
+  };
+}
+function mkNegativeGroup() {
+  return {
+    id: "__neg__",
+    name: "\u8D1F\u9762\u63D0\u793A\u8BCD",
+    // 默认暗红（可改色，与普通分组共用调色板）
+    color: GROUP_COLORS[1],
+    enabled: true,
+    collapsed: false,
+    break: false,
+    inputboxes: [mkBox()]
+  };
+}
+function defaultPresets() {
+  return {
+    items: [],
+    children: {
+      "\u6211\u7684\u8BCD\u5E93": {
+        items: [],
+        children: {
+          "\u9ED8\u8BA4": {
+            name: "\u9ED8\u8BA4",
+            items: [
+              { text: "masterpiece", cnText: "\u6770\u4F5C" },
+              { text: "best quality", cnText: "\u6700\u4F73\u8D28\u91CF" },
+              { text: "1girl", cnText: "\u4E00\u4E2A\u5973\u5B69" }
+            ],
+            color: GROUP_COLORS[0]
+          }
+        }
+      }
+    }
+  };
+}
+function defaultSettings() {
+  return {
+    scale: "mid",
+    translator: "mymemory",
+    theme: "dark",
+    customApi: { url: "", method: "POST", body: "", responseField: "" }
+  };
+}
+var init_factory = __esm({
+  "src/model/factory.ts"() {
+    "use strict";
+    init_types();
+    init_dom();
+  }
+});
+
+// src/model/state.ts
+function setActiveNode(node) {
+  activeNode = node;
+}
+function getGroupColors() {
+  return state.settings.theme === "light" ? GROUP_COLORS_LIGHT : GROUP_COLORS;
+}
+function allGroups() {
+  return [...cur.workspace, cur.negativeGroup];
+}
+function findBox(boxId) {
+  for (const g of allGroups()) {
+    for (const b of g.inputboxes) {
+      if (b.id === boxId) return { box: b, group: g };
+    }
+  }
+  return null;
+}
+function findChip(chipId) {
+  for (const g of allGroups()) {
+    for (const b of g.inputboxes) {
+      const chip = b.chips.find((c) => c.id === chipId);
+      if (chip) return { chip, box: b, group: g };
+    }
+  }
+  return null;
+}
+function getFocusedBox() {
+  if (cur.focusedBox) {
+    const hit = findBox(cur.focusedBox);
+    if (hit) return hit;
+  }
+  for (const g of cur.workspace) {
+    if (g.enabled && g.inputboxes.length > 0) {
+      return { box: g.inputboxes[0], group: g };
+    }
+  }
+  if (cur.negativeGroup.inputboxes[0]) {
+    return { box: cur.negativeGroup.inputboxes[0], group: cur.negativeGroup };
+  }
+  return null;
+}
+function getCurrentPresetItems() {
+  const l1 = state.presets.children[state.l1Cat];
+  if (!l1) return null;
+  const l2 = l1.children[state.l2Cat];
+  return l2?.items ?? null;
+}
+function getCurrentL2Category() {
+  const l1 = state.presets.children[state.l1Cat];
+  if (!l1) return null;
+  const l2 = l1.children[state.l2Cat];
+  if (!l2) return null;
+  if (!l2.color) l2.color = "#8a93a6";
+  return l2;
+}
+function normalizeCategories() {
+  const l1Keys = Object.keys(state.presets.children);
+  if (l1Keys.length === 0) {
+    state.l1Cat = "";
+    state.l2Cat = "";
+    return;
+  }
+  if (!state.presets.children[state.l1Cat]) state.l1Cat = l1Keys[0];
+  const l2Keys = Object.keys(state.presets.children[state.l1Cat].children || {});
+  if (l2Keys.length === 0) state.l2Cat = "";
+  else if (!state.presets.children[state.l1Cat].children[state.l2Cat]) state.l2Cat = l2Keys[0];
+}
+function markPresetIndexDirty() {
+  _presetDirty = true;
+}
+function getPresetIndex() {
+  if (_presetDirty || !_presetIndex) {
+    _presetIndex = [];
+    for (const l1 of Object.values(state.presets.children)) {
+      for (const l2 of Object.values(l1.children)) {
+        for (const item of l2.items) {
+          _presetIndex.push({
+            text: item.text,
+            cnText: item.cnText,
+            categoryColor: l2.color
+          });
+        }
+      }
+    }
+    _presetDirty = false;
+  }
+  return _presetIndex;
+}
+function cloneUndoSnapshot() {
+  return JSON.parse(JSON.stringify({
+    workspace: cur.workspace,
+    negativeGroup: cur.negativeGroup,
+    focusedBox: cur.focusedBox,
+    presets: state.presets,
+    l1Cat: state.l1Cat,
+    l2Cat: state.l2Cat
+  }));
+}
+function restoreUndoSnapshot(snap) {
+  const copy = JSON.parse(JSON.stringify(snap));
+  cur.workspace = copy.workspace;
+  cur.negativeGroup = copy.negativeGroup;
+  cur.focusedBox = copy.focusedBox;
+  state.presets = copy.presets;
+  state.l1Cat = copy.l1Cat;
+  state.l2Cat = copy.l2Cat;
+  markPresetIndexDirty();
+}
+var state, cur, activeNode, _presetIndex, _presetDirty;
+var init_state = __esm({
+  "src/model/state.ts"() {
+    "use strict";
+    init_types();
+    init_factory();
+    state = {
+      _v: STATE_VERSION,
+      presets: defaultPresets(),
+      l1Cat: "\u6211\u7684\u8BCD\u5E93",
+      l2Cat: "\u9ED8\u8BA4",
+      settings: defaultSettings()
+    };
+    cur = {
+      workspace: [mkGroup("\u4EBA\u7269")],
+      negativeGroup: mkNegativeGroup(),
+      focusedBox: ""
+    };
+    activeNode = null;
+    _presetIndex = null;
+    _presetDirty = true;
+  }
+});
+
+// src/ui/pipe.ts
+function injectCSS(id, css2) {
+  let el = _styles.get(id);
+  if (!el) {
+    el = document.createElement("style");
+    el.id = `pb-style-${id}`;
+    el.textContent = css2;
+    document.head.appendChild(el);
+    _styles.set(id, el);
+  } else {
+    el.textContent = css2;
+  }
+}
+var _styles;
+var init_pipe = __esm({
+  "src/ui/pipe.ts"() {
+    "use strict";
+    _styles = /* @__PURE__ */ new Map();
+  }
+});
+
+// src/ui/toast.ts
+function toast(msg, type = "", ms = 2500) {
+  if (!_css) {
+    injectCSS("toast", CSS);
+    _css = true;
+  }
+  if (!_box) {
+    _box = div("pb-toast-container");
+    document.body.appendChild(_box);
+  }
+  const el = div("pb-toast");
+  if (type) el.classList.add(`pb-toast-${type}`);
+  el.textContent = msg;
+  _box.appendChild(el);
+  setTimeout(() => {
+    el.classList.add("pb-toast-out");
+    setTimeout(() => el.remove(), 200);
+  }, ms);
+}
+var CSS, _css, _box;
+var init_toast = __esm({
+  "src/ui/toast.ts"() {
+    "use strict";
+    init_pipe();
+    init_dom();
+    CSS = /*css*/
+    `
+.pb-toast-container {
+  position: fixed; z-index: 10005; bottom: 24px; left: 50%;
+  transform: translateX(-50%); display: flex; flex-direction: column;
+  align-items: center; gap: 8px; pointer-events: none;
+}
+.pb-toast {
+  padding: 8px 18px; border-radius: 8px; background: var(--pb-panel);
+  border: 1px solid var(--pb-border); color: var(--pb-text); font-size: 14px;
+  box-shadow: var(--pb-shadow-lg); pointer-events: auto;
+  animation: pb-toast-in 200ms ease-out; transition: opacity 200ms;
+}
+.pb-toast.pb-toast-out { opacity: 0; }
+.pb-toast.pb-toast-ok { border-color: #5cd859; }
+.pb-toast.pb-toast-warn { border-color: #ff9f43; }
+.pb-toast.pb-toast-error { border-color: var(--pb-danger); }
+@keyframes pb-toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+`;
+    _css = false;
+    _box = null;
+  }
+});
+
+// src/services/translation.ts
+var translation_exports = {};
+__export(translation_exports, {
+  detectPair: () => detectPair,
+  translateChips: () => translateChips,
+  translateText: () => translateText
+});
+function hasChinese(text) {
+  return /[\u4e00-\u9fff]/.test(text);
+}
+function detectPair(text) {
+  return hasChinese(text) ? { src: "zh", tgt: "en" } : { src: "en", tgt: "zh" };
+}
+async function translateText(text) {
+  const s = state.settings;
+  const pair = detectPair(text);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5e3);
+  try {
+    switch (s.translator) {
+      case "google":
+        return await translateGoogle(text, pair, controller.signal);
+      case "custom":
+        return await translateCustom(text, pair, controller.signal);
+      default:
+        return await translateMyMemory(text, pair, controller.signal);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+async function translateMyMemory(text, pair, signal) {
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${pair.src}|${pair.tgt}`;
+  const resp = await fetch(url, { signal });
+  const data = await resp.json();
+  if (data.responseStatus === 200 || data.responseStatus === 403) {
+    return data.responseData?.translatedText || text;
+  }
+  throw new Error(`MyMemory ${data.responseStatus}`);
+}
+async function translateGoogle(text, pair, signal) {
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${pair.src}&tl=${pair.tgt}&dt=t&q=${encodeURIComponent(text)}`;
+  const resp = await fetch(url, { signal });
+  const data = await resp.json();
+  if (data?.[0]) return data[0].map((seg) => seg[0]).join("");
+  return text;
+}
+async function translateCustom(text, pair, signal) {
+  const cfg = state.settings.customApi;
+  if (!cfg.url) throw new Error("\u81EA\u5B9A\u4E49 API \u672A\u914D\u7F6E");
+  const esc = (s, json) => json ? s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n") : s;
+  const fill = (tpl, json) => tpl.replace(/\{text\}/g, esc(text, json)).replace(/\{src\}/g, pair.src).replace(/\{tgt\}/g, pair.tgt);
+  const opts = {
+    method: cfg.method,
+    signal,
+    headers: { "Content-Type": "application/json" }
+  };
+  if (cfg.method !== "GET" && cfg.body) opts.body = fill(cfg.body, true);
+  const resp = await fetch(fill(cfg.url, false), opts);
+  const data = await resp.json();
+  if (!cfg.responseField) return JSON.stringify(data);
+  let cur2 = data;
+  for (const p of cfg.responseField.split(".")) {
+    if (cur2 == null || typeof cur2 !== "object") return text;
+    cur2 = cur2[p];
+  }
+  return typeof cur2 === "string" ? cur2 : JSON.stringify(cur2);
+}
+async function translateChips(chips, opts) {
+  const targets = chips.filter(
+    (c) => c.text.trim() && (opts?.force || !c.cnText)
+  );
+  if (!targets.length) return { ok: 0, fail: 0 };
+  let ok = 0, fail = 0;
+  const queue = [...targets];
+  const workers = Array.from({ length: Math.min(4, queue.length) }, async () => {
+    while (queue.length) {
+      const chip = queue.shift();
+      try {
+        const translated = await translateText(chip.text);
+        const pair = detectPair(chip.text);
+        if (pair.src === "zh" && !hasChinese(translated)) {
+          chip.cnText = chip.text;
+          chip.text = translated;
+        } else {
+          chip.cnText = translated;
+        }
+        ok++;
+      } catch {
+        fail++;
+      } finally {
+        chip.translating = false;
+      }
+    }
+  });
+  await Promise.all(workers);
+  if (fail && ok) toast(`\u5DF2\u7FFB\u8BD1 ${ok} \u4E2A\uFF0C\u5931\u8D25 ${fail} \u4E2A`, "warn");
+  else if (fail) toast(`${fail} \u4E2A\u7FFB\u8BD1\u5931\u8D25`, "warn");
+  else if (ok) toast(`\u5DF2\u7FFB\u8BD1 ${ok} \u4E2A`, "ok");
+  return { ok, fail };
+}
+var init_translation = __esm({
+  "src/services/translation.ts"() {
+    "use strict";
+    init_state();
+    init_toast();
+  }
+});
+
+// src/index.ts
+init_types();
+init_state();
 import { app } from "../../scripts/app.js";
 
-/* ============================================================
-   PromptBuilder ComfyUI 插件
-   浮动面板（三栏）= 单例视图，绑定到「当前活动节点」
-   - 左栏：预设词库（全局共享；双行分类 / 词语 / 跨分类搜索 / 拖拽排序）
-   - 中栏：工作区（分组 → 输入框 → chip，权重/翻译/bypass/拖拽排序）
-   - 右栏：输出（复制按钮 + 词条计数，自动 sync 到活动节点）
-   其它：撤销/恢复、导出词库 JSON / 导入（自动识别）、面板位置记忆、拖拽指示线
-   ============================================================
-   架构（v4 起）：
-   - 全局 state：presets（词库）/ l1Cat,l2Cat / settings —— 多节点共享，
-     存 localStorage（promptbuilder_presets / promptbuilder_settings）。
-   - 每个节点的提示词（workspace / negativeGroup / focusedBox）存在
-     node.properties.pb_state（JSON），随工作流保存、随拖图加载，节点间互相独立。
-   - 面板不直接持有提示词，而是加载到内存变量 cur；切换/打开节点时重载。
-   撤销/重做只跟当前节点；切换节点时清栈。
-   ============================================================ */
-app.registerExtension({
-  name: "promptbuilder.promptbuilder",
+// src/app/persist.ts
+init_types();
+init_state();
+init_factory();
+init_dom();
 
-  init() {
-    // ==================== 样式：全部 pb- 前缀，避免污染 ComfyUI ====================
-    const style = document.createElement("style");
-    style.textContent = `
-.pb-panel *{box-sizing:border-box}
-:root{--pb-bg:#0f1115;--pb-panel:#161a22;--pb-panel-2:#1c2230;--pb-border:#262d3b;--pb-text:#e6e9ef;--pb-text-dim:#8a93a6;--pb-accent:#6aa9ff;--pb-accent-2:#8b6aff;--pb-danger:#ff6b6b;--pb-chip-bg:#2a3142;--pb-chip-bg-focus:#324063}
-.pb-panel{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,Arial,sans-serif;font-size:14px;position:fixed;top:50px;left:50px;width:950px;height:620px;z-index:9999;display:none;flex-direction:column;border:1px solid var(--pb-border);border-radius:10px;background:var(--pb-bg);color:var(--pb-text);box-shadow:0 8px 32px rgba(0,0,0,.6);resize:both;overflow:hidden;min-width:900px;min-height:400px}
-.pb-panel.visible{display:flex}
-.pb-titlebar{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--pb-panel-2);border-bottom:1px solid var(--pb-border);cursor:move;user-select:none;font-size:13px;font-weight:600;flex-shrink:0}
-.pb-title-name{pointer-events:none}
-.pb-title-actions{display:flex;align-items:center;gap:6px}
-.pb-title-actions .pb-btn{cursor:pointer}
-.pb-titlebar .pb-close{cursor:pointer;color:var(--pb-text-dim);font-size:16px;padding:0 4px}
-.pb-titlebar .pb-close:hover{color:var(--pb-danger)}
-.pb-minimize{cursor:pointer;color:var(--pb-text-dim);font-size:16px;padding:0 4px;line-height:1}
-.pb-minimize:hover{color:var(--pb-accent)}
-.pb-min-grip{color:var(--pb-text-dim);font-size:13px;letter-spacing:2px;opacity:.45;margin-right:10px;flex-shrink:0;pointer-events:none}
-/* 收起态：只留 titlebar 小条 */
-.pb-panel.minimized{height:auto!important;width:auto!important;min-width:unset;min-height:unset;resize:none}
-.pb-panel.minimized .pb-body{display:none}
-.pb-panel.minimized .pb-statusbar{display:none}
-.pb-panel.minimized .pb-titlebar{border-radius:10px;border-bottom:none;padding:8px 18px;gap:14px}
-.pb-panel.minimized .pb-title-actions{gap:10px}
-.pb-panel.minimized .pb-title-actions .pb-btn:not(#pbGenerate){display:none}
-.pb-panel.minimized .pb-min-grip{opacity:.7;margin-right:16px}
-.pb-body{display:grid;grid-template-columns:280px 4px 1fr 4px 260px;flex:1;min-height:0;overflow:hidden}
-.pb-col{display:flex;flex-direction:column;background:var(--pb-panel);border-right:1px solid var(--pb-border);min-width:0;overflow:hidden}
-.pb-col:nth-child(1){min-width:240px}
-.pb-col:nth-child(3){min-width:400px}
-.pb-col:nth-child(5){min-width:240px}
-.pb-col:last-child{border-right:none;border-left:1px solid var(--pb-border)}
-.pb-col-divider{background:var(--pb-border);cursor:col-resize;transition:background .15s}
-.pb-col-divider:hover,.pb-col-divider.active{background:var(--pb-accent)}
-.pb-col-header{display:flex;align-items:center;justify-content:space-between;padding:0 10px;gap:6px;border-bottom:1px solid var(--pb-border);font-weight:600;font-size:13px;background:var(--pb-panel-2);flex-shrink:0;height:36px}
-.pb-col-body{flex:1;overflow:auto;padding:8px 10px;min-height:0;scrollbar-width:none}
-.pb-col-body::-webkit-scrollbar{width:0;height:0;display:none}
-.pb-btn{border:1px solid var(--pb-border);background:var(--pb-panel-2);color:var(--pb-text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;transition:all .15s;white-space:nowrap}
-.pb-btn:hover{border-color:var(--pb-accent);color:var(--pb-accent)}
-.pb-btn.primary{background:var(--pb-accent);color:#0b1020;border-color:var(--pb-accent);font-weight:600}
-.pb-btn.primary:hover{filter:brightness(1.1)}
-.pb-preset-search{padding:6px 8px;border-bottom:1px solid var(--pb-border);background:var(--pb-panel-2)}
-.pb-preset-search input{width:100%;background:var(--pb-panel);border:1px solid var(--pb-border);color:var(--pb-text);border-radius:4px;padding:4px 8px;font-size:12px;box-sizing:border-box}
-.pb-preset-search input:focus{outline:none;border-color:var(--pb-accent)}
-.pb-preset-cats{display:flex;flex-wrap:nowrap;gap:4px;padding:6px 8px;border-bottom:1px solid var(--pb-border);background:var(--pb-panel-2);overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;scrollbar-width:none}
-.pb-preset-cats::-webkit-scrollbar{height:0;width:0;display:none}
-.pb-preset-cats.pb-l2{border-bottom:1px solid var(--pb-border);background:var(--pb-panel);padding:4px 8px;gap:3px}
-.pb-cat-tag{display:inline-flex;align-items:center;gap:2px;padding:3px 10px;border-radius:999px;background:var(--pb-chip-bg);cursor:pointer;user-select:none;font-size:12px;border:1px solid transparent;white-space:nowrap;flex-shrink:0}
-.pb-cat-tag.active{background:var(--pb-accent);color:#0b1020;font-weight:600}
-.pb-cat-tag:hover:not(.active){border-color:var(--pb-accent)}
-.pb-cat-tag .pb-cat-x{font-size:13px;color:var(--pb-text-dim);cursor:pointer;margin-left:2px;line-height:1}
-.pb-cat-tag .pb-cat-x:hover{color:var(--pb-danger)}
-.pb-cat-tag.active .pb-cat-x{color:rgba(0,0,0,.4)}
-.pb-cat-tag.active .pb-cat-x:hover{color:#600}
-.pb-cat-add{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;border:1px dashed var(--pb-border);color:var(--pb-text-dim);cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0;background:transparent}
-.pb-cat-add:hover{border-color:var(--pb-accent);color:var(--pb-accent)}
-.pb-cat-input{padding:3px 8px;border-radius:999px;background:var(--pb-panel-2);border:1px solid var(--pb-accent);color:var(--pb-text);font-size:12px;width:100px;outline:none}
-.pb-cat-input:focus{outline:none}
-.pb-preset-list{display:flex;flex-wrap:wrap;gap:4px;padding:8px}
-.pb-preset-word{display:inline-flex;align-items:center;gap:2px;padding:3px 4px 3px 10px;border-radius:6px;background:var(--pb-chip-bg);font-size:12px;cursor:pointer;transition:all .15s;border:1px solid transparent}
-.pb-preset-word:hover{background:var(--pb-chip-bg-focus);border-color:var(--pb-accent)}
-.pb-preset-word.dragging{opacity:.4}
-.pb-preset-word .text{display:flex;flex-direction:column;line-height:1.3}
-.pb-preset-x{min-width:22px;align-self:stretch;text-align:center;border:none;background:transparent;color:var(--pb-text-dim);cursor:pointer;font-size:13px;padding:0 3px;border-radius:4px}
-.pb-preset-x:hover{background:var(--pb-panel-2);color:var(--pb-danger)}
-.pb-preset-add-btn{width:100%;background:transparent;border:1px dashed var(--pb-border);color:var(--pb-text-dim);border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;margin-top:4px}
-.pb-preset-add-btn:hover{border-color:var(--pb-accent);color:var(--pb-accent)}
-.pb-preset-add-row{display:flex;flex-direction:column;gap:4px;margin-top:4px;width:100%}
-.pb-preset-add-row input{width:100%;background:var(--pb-panel-2);border:1px solid var(--pb-border);color:var(--pb-text);border-radius:4px;padding:4px 6px;font-size:12px}
-.pb-preset-add-row input:focus{outline:none;border-color:var(--pb-accent)}
-.pb-preset-add-row .pb-row-actions{display:flex;gap:4px;justify-content:flex-end}
-.pb-preset-add-row .pb-translate-mini{padding:3px 8px;background:var(--pb-accent);color:#0b1020;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600}
-.pb-preset-add-row .pb-translate-mini:hover{filter:brightness(1.1)}
-.pb-preset-add-row .pb-save-mini{padding:3px 10px;background:var(--pb-panel-2);color:var(--pb-text);border:1px solid var(--pb-border);border-radius:4px;font-size:11px;cursor:pointer}
-.pb-preset-add-row .pb-save-mini:hover{border-color:var(--pb-accent);color:var(--pb-accent)}
-.pb-group{background:#294429;border:1px solid var(--pb-border);border-radius:8px;margin-bottom:8px;overflow:hidden;position:relative}
-.pb-group.negative-fixed{background:#442929;margin-top:20px}
-.pb-group.dragging{opacity:.4}
-.pb-group.disabled{opacity:.5;filter:grayscale(.5)}
-.pb-group.disabled .pb-group-color-bar{opacity:.4}
-.pb-group-color-bar{height:3px;background:var(--pb-accent)}
-.pb-group-header{display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;user-select:none}
-.pb-group-header .name{font-weight:600;flex:1;font-size:13px}
-.pb-group-header .caret{transition:transform .2s;color:var(--pb-text-dim);font-size:11px}
-.pb-group.collapsed .caret{transform:rotate(-90deg)}
-.pb-group.collapsed .pb-group-body{display:none}
-.pb-color-dot{width:13px;height:13px;border-radius:50%;cursor:pointer;border:1px solid rgba(255,255,255,.1)}
-.pb-group-body{padding:4px 8px 8px}
-.pb-inputbox{background:var(--pb-panel);border:1px solid var(--pb-border);border-radius:6px;padding:6px;margin-bottom:6px;position:relative}
-.pb-inputbox.dragging{opacity:.4}
-.pb-inputbox.disabled{opacity:.5;filter:grayscale(.5)}
-.pb-inputbox.focused{border-color:var(--pb-box-color, var(--pb-accent));outline:2px solid var(--pb-box-color, var(--pb-accent));outline-offset:-1px;position:relative}
-.pb-inputbox.focused::before{content:"";position:absolute;left:-1px;top:-1px;bottom:-1px;width:3px;background:var(--pb-box-color, var(--pb-accent));border-radius:6px 0 0 6px}
-.pb-inputbox-header{display:flex;align-items:center;gap:4px;margin-bottom:4px;background:rgba(0,0,0,.15);border-radius:4px;padding:3px 4px}
-.pb-inputbox-toggle{background:transparent;border:none;color:var(--pb-text-dim);cursor:pointer;font-size:12px;padding:1px 3px;border-radius:4px;flex-shrink:0}
-.pb-inputbox-toggle:hover{color:var(--pb-accent)}
-.pb-inputbox-title{background:transparent;color:var(--pb-text);border:1px solid transparent;border-radius:4px;padding:3px 4px;font-size:12px;font-weight:600;flex:1;min-width:0}
-.pb-inputbox-title:hover,.pb-inputbox-title:focus{border-color:var(--pb-border);outline:none}
-.pb-inputbox-remove{color:var(--pb-text-dim);cursor:pointer;padding:1px 3px;font-size:13px;opacity:0;transition:opacity .12s}
-.pb-inputbox:hover .pb-inputbox-remove,.pb-inputbox-remove:focus{opacity:1}
-.pb-inputbox-remove:hover{color:var(--pb-danger)}
-.pb-chip-area{display:flex;flex-wrap:wrap;gap:4px;min-height:30px;padding:3px;border-radius:4px}
-.pb-chip{display:inline-flex;align-items:center;gap:1px;background:var(--pb-chip-bg);padding:3px 6px;border-radius:6px;font-size:12px;border:1px solid transparent;user-select:none}
-.pb-chip .text{display:flex;flex-direction:column;padding:0 5px;line-height:1.3}
-.pb-chip .text .w{color:var(--pb-text-dim);font-size:10px}
-.pb-chip-main{white-space:nowrap}
-.pb-chip-sub{font-size:10px;color:var(--pb-text-dim);line-height:1.2}
-.pb-chip-path{font-size:9px;color:var(--pb-text-dim);opacity:.7;line-height:1.2;margin-top:1px;font-style:italic}
-.pb-chip.translating .pb-chip-sub{color:var(--pb-accent)}
-.pb-chip.dragging{opacity:.4}
-.pb-chip-x{border:none;background:transparent;color:var(--pb-text-dim);cursor:pointer;font-size:13px;padding:0 2px;border-radius:4px;flex-shrink:0;line-height:1}
-.pb-chip-x:hover{color:var(--pb-danger)}
-.pb-chip .w{color:var(--pb-text-dim);font-size:10px;margin-left:3px}
-.pb-chip.translating{opacity:.8}
-.pb-chip.translating::after{content:"⟳";font-size:10px;margin-left:2px;color:var(--pb-accent)}
-.pb-chip.bypassed{opacity:.45;text-decoration:line-through}
-/* 浮动工具栏：单例，mouseenter 时定位到 chip 上方/下方 */
-.pb-chip-toolbar{position:fixed;z-index:10007;display:flex;align-items:center;gap:2px;background:var(--pb-panel-2);border:1px solid var(--pb-accent);border-radius:6px;padding:3px 6px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.5);opacity:0;visibility:hidden;transition:opacity .12s,visibility .12s;pointer-events:none}
-.pb-chip-toolbar.show{opacity:1;visibility:visible;pointer-events:auto}
-.pb-chip-toolbar button{background:transparent;border:none;color:var(--pb-text-dim);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;min-width:22px;text-align:center;line-height:1}
-.pb-chip-toolbar button:hover{color:var(--pb-accent);background:var(--pb-panel)}
-.pb-chip-input{background:transparent;border:none;color:var(--pb-text);font-size:12px;flex:1;min-width:80px;outline:none;padding:2px 3px}
-.pb-autocomplete{position:fixed;z-index:10006;background:var(--pb-panel-2);border:1px solid var(--pb-accent);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.5);max-height:240px;overflow:auto;min-width:180px;display:none}
-.pb-autocomplete.show{display:block}
-.pb-ac-item{display:flex;flex-direction:column;padding:5px 10px;cursor:pointer;gap:1px}
-.pb-ac-item .en{font-size:12px;color:var(--pb-text)}
-.pb-ac-item .cn{font-size:10px;color:var(--pb-text-dim)}
-.pb-ac-item:hover,.pb-ac-item.active{background:var(--pb-chip-bg-focus)}
-.pb-col.drop-hover{border-color:var(--pb-accent);box-shadow:inset 0 0 0 2px rgba(106,169,255,.3)}
-/* 亮色主题：覆盖 --pb-* 变量 */
-.pb-panel.pb-light{--pb-bg:#f5f6f8;--pb-panel:#ffffff;--pb-panel-2:#eef0f4;--pb-border:#d4d9e3;--pb-text:#1a1f2e;--pb-text-dim:#6b7280;--pb-chip-bg:#e3e7ef;--pb-chip-bg-focus:#d0d8f0}
-.pb-panel.pb-light .pb-group{background:#e8f0e8}.pb-panel.pb-light .pb-group.negative-fixed{background:#f0e8e8}
-.pb-panel.pb-light .pb-add-inputbox{background:#e8eef0}
-/* 设置区 */
-.pb-settings{padding:8px 8px 12px;border-top:1px solid var(--pb-border);flex-shrink:0}
-.pb-settings-title{font-size:11px;color:var(--pb-text-dim);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px}
-.pb-setting-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;font-size:12px}
-.pb-setting-row .label{color:var(--pb-text-dim);white-space:nowrap}
-.pb-seg{display:inline-flex;border:1px solid var(--pb-border);border-radius:6px;overflow:hidden}
-.pb-seg button{background:transparent;border:none;color:var(--pb-text-dim);font-size:11px;padding:3px 9px;cursor:pointer;border-right:1px solid var(--pb-border);transition:all .12s}
-.pb-seg button:last-child{border-right:none}
-.pb-seg button.active{background:var(--pb-accent);color:#0b1020;font-weight:600}
-.pb-seg button:hover:not(.active){color:var(--pb-accent)}
-.pb-setting-select{background:var(--pb-panel-2);color:var(--pb-text);border:1px solid var(--pb-border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;outline:none;flex:1;max-width:130px}
-.pb-setting-select:focus{border-color:var(--pb-accent)}
-.pb-add-inputbox{width:100%;padding:5px;font-size:12px;background:#1b291b;border:1px dashed var(--pb-border);border-radius:4px;color:var(--pb-text-dim);cursor:pointer}
-.pb-add-inputbox:hover{border-color:var(--pb-accent);color:var(--pb-accent)}
-.pb-add-group{width:100%;padding:8px;font-size:13px;background:transparent;border:1px dashed var(--pb-border);border-radius:8px;color:var(--pb-text-dim);cursor:pointer}
-.pb-add-group:hover{border-color:var(--pb-accent);color:var(--pb-accent)}
-.pb-group.negative-fixed .pb-group-header{cursor:pointer}
-.pb-group.negative-fixed .pb-inputbox-header{cursor:default}
-.pb-translate-bar{display:flex;align-items:center;gap:6px;margin-left:auto}
-.pb-translate-toggle{padding:3px 8px;border-radius:999px;border:1px solid var(--pb-border);background:transparent;color:var(--pb-text-dim);font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;user-select:none}
-.pb-translate-toggle.on{background:var(--pb-accent);color:#0b1020;border-color:var(--pb-accent)}
-.pb-translate-toggle:hover:not(.on){border-color:var(--pb-accent);color:var(--pb-accent)}
-.pb-output-wrap{margin:6px 8px}
-.pb-output-label{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--pb-text-dim);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
-.pb-output-box{margin:0;padding:8px;background:var(--pb-panel-2);border:1px solid var(--pb-border);border-radius:6px;font-family:"SF Mono",Consolas,"Courier New",monospace;font-size:12px;line-height:1.5;min-height:60px;white-space:pre-wrap;word-break:break-word;color:var(--pb-text)}
-.pb-output-count,.pb-box-token{margin-top:4px;font-size:10px;color:var(--pb-text-dim);text-align:right;letter-spacing:.2px}
-.pb-output-count .tok-warn,.pb-box-token .tok-warn{color:#ffd86a}
-.pb-output-count .tok-over,.pb-box-token .tok-over{color:var(--pb-danger)}
-.pb-color-picker{position:fixed;z-index:10000;background:var(--pb-panel-2);border:1px solid var(--pb-border);border-radius:6px;padding:6px;display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
-.pb-color-swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent}
-.pb-color-swatch:hover{border-color:#fff}
-.pb-modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10001}
-.pb-modal{background:var(--pb-panel);border:1px solid var(--pb-border);border-radius:8px;padding:16px;min-width:280px;max-width:400px}
-.pb-modal h3{margin:0 0 10px;font-size:15px}
-.pb-modal .pb-row{display:flex;gap:6px;justify-content:flex-end}
-.pb-modal .pb-form-row{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
-.pb-modal .pb-form-row label{font-size:12px;color:var(--pb-text-dim)}
-.pb-modal .pb-form-row input,.pb-modal .pb-form-row textarea{background:var(--pb-panel-2);color:var(--pb-text);border:1px solid var(--pb-border);border-radius:4px;padding:5px 6px;font-size:13px;font-family:inherit}
-.pb-modal .pb-form-row input:focus,.pb-modal .pb-form-row textarea:focus{outline:none;border-color:var(--pb-accent)}
-.pb-modal .pb-form-row textarea{min-height:80px;resize:vertical}
-.pb-toast-wrap{position:fixed;top:60px;right:20px;z-index:10005;display:flex;flex-direction:column;gap:6px;pointer-events:none}
-.pb-drop-indicator{position:fixed;z-index:10010;pointer-events:none;background:#ffd86a;border-radius:2px;display:none}
-.pb-drop-indicator.h{height:4px;min-width:30px}
-.pb-drop-indicator.v{width:4px;min-height:20px}
-.pb-drop-indicator.show{display:block}
-.pb-toast{background:var(--pb-panel-2);border:1px solid var(--pb-border);border-left:3px solid var(--pb-accent);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--pb-text);box-shadow:0 4px 16px rgba(0,0,0,.5);max-width:300px;animation:pbToastIn .15s ease}
-.pb-toast.error{border-left-color:var(--pb-danger)}
-.pb-toast.warn{border-left-color:#ffd86a}
-.pb-toast.ok{border-left-color:#6affb6}
-.pb-toast.fade{opacity:0;transition:opacity .3s}
-@keyframes pbToastIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
-.pb-panel ::-webkit-scrollbar{width:6px;height:6px}
-.pb-panel ::-webkit-scrollbar-track{background:transparent}
-.pb-panel ::-webkit-scrollbar-thumb{background:var(--pb-border);border-radius:3px}
-.pb-panel ::-webkit-scrollbar-thumb:hover{background:#3a4357}
-.pb-panel{scrollbar-width:thin;scrollbar-color:var(--pb-border) transparent}
-.pb-statusbar{display:flex;align-items:center;justify-content:space-between;padding:4px 12px;background:var(--pb-panel-2);border-top:1px solid var(--pb-border);cursor:move;user-select:none;font-size:11px;color:var(--pb-text-dim);flex-shrink:0}
-.pb-status-grip{letter-spacing:2px;opacity:.6}
-.pb-status-author{opacity:.5}
-`;
-    document.head.appendChild(style);
-
-    // ==================== 浮动面板 DOM ====================
-    const panel = document.createElement("div");
-    panel.className = "pb-panel";
-    panel.id = "pbMainPanel";
-    panel.innerHTML = `
-      <div class="pb-titlebar"><span class="pb-min-grip" title="拖拽移动">⋮⋮</span><span class="pb-title-name">PromptBuilder</span><div class="pb-title-actions"><button class="pb-btn" id="pbUndo" title="撤销 (Ctrl+Z)">↶</button><button class="pb-btn" id="pbRedo" title="重做 (Ctrl+Y)">↷</button><button class="pb-btn" id="pbExportPresets" title="导出词库（分类 & 词语）">⬆ 词库</button><button class="pb-btn" id="pbImport" title="导入 JSON（自动识别词库或提示词）">⬇ 导入</button><button class="pb-btn primary" id="pbGenerate" title="执行生成 (1 张)" style="margin-left:4px">▶ 生成</button><span class="pb-minimize" title="收起面板">−</span><span class="pb-close">×</span></div></div>
-      <div class="pb-body">
-        <div class="pb-col">
-          <div class="pb-col-header"><span>预设词库</span></div>
-          <div class="pb-preset-search"><input id="pbPresetSearch" placeholder="搜索词语…" autocomplete="off"/></div>
-          <div class="pb-preset-cats" id="pbPresetCats"></div>
-          <div class="pb-preset-cats pb-l2" id="pbPresetCatsL2"></div>
-          <div class="pb-col-body" style="padding:0"><div class="pb-preset-list" id="pbPresetList"></div><div class="pb-preset-list" id="pbPresetSearchResults" style="display:none"></div></div>
-        </div>
-        <div class="pb-col-divider"></div>
-        <div class="pb-col">
-          <div class="pb-col-header">
-            <span>工作区</span>
-            <div class="pb-translate-bar">
-              <button class="pb-translate-toggle" id="pbTranslateToggle">🌐 翻译</button>
-              <button class="pb-translate-toggle" id="pbClearAll" style="background:transparent;border:1px solid var(--pb-border)" title="清空工作区">🧹 清空</button>
-            </div>
-          </div>
-          <div class="pb-col-body" id="pbWorkspace"></div>
-        </div>
-        <div class="pb-col-divider"></div>
-        <div class="pb-col">
-          <div class="pb-col-header">输出</div>
-          <div class="pb-col-body">
-            <div class="pb-output-wrap"><div class="pb-output-label"><span>Positive Prompt</span><button class="pb-btn" id="pbCopyPos">复制</button></div><div class="pb-output-box" id="pbOutputBoxPos"></div><div class="pb-output-count" id="pbOutputCountPos"></div></div>
-            <div class="pb-output-wrap"><div class="pb-output-label"><span>Negative Prompt</span><button class="pb-btn" id="pbCopyNeg">复制</button></div><div class="pb-output-box" id="pbOutputBoxNeg"></div><div class="pb-output-count" id="pbOutputCountNeg"></div></div>
-          </div>
-          <div class="pb-settings">
-            <div class="pb-settings-title">设置</div>
-            <div class="pb-setting-row"><span class="label">界面缩放</span><div class="pb-seg" id="pbSegScale"><button data-v="sm">小</button><button data-v="mid" class="active">中</button><button data-v="lg">大</button></div></div>
-            <div class="pb-setting-row"><span class="label">翻译引擎</span><select id="pbSelTranslator" class="pb-setting-select"><option value="mymemory">MyMemory</option><option value="google">Google</option><option value="custom">自定义</option></select></div>
-            <div class="pb-setting-row" id="pbCustomApiRow" style="display:none"><span class="label">自定义 API</span><button class="pb-btn" id="pbCustomApiCfg" title="配置自定义翻译 API" style="font-size:11px;padding:2px 8px">⚙ 配置</button></div>
-            <div class="pb-setting-row"><span class="label">主题</span><div class="pb-seg" id="pbSegTheme"><button data-v="dark" class="active">暗色</button><button data-v="light">亮色</button></div></div>
-          </div>
-        </div>
-      </div>
-      <div class="pb-statusbar"><span class="pb-status-grip">⋮⋮</span><span class="pb-status-author">@trancentral</span></div>`;
-    document.body.appendChild(panel);
-
-    // ==================== 面板位置/尺寸记忆 ====================
-    const PANEL_GEO_KEY = "promptbuilder_comfy_panelgeo";
-    function savePanelGeo() {
-      try {
-        const r = panel.getBoundingClientRect();
-        localStorage.setItem(PANEL_GEO_KEY, JSON.stringify({ left: r.left, top: r.top, width: r.width, height: r.height }));
-      } catch (e) {}
-    }
-    function restorePanelGeo() {
-      try {
-        const g = JSON.parse(localStorage.getItem(PANEL_GEO_KEY));
-        if (!g) return;
-        // 限制在视口内，避免完全飞出屏幕
-        const left = clamp(g.left, 0, Math.max(0, window.innerWidth - 100));
-        const top = clamp(g.top, 0, Math.max(0, window.innerHeight - 60));
-        panel.style.left = left + "px"; panel.style.top = top + "px";
-        if (g.width) panel.style.width = g.width + "px";
-        if (g.height) panel.style.height = g.height + "px";
-      } catch (e) {}
-    }
-    restorePanelGeo();
-
-    // ==================== 面板拖拽（titlebar + statusbar 双端） ====================
-    // 绑定一个拖拽手柄；closeSelector 指定该手柄上需放过的关闭按钮
-    // 用 offsetLeft/offsetTop 增量计算，避免 zoom 下 getBoundingClientRect 偏移
-    function bindDrag(handle, closeSelector) {
-      handle.onmousedown = (e) => {
-        if (closeSelector && e.target.closest(closeSelector)) return;
-        const startLeft = panel.offsetLeft, startTop = panel.offsetTop;
-        const startClientX = e.clientX, startClientY = e.clientY;
-        const onMove = (ev) => { panel.style.left = (startLeft + ev.clientX - startClientX) + "px"; panel.style.top = (startTop + ev.clientY - startClientY) + "px"; };
-        const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); savePanelGeo(); };
-        document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup", onUp);
-        e.preventDefault();
-      };
-    }
-    bindDrag(panel.querySelector(".pb-titlebar"), ".pb-close");
-    bindDrag(panel.querySelector(".pb-statusbar"), null);
-    // ==================== 列宽可拖拽分隔条 ====================
-    const COL_WIDTH_KEY = "promptbuilder_comfy_colwidths";
-    const bodyEl = panel.querySelector(".pb-body");
-    const COL_MINS = [240, 400, 240];
-    function saveColWidths() {
-      try {
-        const allCols = [...bodyEl.querySelectorAll(".pb-col")];
-        localStorage.setItem(COL_WIDTH_KEY, `${allCols[0].offsetWidth} ${allCols[1].offsetWidth} ${allCols[2].offsetWidth}`);
-      } catch (e) {}
-    }
-    function applyLayout() {
-      const avail = panel.offsetWidth; if (!avail) return;
-      const allCols = [...bodyEl.querySelectorAll(".pb-col")];
-      const w = allCols.map(c => c.offsetWidth || COL_MINS[0]);
-      const total = w[0] + w[1] + w[2] + 8;
-      if (avail >= total) {
-        // 扩大：只增加中间列
-        bodyEl.style.gridTemplateColumns = `${w[0]}px 4px ${avail - w[0] - w[2] - 8}px 4px ${w[2]}px`;
-        return;
+// src/build/prompt.ts
+init_state();
+function formatChip(chip) {
+  return chip.weight !== 1 ? `(${chip.text}:${chip.weight})` : chip.text;
+}
+function buildGroupText(g) {
+  const segments = [];
+  for (const box of g.inputboxes) {
+    if (!box.enabled) continue;
+    const parts = box.chips.filter((c) => c.enabled).map(formatChip);
+    if (!parts.length) continue;
+    const content2 = parts.join(", ");
+    segments.push(box.break ? `BREAK, ${content2}, BREAK` : content2);
+  }
+  if (!segments.length) return "";
+  const content = segments.join(", ");
+  return g.break ? `BREAK, ${content}, BREAK` : content;
+}
+function buildPositiveText() {
+  return cur.workspace.filter((g) => g.enabled).map(buildGroupText).filter(Boolean).join(", ");
+}
+function buildNegativeText() {
+  if (!cur.negativeGroup.enabled) return "";
+  return buildGroupText(cur.negativeGroup);
+}
+function countWordsAndChars(text) {
+  if (!text?.trim()) return { words: 0, chars: 0 };
+  const trimmed = text.trim();
+  return {
+    words: trimmed.split(/,\s*/).filter(Boolean).length,
+    chars: trimmed.replace(/,\s*/g, "").length
+  };
+}
+function buildGroupSegments(g) {
+  const segs = [];
+  if (g.break) segs.push({ text: "BREAK", isBreak: true });
+  const boxParts = [];
+  for (const box of g.inputboxes) {
+    if (!box.enabled) continue;
+    const parts = box.chips.filter((c) => c.enabled).map(formatChip);
+    if (!parts.length) continue;
+    const content = parts.join(", ");
+    if (box.break) {
+      if (boxParts.length) {
+        segs.push({ text: boxParts.join(", "), color: g.color });
+        boxParts.length = 0;
       }
-      // 缩小：中间 → 右侧 → 左侧
-      let surplus = total - avail;
-      if (w[1] - surplus >= COL_MINS[1]) {
-        bodyEl.style.gridTemplateColumns = `${w[0]}px 4px ${w[1] - surplus}px 4px ${w[2]}px`; return;
-      }
-      surplus -= w[1] - COL_MINS[1];
-      if (w[2] - surplus >= COL_MINS[2]) {
-        bodyEl.style.gridTemplateColumns = `${w[0]}px 4px ${COL_MINS[1]}px 4px ${w[2] - surplus}px`; return;
-      }
-      surplus -= w[2] - COL_MINS[2];
-      bodyEl.style.gridTemplateColumns = `${Math.max(COL_MINS[0], w[0] - surplus)}px 4px ${COL_MINS[1]}px 4px ${COL_MINS[2]}px`;
+      segs.push({ text: "BREAK", isBreak: true });
+      segs.push({ text: content, color: g.color });
+      segs.push({ text: "BREAK", isBreak: true });
+    } else {
+      boxParts.push(content);
     }
-    function restoreColWidths() {
-      try {
-        const raw = localStorage.getItem(COL_WIDTH_KEY);
-        if (raw) {
-          const parts = raw.split(" ").map(Number);
-          if (parts.length === 3 && parts.every(p => p > 0)) {
-            bodyEl.style.gridTemplateColumns = `${parts[0]}px 4px ${parts[1]}px 4px ${parts[2]}px`;
+  }
+  if (boxParts.length) segs.push({ text: boxParts.join(", "), color: g.color });
+  if (g.break) segs.push({ text: "BREAK", isBreak: true });
+  if (segs.length === 2 && segs[0].isBreak && segs[1].isBreak) return [];
+  return segs;
+}
+function buildPositiveSegments() {
+  const out = [];
+  const groups = cur.workspace.filter((g) => g.enabled);
+  for (const g of groups) {
+    const segs = buildGroupSegments(g);
+    if (!segs.length) continue;
+    if (out.length) {
+      const last = out[out.length - 1];
+      if (!last.isBreak) {
+        last.text += ", ";
+      } else {
+        let color;
+        for (let j = out.length - 1; j >= 0; j--) {
+          if (out[j].color) {
+            color = out[j].color;
+            break;
           }
         }
-      } catch (e) {}
-    }
-    restoreColWidths();
-    function bindColumnResize(divider, leftIdx) {
-      divider.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        const startX = e.clientX;
-        const allCols = [...bodyEl.querySelectorAll(".pb-col")];
-        const w = allCols.map(c => c.offsetWidth);
-        const startLeft = w[leftIdx], startRight = w[leftIdx + 1];
-        divider.classList.add("active");
-        bodyEl.style.userSelect = "none";
-        const onMove = (ev) => {
-          const dx = ev.clientX - startX;
-          const maxDx = startRight - COL_MINS[leftIdx + 1];
-          const minDx = COL_MINS[leftIdx] - startLeft;
-          const clamped = Math.max(minDx, Math.min(maxDx, dx));
-          w[leftIdx] = Math.max(COL_MINS[leftIdx], startLeft + clamped);
-          w[leftIdx + 1] = Math.max(COL_MINS[leftIdx + 1], startRight - clamped);
-          bodyEl.style.gridTemplateColumns = `${w[0]}px 4px ${w[1]}px 4px ${w[2]}px`;
-        };
-        const onUp = () => {
-          document.removeEventListener("mousemove", onMove);
-          document.removeEventListener("mouseup", onUp);
-          divider.classList.remove("active");
-          bodyEl.style.userSelect = "";
-          saveColWidths();
-        };
-        document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup", onUp);
-      });
-    }
-    bindColumnResize(bodyEl.querySelector(".pb-col-divider"), 0);
-    bindColumnResize(bodyEl.querySelectorAll(".pb-col-divider")[1], 1);
-    // ==================== 面板位置/大小持久化 ====================
-    try {
-      const ro = new ResizeObserver(() => { savePanelGeo(); applyLayout(); });
-      ro.observe(panel);
-    } catch (e) {}
-    function closePanel() { panel.classList.remove("visible"); const p = document.querySelector(".pb-color-picker"); if (p) p.remove(); hideIndicator(); hideAc(); clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer); if (_toolbarEl) _toolbarEl.classList.remove("show"); _activeChipEl = null; }
-    panel.querySelector(".pb-close").onclick = closePanel;
-    const minBtn = panel.querySelector(".pb-minimize");
-    if (minBtn) minBtn.onclick = (e) => {
-      e.stopPropagation();
-      panel.classList.toggle("minimized");
-      minBtn.textContent = panel.classList.contains("minimized") ? "⛶" : "−";
-      minBtn.title = panel.classList.contains("minimized") ? "展开面板" : "收起面板";
-      clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer); if (_toolbarEl) _toolbarEl.classList.remove("show"); _activeChipEl = null;
-      savePanelGeo();
-    };
-
-    /* ============================================================
-       逻辑入口
-       ============================================================ */
-    // ==================== 工具函数 ====================
-    const $ = (id) => document.getElementById(id);
-    const COLORS = ["#6aa9ff","#8b6aff","#ff6b9d","#ff9f6a","#ffd86a","#6affb6","#6ae0ff","#ff6b6b","#b46aff","#6a8aff","#9aff6a","#ff6ad8"];
-    const MAX_WEIGHT = 5.0;
-
-    // ==================== 数据模型工厂 ====================
-    // 函数声明会被提升，故放在此处也可被前面的 state 初始化代码调用
-    function gid() { return Math.random().toString(36).slice(2, 9); }
-    /** 创建一个输入框（box） */
-    function mkBox(title = "默认") { return { id: gid(), title, enabled: true, chips: [] }; }
-    /** 创建一个普通分组（group） */
-    function mkGroup(name, color) { return { id: gid(), name, color, enabled: true, collapsed: false, break: false, inputboxes: [mkBox()] }; }
-    /** 创建负面提示词分组（固定结构） */
-    function mkNegativeGroup() { return { id: "__neg__", name: "负面提示词", color: COLORS[3], enabled: true, collapsed: false, break: false, inputboxes: [mkBox()] }; }
-    /** 创建一个 chip（weight 可选，默认 1.0） */
-    function mkChip(text, cnText, weight) { return { id: gid(), text, cnText: cnText || null, weight: weight == null ? 1.0 : +weight, enabled: true }; }
-
-    /** 统一 group 迁移：删废弃 weight 死字段 + 补 enabled（分组/输入框两层）。
-     *  幂等：对新数据无副作用。供节点状态反序列化、导入等多处复用。 */
-    function migrateGroups(groups) {
-      (groups || []).forEach(g => {
-        if (!g) return;
-        delete g.weight;                          // v1：清理死字段
-        if (g.enabled === undefined) g.enabled = true;     // v2：分组级
-        if (g.break === undefined) g.break = false;        // v4：分组级 BREAK 隔离
-        (g.inputboxes || []).forEach(b => { if (b.enabled === undefined) b.enabled = true; (b.chips || []).forEach(c => { if (c.enabled === undefined) c.enabled = true; }); }); // v3：输入框级 & chip 级
-      });
-    }
-
-    // ==================== 全局共享 state（词库 / UI 设置）====================
-    // 仅保存多节点共享的数据。节点专属的提示词（workspace/negativeGroup/focusedBox）
-    // 不在此处，而是存到 node.properties.pb_state。
-    let state = {
-      _v: 3,
-      presets: { items: [], children: {} },
-      l1Cat: null, l2Cat: null,
-      settings: { scale: "mid", translator: "mymemory", theme: "dark", customApi: { url: "", method: "GET", body: "", responseField: "" } },
-    };
-
-    // ==================== 当前编辑态（从活动节点加载到内存）====================
-    let activeNode = null;            // 当前绑定的 PromptBuilder 节点（CLIP Encode 或 Text）
-    let cur = {
-      workspace: [mkGroup("人物", COLORS[0])],
-      negativeGroup: mkNegativeGroup(),
-      focusedBox: null,
-    };
-
-    // ==================== 共享 state 从 localStorage 加载（带迁移）====================
-    // 老版本（≤v3）把全部数据塞在一个 promptbuilder_comfy_state 键里；v4 拆键后，
-    // 旧键里的 presets/settings 仍被读取迁移到新键，workspace/negativeGroup 按既定
-    // 决策丢弃（每个节点从此自带状态，不再有"全局默认提示词"概念）。
-    try {
-      const oldSaved = JSON.parse(localStorage.getItem("promptbuilder_comfy_state"));
-      if (oldSaved && oldSaved.presets?.children) {
-        state.presets = oldSaved.presets;
-        state.l1Cat = oldSaved.l1Cat || Object.keys(state.presets.children)[0] || null;
-        state.l2Cat = oldSaved.l2Cat || Object.keys(state.presets.children[state.l1Cat]?.children || {})[0] || null;
-        if (oldSaved.settings) state.settings = Object.assign(state.settings, oldSaved.settings);
+        out.push({ text: ", ", color });
       }
-    } catch (e) {}
-    try {
-      const pSaved = JSON.parse(localStorage.getItem("promptbuilder_presets"));
-      if (pSaved?.presets?.children) {
-        state.presets = pSaved.presets;
-        state.l1Cat = pSaved.l1Cat || Object.keys(state.presets.children)[0] || null;
-        state.l2Cat = pSaved.l2Cat || Object.keys(state.presets.children[state.l1Cat]?.children || {})[0] || null;
-      }
-    } catch (e) {}
-    try {
-      const sSaved = JSON.parse(localStorage.getItem("promptbuilder_settings"));
-      if (sSaved?.settings) state.settings = Object.assign(state.settings, sSaved.settings);
-    } catch (e) {}
-    // 兜底：词库没有任何 L1 分类时补一个默认空分类，避免左栏空白
-    if (!Object.keys(state.presets.children).length) {
-      state.presets.children["我的词库"] = { items: [], children: { "默认": { items: [], children: {} } } };
-      state.l1Cat = "我的词库"; state.l2Cat = "默认";
     }
-    if (!state.l1Cat || !state.presets.children[state.l1Cat]) {
-      state.l1Cat = Object.keys(state.presets.children)[0] || null;
-    }
-    if (state.l1Cat && (!state.l2Cat || !state.presets.children[state.l1Cat]?.children?.[state.l2Cat])) {
-      state.l2Cat = Object.keys(state.presets.children[state.l1Cat]?.children || {})[0] || null;
-    }
+    out.push(...segs);
+  }
+  return out;
+}
+function buildNegativeSegments() {
+  if (!cur.negativeGroup.enabled) return [];
+  return buildGroupSegments(cur.negativeGroup);
+}
 
-    let _presetIndex = [];     // 词库扁平索引，renderPresets 末尾重建
-    let _danbooruIndex = [];   // danbooru 标签索引 [[en, zh], ...]，init 时异步加载
-    let _danbooruLoading = false;
-    let _pendingFocusBox = null; // 输入确认后保持聚焦的 box id
-    let _acLayer = null;       // 自动补全浮层元素（懒创建）
-    let _acItems = [];         // 当前浮层显示的候选词对象数组
-    let _acActive = -1;        // 当前高亮项索引
-    let _toolbarEl = null, _toolbarHideTimer = null, _activeChipEl = null, _switchTimer = null; // chip 浮动工具栏
-    let _persistTimer;
-    // ==================== 撤销 / 恢复 ====================
-    // 策略：以 persist() 的 200ms 防抖为快照边界 —— 连续输入会合并为一次可撤销操作，
-    // 避免逐字符产生海量快照。undoStack 存历史，redoStack 存撤销后可重做的状态。
-    const UNDO_LIMIT = 50;
-    let undoStack = [];   // 历史快照（较旧 → 较新）
-    let redoStack = [];
-    let _lastSnapshot = null; // 最近一次持久化后的快照（仅含 cur 节点态）
-    /** 快照当前节点的编辑态（workspace/negativeGroup/focusedBox）。
-     *  不含共享的 presets/settings —— 它们不进撤销栈（改它们会影响所有节点）。 */
-    function snapshotState() {
-      return JSON.parse(JSON.stringify({
-        workspace: cur.workspace, negativeGroup: cur.negativeGroup, focusedBox: cur.focusedBox
-      }));
+// src/app/persist.ts
+function loadPresetsFromLS() {
+  try {
+    const raw = localStorage.getItem(LS_KEYS.presets);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (data?.children && typeof data.children === "object") return data;
+  } catch {
+  }
+  return null;
+}
+function savePresetsToLS() {
+  try {
+    localStorage.setItem(LS_KEYS.presets, JSON.stringify(state.presets));
+    localStorage.setItem(LS_KEYS.cats, JSON.stringify({ l1Cat: state.l1Cat, l2Cat: state.l2Cat }));
+  } catch {
+  }
+}
+function loadSettingsFromLS() {
+  try {
+    const raw = localStorage.getItem(LS_KEYS.settings);
+    if (raw) return JSON.parse(raw);
+  } catch {
+  }
+  return null;
+}
+function saveSettingsToLS() {
+  try {
+    localStorage.setItem(LS_KEYS.settings, JSON.stringify(state.settings));
+  } catch {
+  }
+}
+function loadPanelGeo() {
+  try {
+    const raw = localStorage.getItem(LS_KEYS.panelGeo);
+    if (raw) return JSON.parse(raw);
+  } catch {
+  }
+  return null;
+}
+function savePanelGeo(geo) {
+  try {
+    localStorage.setItem(LS_KEYS.panelGeo, JSON.stringify(geo));
+  } catch {
+  }
+}
+function loadColWidths() {
+  try {
+    const raw = localStorage.getItem(LS_KEYS.colWidths);
+    if (raw) return JSON.parse(raw);
+  } catch {
+  }
+  return null;
+}
+function saveColWidths(widths) {
+  try {
+    localStorage.setItem(LS_KEYS.colWidths, JSON.stringify(widths));
+  } catch {
+  }
+}
+function migrateGroup(g) {
+  g.id = g.id || gid();
+  g.name = g.name || "\u5206\u7EC4";
+  g.color = g.color || "#6aa9ff";
+  g.enabled = g.enabled !== false;
+  g.break = !!g.break;
+  g.collapsed = !!g.collapsed;
+  if (!Array.isArray(g.inputboxes) || g.inputboxes.length === 0) g.inputboxes = [mkBox()];
+  for (const b of g.inputboxes) {
+    b.id = b.id || gid();
+    b.enabled = b.enabled !== false;
+    b.break = !!b.break;
+    if (!Array.isArray(b.chips)) b.chips = [];
+    for (const c of b.chips) {
+      c.id = c.id || gid();
+      c.text = typeof c.text === "string" ? c.text : String(c.text ?? "");
+      c.cnText = typeof c.cnText === "string" ? c.cnText : "";
+      c.weight = typeof c.weight === "number" ? c.weight : 1;
+      c.enabled = c.enabled !== false;
     }
-    /** 切换节点时清空撤销栈：A 节点的撤销不应作用于 B 节点。 */
-    function clearUndoStacks() { undoStack = []; redoStack = []; _lastSnapshot = null; }
-    function restoreSnapshot(snap) {
-      if (!snap) return;
-      cur.workspace = snap.workspace; cur.negativeGroup = snap.negativeGroup; cur.focusedBox = snap.focusedBox;
-      renderWorkspace(); renderOutput();
+  }
+  return g;
+}
+function initFromStorage() {
+  const presets = loadPresetsFromLS();
+  if (presets) state.presets = presets;
+  try {
+    const cat = localStorage.getItem(LS_KEYS.cats);
+    if (cat) {
+      const c = JSON.parse(cat);
+      if (c.l1Cat) state.l1Cat = c.l1Cat;
+      if (c.l2Cat) state.l2Cat = c.l2Cat;
     }
-    function undo() {
-      if (!undoStack.length) { toast("没有可撤销的操作", "", 1200); return; }
-      redoStack.push(_lastSnapshot);
-      const prev = undoStack.pop();
-      _lastSnapshot = prev;
-      restoreSnapshot(prev);
-      saveCurrentNodeState();
-      toast("已撤销", "ok", 1000);
+  } catch {
+  }
+  normalizeCategories();
+  const settings = loadSettingsFromLS();
+  if (settings) {
+    state.settings = {
+      ...state.settings,
+      ...settings,
+      customApi: { ...state.settings.customApi, ...settings.customApi || {} }
+    };
+  }
+}
+function serializeNodeState() {
+  const data = {
+    _v: STATE_VERSION,
+    workspace: cur.workspace,
+    negativeGroup: cur.negativeGroup,
+    focusedBox: cur.focusedBox
+  };
+  return JSON.stringify(data);
+}
+function deserializeNodeState(json) {
+  try {
+    const data = JSON.parse(json);
+    if (data.workspace && data.negativeGroup) {
+      cur.workspace = (Array.isArray(data.workspace) ? data.workspace : []).map(migrateGroup);
+      if (cur.workspace.length === 0) cur.workspace = [mkGroup("\u4EBA\u7269", void 0, state.settings.theme)];
+      cur.negativeGroup = migrateGroup(data.negativeGroup);
+      cur.focusedBox = data.focusedBox || cur.workspace[0]?.inputboxes[0]?.id || "";
+      return true;
     }
-    function redo() {
-      if (!redoStack.length) { toast("没有可重做的操作", "", 1200); return; }
-      undoStack.push(_lastSnapshot);
-      const next = redoStack.pop();
-      _lastSnapshot = next;
-      restoreSnapshot(next);
-      saveCurrentNodeState();
-      toast("已重做", "ok", 1000);
-    }
-    /** 写共享数据（词库 + 设置）到 localStorage，分两个键。 */
-    function saveSharedState() {
-      try {
-        localStorage.setItem("promptbuilder_presets", JSON.stringify({
-          _v: state._v, presets: state.presets, l1Cat: state.l1Cat, l2Cat: state.l2Cat
-        }));
-        localStorage.setItem("promptbuilder_settings", JSON.stringify({ settings: state.settings }));
-      }
-      catch (e) { toast("存储空间不足，部分更改未能保存", "warn", 3000); }
-    }
-    let _snapshotTimer = null;
-    // 快照压栈用更长防抖（600ms），合并连续输入为单个撤销点；写入仍用 200ms
-    function scheduleSnapshot() {
-      clearTimeout(_snapshotTimer);
-      _snapshotTimer = setTimeout(() => {
-        if (_lastSnapshot !== null) {
-          undoStack.push(_lastSnapshot);
-          if (undoStack.length > UNDO_LIMIT) undoStack.shift();
-        }
-        _lastSnapshot = snapshotState();
-        redoStack = []; // 新操作清空 redo
-      }, 600);
-    }
-    /** persist：共享数据落 localStorage + 当前节点态写回 node.properties + 排撤销快照。
-     *  任何编辑收口都走这里，确保两边都不漏。 */
-    function persist() {
-      clearTimeout(_persistTimer);
-      _persistTimer = setTimeout(() => { saveSharedState(); saveCurrentNodeState(); scheduleSnapshot(); }, 200);
-    }
-    /** 统一的"重新渲染 + 持久化"收口，绝大多数状态变更后调用 */
-    function commit() { renderWorkspace(); renderOutput(); persist(); }
-    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+  } catch {
+  }
+  return false;
+}
+function parseFlat(text) {
+  if (!text?.trim()) return [];
+  const chips = [];
+  for (const part of text.split(/,(?![^()]*\))/)) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const m = trimmed.match(/^\((.+):([\d.]+)\)$/);
+    if (m) chips.push(mkChip(m[1], "", parseFloat(m[2]) || 1));
+    else chips.push(mkChip(trimmed));
+  }
+  return chips;
+}
+function loadNodeIntoCur(node) {
+  const pb = node.properties?.["pb_state_next"];
+  if (pb && deserializeNodeState(pb)) return;
+  const pos = node.widgets?.find((w) => w.name === "positive")?.value || "";
+  const neg = node.widgets?.find((w) => w.name === "negative")?.value || "";
+  if (pos || neg) {
+    cur.workspace = [{
+      ...mkGroup("\u5BFC\u5165", void 0, state.settings.theme),
+      inputboxes: [{ id: gid(), enabled: true, break: false, chips: parseFlat(pos) }]
+    }];
+    cur.negativeGroup = {
+      ...mkNegativeGroup(),
+      inputboxes: [{ id: gid(), enabled: true, break: false, chips: parseFlat(neg) }]
+    };
+    cur.focusedBox = cur.workspace[0].inputboxes[0].id;
+    return;
+  }
+  cur.workspace = [mkGroup("\u4EBA\u7269", void 0, state.settings.theme)];
+  cur.negativeGroup = mkNegativeGroup();
+  cur.focusedBox = cur.workspace[0].inputboxes[0].id;
+}
+function syncWidgets() {
+  if (!activeNode?.widgets) return;
+  const pos = activeNode.widgets.find((w) => w.name === "positive");
+  const neg = activeNode.widgets.find((w) => w.name === "negative");
+  if (pos) pos.value = buildPositiveText();
+  if (neg) neg.value = buildNegativeText();
+  try {
+    (window.__comfyApp || window.app)?.graph?.change?.();
+  } catch {
+  }
+}
+function saveNodeState() {
+  if (!activeNode) return;
+  if (activeNode.properties) {
+    activeNode.properties["pb_state_next"] = serializeNodeState();
+  }
+  syncWidgets();
+}
 
-    // ==================== 节点状态序列化 / 反序列化（核心）====================
-    // 每个节点的提示词存到 node.properties.pb_state（JSON 字符串），随工作流保存、
-    // 随拖图加载。面板打开/切换节点时把它反序列化到内存 cur。
-    const PB_STATE_VERSION = 3;
-    /** 把当前 cur 拍平成 JSON 字符串（供写入 node.properties.pb_state）。 */
-    function serializeNodeState() {
-      return JSON.stringify({
-        _v: PB_STATE_VERSION,
-        workspace: cur.workspace,
-        negativeGroup: cur.negativeGroup,
-        focusedBox: cur.focusedBox
-      });
+// src/model/ops.ts
+init_state();
+init_factory();
+
+// src/model/selection.ts
+init_state();
+var _selected = /* @__PURE__ */ new Set();
+var _anchorId = null;
+function getSelectedIds() {
+  return [..._selected];
+}
+function getSelectedCount() {
+  return _selected.size;
+}
+function isSelected(chipId) {
+  return _selected.has(chipId);
+}
+function clearSelection() {
+  _selected.clear();
+  _anchorId = null;
+  paintSelectionClasses();
+}
+function selectOnly(chipId) {
+  _selected.clear();
+  _selected.add(chipId);
+  _anchorId = chipId;
+  paintSelectionClasses();
+}
+function toggleSelect(chipId) {
+  if (_selected.has(chipId)) {
+    _selected.delete(chipId);
+    if (_anchorId === chipId) _anchorId = _selected.size ? [..._selected][_selected.size - 1] : null;
+  } else {
+    _selected.add(chipId);
+    _anchorId = chipId;
+  }
+  paintSelectionClasses();
+}
+function selectAllInBox(boxId) {
+  for (const g of allGroups()) {
+    for (const b of g.inputboxes) {
+      if (b.id !== boxId) continue;
+      _selected.clear();
+      for (const c of b.chips) _selected.add(c.id);
+      _anchorId = b.chips[0]?.id || null;
+      paintSelectionClasses();
+      return;
     }
-    /** 把节点状态写回活动节点，并标记工作流已修改（保证 ComfyUI 存盘带上 properties）。
-     *  空操作：没有活动节点时直接返回。 */
-    function saveCurrentNodeState() {
-      if (!activeNode) return;
-      try {
-        activeNode.properties.pb_state = serializeNodeState();
-        app.graph?.change?.();
-      } catch (e) {}
+  }
+}
+function selectRangeTo(chipId) {
+  const hit = findChip(chipId);
+  if (!hit) {
+    selectOnly(chipId);
+    return;
+  }
+  const ids = hit.box.chips.map((c) => c.id);
+  const end = ids.indexOf(chipId);
+  if (end < 0) {
+    selectOnly(chipId);
+    return;
+  }
+  let start = _anchorId ? ids.indexOf(_anchorId) : end;
+  if (start < 0) start = end;
+  const lo = Math.min(start, end);
+  const hi = Math.max(start, end);
+  _selected.clear();
+  for (let i = lo; i <= hi; i++) _selected.add(ids[i]);
+  if (!_anchorId) _anchorId = chipId;
+  paintSelectionClasses();
+}
+function pruneSelection() {
+  const alive = /* @__PURE__ */ new Set();
+  for (const g of allGroups()) {
+    for (const b of g.inputboxes) {
+      for (const c of b.chips) alive.add(c.id);
     }
-    /** 扁平提示词文本 → chip 数组（fallback 用：旧版/外部工作流只有 positive/negative 文本）。
-     *  识别 "(text:权重)" 语法还原权重；不识别的按 weight=1.0。无法还原分组/颜色/中英对照。 */
-    function parseFlatToChips(text) {
-      const chips = [];
-      String(text || "").split(/[,\n]/).map(s => s.trim()).filter(Boolean).forEach(term => {
-        const m = term.match(/^\((.+):(-?\d+(?:\.\d+)?)\)$/);  // (text:1.2)
-        if (m) {
-          const w = clamp(+parseFloat(m[2]).toFixed(1), 0.1, MAX_WEIGHT);
-          chips.push(mkChip(m[1].trim(), null, w));
-        } else {
-          chips.push(mkChip(term, null, 1.0));
-        }
-      });
-      return chips;
+  }
+  for (const id of [..._selected]) {
+    if (!alive.has(id)) _selected.delete(id);
+  }
+  if (_anchorId && !alive.has(_anchorId)) {
+    _anchorId = _selected.size ? [..._selected][0] : null;
+  }
+}
+function paintSelectionClasses() {
+  pruneSelection();
+  document.querySelectorAll(".pb-chip.pb-chip-selected").forEach((el) => {
+    el.classList.remove("pb-chip-selected");
+  });
+  for (const id of _selected) {
+    document.querySelector(`.pb-chip[data-chip-id="${id}"]`)?.classList.add("pb-chip-selected");
+  }
+}
+function getSelectedIdsInWorkspaceOrder() {
+  const out = [];
+  const set = _selected;
+  if (!set.size) return out;
+  for (const g of allGroups()) {
+    for (const b of g.inputboxes) {
+      for (const c of b.chips) {
+        if (set.has(c.id)) out.push(c.id);
+      }
     }
-    /** 从节点读出状态并写入 cur。三层 fallback：
-     *  1) node.properties.pb_state（结构化，含分组/权重/颜色）→ 完整还原
-     *  2) 节点的 positive/negative widget 文本 → 扁平解析成单个"导入"分组 + 负面
-     *  3) 都没有 → 默认空白 workspace + 默认 negativeGroup
-     *  返回是否走了结构化路径（用于 UI 提示）。 */
-    function deserializeNodeState(node) {
-      // 1) 结构化
-      try {
-        const raw = node.properties?.pb_state;
-        if (raw) {
-          const s = JSON.parse(raw);
-          if (s && (s.workspace || s.negativeGroup)) {
-            cur.workspace = Array.isArray(s.workspace) && s.workspace.length ? s.workspace : [mkGroup("人物", COLORS[0])];
-            cur.negativeGroup = s.negativeGroup || mkNegativeGroup();
-            cur.focusedBox = s.focusedBox ?? null;
-            migrateGroups(cur.workspace);
-            migrateGroups([cur.negativeGroup]);
-            if (!cur.negativeGroup?.inputboxes?.length) cur.negativeGroup = mkNegativeGroup();
+  }
+  return out;
+}
+
+// src/model/ops.ts
+var NOOP = {
+  changed: false,
+  undoable: false,
+  persistNode: false,
+  persistPresets: false,
+  persistSettings: false,
+  scopes: []
+};
+function ws(scopes = ["workspace", "output"]) {
+  return { changed: true, undoable: true, persistNode: true, persistPresets: false, persistSettings: false, scopes };
+}
+function pr(scopes = ["presets"]) {
+  return { changed: true, undoable: true, persistNode: false, persistPresets: true, persistSettings: false, scopes };
+}
+function findGroup(id) {
+  if (id === cur.negativeGroup.id) return cur.negativeGroup;
+  return cur.workspace.find((g) => g.id === id) || null;
+}
+function reorder(arr, from, to) {
+  if (from === to || from < 0 || to < 0 || from >= arr.length) return false;
+  const [item] = arr.splice(from, 1);
+  if (item === void 0) return false;
+  arr.splice(Math.min(to, arr.length), 0, item);
+  return true;
+}
+function applyOp(op) {
+  switch (op.type) {
+    case "chip/add": {
+      const hit = findBox(op.boxId);
+      if (!hit) return NOOP;
+      const i = op.index ?? hit.box.chips.length;
+      hit.box.chips.splice(i, 0, op.chip);
+      cur.focusedBox = op.boxId;
+      return ws();
+    }
+    case "chip/addFromPreset": {
+      const hit = findBox(op.boxId);
+      if (!hit) return NOOP;
+      const chip = mkChip(op.text, op.cnText, 1, op.categoryColor);
+      const i = op.index ?? hit.box.chips.length;
+      hit.box.chips.splice(i, 0, chip);
+      cur.focusedBox = op.boxId;
+      return ws();
+    }
+    case "chip/addText": {
+      const hit = findBox(op.boxId);
+      if (!hit || !op.text.trim()) return NOOP;
+      const parts = op.text.split(",");
+      const idx = getPresetIndex();
+      for (const part of parts) {
+        const t = part.trim();
+        if (!t) continue;
+        const preset = idx.find((p) => p.text === t || p.cnText === t);
+        hit.box.chips.push(
+          preset ? mkChip(preset.text, preset.cnText, 1, preset.categoryColor) : mkChip(t)
+        );
+      }
+      cur.focusedBox = op.boxId;
+      return ws();
+    }
+    case "chip/remove": {
+      const hit = findBox(op.boxId);
+      if (!hit) return NOOP;
+      const i = hit.box.chips.findIndex((c) => c.id === op.chipId);
+      if (i < 0) return NOOP;
+      hit.box.chips.splice(i, 1);
+      pruneSelection();
+      return ws();
+    }
+    case "chip/reorder": {
+      const hit = findBox(op.boxId);
+      if (!hit) return NOOP;
+      if (!reorder(hit.box.chips, op.fromIndex, op.toIndex)) return NOOP;
+      return { ...ws(["output"]), scopes: ["output"] };
+    }
+    case "chip/move": {
+      const from = findBox(op.fromBoxId);
+      const to = findBox(op.toBoxId);
+      if (!from || !to) return NOOP;
+      const i = from.box.chips.findIndex((c) => c.id === op.chipId);
+      if (i < 0) return NOOP;
+      if (op.fromBoxId === op.toBoxId) {
+        if (!reorder(from.box.chips, i, op.toIndex)) return NOOP;
+        return { ...ws(["output"]), scopes: ["output"] };
+      }
+      const [chip] = from.box.chips.splice(i, 1);
+      to.box.chips.splice(Math.min(op.toIndex, to.box.chips.length), 0, chip);
+      cur.focusedBox = op.toBoxId;
+      return ws();
+    }
+    case "chip/update": {
+      const hit = findChip(op.chipId);
+      if (!hit) return NOOP;
+      Object.assign(hit.chip, op.patch);
+      const undoable = !("translating" in op.patch && Object.keys(op.patch).length === 1);
+      return { ...ws(), undoable };
+    }
+    case "chip/batchRemove": {
+      if (!op.chipIds.length) return NOOP;
+      const idSet = new Set(op.chipIds);
+      let removed = 0;
+      for (const g of allGroups()) {
+        for (const b of g.inputboxes) {
+          const next = b.chips.filter((c) => {
+            if (idSet.has(c.id)) {
+              removed++;
+              return false;
+            }
             return true;
-          }
+          });
+          b.chips = next;
         }
-      } catch (e) {}
-      // 2) 扁平文本 fallback
-      const posWidget = node.widgets?.find(w => w.name === "positive");
-      const negWidget = node.widgets?.find(w => w.name === "negative");
-      const posText = (posWidget?.value || "").trim();
-      const negText = (negWidget?.value || "").trim();
-      if (posText || negText) {
-        const g = mkGroup("导入", COLORS[0]);
-        g.inputboxes = [{ id: gid(), title: "默认", enabled: true, chips: parseFlatToChips(posText) }];
-        cur.workspace = [g];
-        const ng = mkNegativeGroup();
-        ng.inputboxes[0].chips = parseFlatToChips(negText);
-        cur.negativeGroup = ng;
-        cur.focusedBox = g.inputboxes[0].id;
-        return false;
       }
-      // 3) 默认空白
-      cur.workspace = [mkGroup("人物", COLORS[0])];
+      if (!removed) return NOOP;
+      pruneSelection();
+      return ws();
+    }
+    case "chip/batchUpdate": {
+      if (!op.chipIds.length) return NOOP;
+      let n = 0;
+      for (const id of op.chipIds) {
+        const hit = findChip(id);
+        if (!hit) continue;
+        Object.assign(hit.chip, op.patch);
+        n++;
+      }
+      if (!n) return NOOP;
+      return ws();
+    }
+    case "chip/batchAdjustWeight": {
+      if (!op.chipIds.length || !op.delta) return NOOP;
+      let n = 0;
+      for (const id of op.chipIds) {
+        const hit = findChip(id);
+        if (!hit) continue;
+        const w = Math.round((hit.chip.weight + op.delta) * 10) / 10;
+        hit.chip.weight = Math.max(0.1, Math.min(5, w));
+        n++;
+      }
+      if (!n) return NOOP;
+      return ws();
+    }
+    case "chip/batchMove": {
+      if (!op.chipIds.length) return NOOP;
+      const to = findBox(op.toBoxId);
+      if (!to) return NOOP;
+      const idSet = new Set(op.chipIds);
+      const order = op.chipIds;
+      const picked = [];
+      const byId = /* @__PURE__ */ new Map();
+      for (const g of allGroups()) {
+        for (const b of g.inputboxes) {
+          const remain = [];
+          for (const c of b.chips) {
+            if (idSet.has(c.id)) byId.set(c.id, c);
+            else remain.push(c);
+          }
+          b.chips = remain;
+        }
+      }
+      for (const id of order) {
+        const c = byId.get(id);
+        if (c) picked.push(c);
+      }
+      if (!picked.length) return NOOP;
+      let idx = Math.max(0, Math.min(op.toIndex, to.box.chips.length));
+      to.box.chips.splice(idx, 0, ...picked);
+      cur.focusedBox = op.toBoxId;
+      return ws();
+    }
+    case "box/add": {
+      const g = findGroup(op.groupId);
+      if (!g || g.id === "__neg__") return NOOP;
+      const b = mkBox();
+      g.inputboxes.push(b);
+      cur.focusedBox = b.id;
+      return ws();
+    }
+    case "box/remove": {
+      const g = findGroup(op.groupId);
+      if (!g || g.inputboxes.length <= 1) return NOOP;
+      const i = g.inputboxes.findIndex((b) => b.id === op.boxId);
+      if (i < 0) return NOOP;
+      g.inputboxes.splice(i, 1);
+      cur.focusedBox = g.inputboxes[0]?.id || "";
+      pruneSelection();
+      return ws();
+    }
+    case "box/reorder": {
+      const g = findGroup(op.groupId);
+      if (!g) return NOOP;
+      if (!reorder(g.inputboxes, op.fromIndex, op.toIndex)) return NOOP;
+      return { ...ws(["output"]), scopes: ["output"] };
+    }
+    case "box/toggle": {
+      const hit = findBox(op.boxId);
+      if (!hit) return NOOP;
+      hit.box[op.field] = !hit.box[op.field];
+      return ws();
+    }
+    case "group/add": {
+      const g = mkGroup(op.name || "\u65B0\u5206\u7EC4", void 0, state.settings.theme);
+      cur.workspace.push(g);
+      cur.focusedBox = g.inputboxes[0].id;
+      return ws();
+    }
+    case "group/remove": {
+      if (cur.workspace.length <= 1) return NOOP;
+      const i = cur.workspace.findIndex((g) => g.id === op.groupId);
+      if (i < 0) return NOOP;
+      cur.workspace.splice(i, 1);
+      pruneSelection();
+      cur.focusedBox = cur.workspace[0]?.inputboxes[0]?.id || "";
+      return ws();
+    }
+    case "group/reorder": {
+      if (!reorder(cur.workspace, op.fromIndex, op.toIndex)) return NOOP;
+      return { ...ws(["output"]), scopes: ["output"] };
+    }
+    case "group/patch": {
+      const g = findGroup(op.groupId);
+      if (!g) return NOOP;
+      Object.assign(g, op.patch);
+      return ws();
+    }
+    case "focus/box": {
+      if (cur.focusedBox === op.boxId) return NOOP;
+      cur.focusedBox = op.boxId;
+      return { changed: true, undoable: false, persistNode: false, persistPresets: false, persistSettings: false, scopes: [] };
+    }
+    case "workspace/clear": {
+      cur.workspace = [mkGroup("\u4EBA\u7269", void 0, state.settings.theme)];
       cur.negativeGroup = mkNegativeGroup();
       cur.focusedBox = cur.workspace[0].inputboxes[0].id;
+      pruneSelection();
+      return ws();
+    }
+    case "workspace/replace": {
+      cur.workspace = op.workspace.length ? op.workspace : [mkGroup("\u4EBA\u7269", void 0, state.settings.theme)];
+      cur.negativeGroup = op.negativeGroup || mkNegativeGroup();
+      cur.focusedBox = op.focusedBox || cur.workspace[0]?.inputboxes[0]?.id || "";
+      pruneSelection();
+      return ws();
+    }
+    case "preset/tryAddFromChip": {
+      const items = getCurrentPresetItems();
+      if (!items) return NOOP;
+      if (items.some((i) => i.text === op.text)) return NOOP;
+      items.push({ text: op.text, cnText: op.cnText });
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "preset/tryAddManyFromChips": {
+      const items = getCurrentPresetItems();
+      if (!items || !op.items.length) return NOOP;
+      const seen = new Set(items.map((i) => i.text));
+      let added = 0;
+      for (const it of op.items) {
+        const t = (it.text || "").trim();
+        if (!t || seen.has(t)) continue;
+        seen.add(t);
+        items.push({ text: t, cnText: it.cnText || "" });
+        added++;
+      }
+      if (!added) return NOOP;
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "preset/removeItem": {
+      const items = resolvePresetItems(op.l1, op.l2);
+      if (!items) return NOOP;
+      const i = items.findIndex((x) => x.text === op.text);
+      if (i < 0) return NOOP;
+      items.splice(i, 1);
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "preset/updateItem": {
+      const items = resolvePresetItems(op.l1, op.l2);
+      if (!items) return NOOP;
+      const i = items.findIndex((x) => x.text === op.oldText);
+      if (i < 0) return NOOP;
+      const nextText = op.text.trim();
+      if (!nextText) return NOOP;
+      if (nextText !== op.oldText && items.some((x, idx) => idx !== i && x.text === nextText)) {
+        return NOOP;
+      }
+      items[i] = { text: nextText, cnText: op.cnText };
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "preset/reorderItems": {
+      const items = getCurrentPresetItems();
+      if (!items) return NOOP;
+      if (!reorder(items, op.fromIndex, op.toIndex)) return NOOP;
+      markPresetIndexDirty();
+      return { ...pr(), scopes: [] };
+    }
+    case "preset/setCats": {
+      if (op.l1 !== void 0) state.l1Cat = op.l1;
+      if (op.l2 !== void 0) state.l2Cat = op.l2;
+      normalizeCategories();
+      return {
+        changed: true,
+        undoable: false,
+        persistNode: false,
+        persistPresets: true,
+        persistSettings: false,
+        scopes: ["presets"]
+      };
+    }
+    case "preset/addL1": {
+      if (!op.name || state.presets.children[op.name]) return NOOP;
+      state.presets.children[op.name] = { items: [], children: {} };
+      state.l1Cat = op.name;
+      state.l2Cat = "";
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "preset/addL2": {
+      const l1 = state.presets.children[state.l1Cat];
+      if (!l1 || !op.name || l1.children[op.name]) return NOOP;
+      l1.children[op.name] = { name: op.name, items: [], color: op.color };
+      state.l2Cat = op.name;
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "preset/renameL1": {
+      if (!op.newName || op.newName === op.oldName || state.presets.children[op.newName]) return NOOP;
+      state.presets.children[op.newName] = state.presets.children[op.oldName];
+      delete state.presets.children[op.oldName];
+      if (state.l1Cat === op.oldName) state.l1Cat = op.newName;
+      return pr();
+    }
+    case "preset/renameL2": {
+      const l1 = state.presets.children[state.l1Cat];
+      if (!l1 || !op.newName || l1.children[op.newName]) return NOOP;
+      const cat = l1.children[op.oldName];
+      if (!cat) return NOOP;
+      cat.name = op.newName;
+      l1.children[op.newName] = cat;
+      delete l1.children[op.oldName];
+      if (state.l2Cat === op.oldName) state.l2Cat = op.newName;
+      return pr();
+    }
+    case "preset/setL2Color": {
+      const l1 = state.presets.children[state.l1Cat];
+      const l2 = l1?.children[op.name];
+      if (!l2 || !op.color || l2.color === op.color) return NOOP;
+      l2.color = op.color;
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "preset/deleteL1": {
+      delete state.presets.children[op.name];
+      normalizeCategories();
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "preset/deleteL2": {
+      const l1 = state.presets.children[state.l1Cat];
+      if (!l1) return NOOP;
+      delete l1.children[op.name];
+      normalizeCategories();
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "preset/replace": {
+      state.presets = op.presets;
+      if (op.l1Cat) state.l1Cat = op.l1Cat;
+      if (op.l2Cat) state.l2Cat = op.l2Cat;
+      normalizeCategories();
+      markPresetIndexDirty();
+      return pr();
+    }
+    case "settings/patch": {
+      Object.assign(state.settings, op.patch);
+      return {
+        changed: true,
+        undoable: false,
+        persistNode: false,
+        persistPresets: false,
+        persistSettings: true,
+        scopes: ["settings", "workspace"]
+      };
+    }
+    case "settings/customApi": {
+      Object.assign(state.settings.customApi, op.patch);
+      return {
+        changed: true,
+        undoable: false,
+        persistNode: false,
+        persistPresets: false,
+        persistSettings: true,
+        scopes: ["settings"]
+      };
+    }
+    default:
+      return NOOP;
+  }
+}
+function resolvePresetItems(l1Name, l2Name) {
+  const l1n = l1Name || state.l1Cat;
+  const l2n = l2Name || state.l2Cat;
+  const l1 = state.presets.children[l1n];
+  if (!l1) return null;
+  const l2 = l1.children[l2n];
+  return l2?.items ?? null;
+}
+
+// src/app/dragGate.ts
+var _dragging = false;
+var _queued = false;
+var _listeners = /* @__PURE__ */ new Set();
+function isDragging() {
+  return _dragging;
+}
+function beginDrag() {
+  _dragging = true;
+  window.__pb_dragging = true;
+}
+var _ending = false;
+function endDrag() {
+  if (_ending) return;
+  _ending = true;
+  try {
+    _dragging = false;
+    window.__pb_dragging = false;
+    if (_queued) {
+      _queued = false;
+      for (const fn of _listeners) fn();
+    }
+  } finally {
+    _ending = false;
+  }
+}
+function onDragIdleFlush(fn) {
+  _listeners.add(fn);
+  return () => _listeners.delete(fn);
+}
+function queueRenderAfterDrag() {
+  _queued = true;
+  if (!_dragging) {
+    for (const fn of _listeners) fn();
+    _queued = false;
+  }
+}
+
+// src/app/undo.ts
+init_types();
+init_state();
+var undoStack = [];
+var redoStack = [];
+var onRestore = null;
+function setUndoRestoreHandler(fn) {
+  onRestore = fn;
+}
+function clearUndo() {
+  undoStack = [];
+  redoStack = [];
+}
+function recordUndoSnapshot(snapshot) {
+  undoStack.push(snapshot);
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  redoStack = [];
+}
+function undo() {
+  if (undoStack.length === 0) return;
+  redoStack.push(cloneUndoSnapshot());
+  restoreUndoSnapshot(undoStack.pop());
+  onRestore?.();
+}
+function redo() {
+  if (redoStack.length === 0) return;
+  const next = redoStack.pop();
+  undoStack.push(cloneUndoSnapshot());
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  restoreUndoSnapshot(next);
+  onRestore?.();
+}
+function canUndo() {
+  return undoStack.length > 0;
+}
+function canRedo() {
+  return redoStack.length > 0;
+}
+function getUndoDepth() {
+  return undoStack.length;
+}
+function getRedoDepth() {
+  return redoStack.length;
+}
+
+// src/app/dispatch.ts
+init_state();
+var _render = null;
+var _pendingScopes = /* @__PURE__ */ new Set();
+var _persistNodeTimer = null;
+var _gateHooked = false;
+function setRenderer(fn) {
+  _render = fn;
+  if (!_gateHooked) {
+    _gateHooked = true;
+    onDragIdleFlush(() => flushPendingRender());
+  }
+}
+function flushRender() {
+  if (!_render || _pendingScopes.size === 0) return;
+  const scopes = _pendingScopes;
+  _pendingScopes = /* @__PURE__ */ new Set();
+  _render(scopes);
+}
+function flushPendingRender() {
+  _pendingScopes.add("workspace");
+  _pendingScopes.add("presets");
+  _pendingScopes.add("output");
+  flushRender();
+}
+function schedulePersistNode() {
+  if (_persistNodeTimer) clearTimeout(_persistNodeTimer);
+  _persistNodeTimer = setTimeout(() => saveNodeState(), 200);
+}
+function dispatch(op, options) {
+  const captureUndo = !options?.noUndo;
+  const before = captureUndo ? cloneUndoSnapshot() : null;
+  const result = applyOp(op);
+  if (!result.changed) return false;
+  if (result.undoable && before) {
+    recordUndoSnapshot(before);
+  }
+  if (result.persistNode) schedulePersistNode();
+  if (result.persistPresets) savePresetsToLS();
+  if (result.persistSettings) saveSettingsToLS();
+  if (result.scopes.length) {
+    for (const s of result.scopes) _pendingScopes.add(s);
+    if (isDragging()) {
+      queueRenderAfterDrag();
+    } else {
+      queueMicrotask(() => {
+        if (!isDragging()) flushRender();
+        else queueRenderAfterDrag();
+      });
+    }
+  }
+  return true;
+}
+function refreshAll() {
+  _pendingScopes = /* @__PURE__ */ new Set(["all"]);
+  flushRender();
+  saveNodeState();
+  savePresetsToLS();
+}
+
+// src/ui/panel.ts
+init_pipe();
+
+// node_modules/open-props/open-props.min.css
+var open_props_min_default = `:where(html){--font-system-ui:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;--font-transitional:Charter,Bitstream Charter,Sitka Text,Cambria,serif;--font-old-style:Iowan Old Style,Palatino Linotype,URW Palladio L,P052,serif;--font-humanist:Seravek,Gill Sans Nova,Ubuntu,Calibri,DejaVu Sans,source-sans-pro,sans-serif;--font-geometric-humanist:Avenir,Montserrat,Corbel,URW Gothic,source-sans-pro,sans-serif;--font-classical-humanist:Optima,Candara,Noto Sans,source-sans-pro,sans-serif;--font-neo-grotesque:Inter,Roboto,Helvetica Neue,Arial Nova,Nimbus Sans,Arial,sans-serif;--font-monospace-slab-serif:Nimbus Mono PS,Courier New,monospace;--font-monospace-code:Dank Mono,Operator Mono,Inconsolata,Fira Mono,ui-monospace,SF Mono,Monaco,Droid Sans Mono,Source Code Pro,Cascadia Code,Menlo,Consolas,DejaVu Sans Mono,monospace;--font-industrial:Bahnschrift,DIN Alternate,Franklin Gothic Medium,Nimbus Sans Narrow,sans-serif-condensed,sans-serif;--font-rounded-sans:ui-rounded,Hiragino Maru Gothic ProN,Quicksand,Comfortaa,Manjari,Arial Rounded MT,Arial Rounded MT Bold,Calibri,source-sans-pro,sans-serif;--font-slab-serif:Rockwell,Rockwell Nova,Roboto Slab,DejaVu Serif,Sitka Small,serif;--font-antique:Superclarendon,Bookman Old Style,URW Bookman,URW Bookman L,Georgia Pro,Georgia,serif;--font-didone:Didot,Bodoni MT,Noto Serif Display,URW Palladio L,P052,Sylfaen,serif;--font-handwritten:Segoe Print,Bradley Hand,Chilanka,TSCu_Comic,casual,cursive;--font-sans:var(--font-system-ui);--font-serif:ui-serif,serif;--font-mono:var(--font-monospace-code);--font-weight-1:100;--font-weight-2:200;--font-weight-3:300;--font-weight-4:400;--font-weight-5:500;--font-weight-6:600;--font-weight-7:700;--font-weight-8:800;--font-weight-9:900;--font-lineheight-00:.95;--font-lineheight-0:1.1;--font-lineheight-1:1.25;--font-lineheight-2:1.375;--font-lineheight-3:1.5;--font-lineheight-4:1.75;--font-lineheight-5:2;--font-letterspacing-0:-.05em;--font-letterspacing-1:.025em;--font-letterspacing-2:.050em;--font-letterspacing-3:.075em;--font-letterspacing-4:.150em;--font-letterspacing-5:.500em;--font-letterspacing-6:.750em;--font-letterspacing-7:1em;--font-size-00:.5rem;--font-size-0:.75rem;--font-size-1:1rem;--font-size-2:1.1rem;--font-size-3:1.25rem;--font-size-4:1.5rem;--font-size-5:2rem;--font-size-6:2.5rem;--font-size-7:3rem;--font-size-8:3.5rem;--font-size-fluid-0:max(.75rem,min(2vw,1rem));--font-size-fluid-1:max(1rem,min(4vw,1.5rem));--font-size-fluid-2:max(1.5rem,min(6vw,2.5rem));--font-size-fluid-3:max(2rem,min(9vw,3.5rem));--size-000:-.5rem;--size-00:-.25rem;--size-1:.25rem;--size-2:.5rem;--size-3:1rem;--size-4:1.25rem;--size-5:1.5rem;--size-6:1.75rem;--size-7:2rem;--size-8:3rem;--size-9:4rem;--size-10:5rem;--size-11:7.5rem;--size-12:10rem;--size-13:15rem;--size-14:20rem;--size-15:30rem;--size-px-000:-8px;--size-px-00:-4px;--size-px-1:4px;--size-px-2:8px;--size-px-3:16px;--size-px-4:20px;--size-px-5:24px;--size-px-6:28px;--size-px-7:32px;--size-px-8:48px;--size-px-9:64px;--size-px-10:80px;--size-px-11:120px;--size-px-12:160px;--size-px-13:240px;--size-px-14:320px;--size-px-15:480px;--size-fluid-1:max(.5rem,min(1vw,1rem));--size-fluid-2:max(1rem,min(2vw,1.5rem));--size-fluid-3:max(1.5rem,min(3vw,2rem));--size-fluid-4:max(2rem,min(4vw,3rem));--size-fluid-5:max(4rem,min(5vw,5rem));--size-fluid-6:max(5rem,min(7vw,7.5rem));--size-fluid-7:max(7.5rem,min(10vw,10rem));--size-fluid-8:max(10rem,min(20vw,15rem));--size-fluid-9:max(15rem,min(30vw,20rem));--size-fluid-10:max(20rem,min(40vw,30rem));--size-content-1:20ch;--size-content-2:45ch;--size-content-3:60ch;--size-header-1:20ch;--size-header-2:25ch;--size-header-3:35ch;--size-xxs:240px;--size-xs:360px;--size-sm:480px;--size-md:768px;--size-lg:1024px;--size-xl:1440px;--size-xxl:1920px;--size-relative-000:-.5ch;--size-relative-00:-.25ch;--size-relative-1:.25ch;--size-relative-2:.5ch;--size-relative-3:1ch;--size-relative-4:1.25ch;--size-relative-5:1.5ch;--size-relative-6:1.75ch;--size-relative-7:2ch;--size-relative-8:3ch;--size-relative-9:4ch;--size-relative-10:5ch;--size-relative-11:7.5ch;--size-relative-12:10ch;--size-relative-13:15ch;--size-relative-14:20ch;--size-relative-15:30ch;--ease-1:cubic-bezier(.25,0,.5,1);--ease-2:cubic-bezier(.25,0,.4,1);--ease-3:cubic-bezier(.25,0,.3,1);--ease-4:cubic-bezier(.25,0,.2,1);--ease-5:cubic-bezier(.25,0,.1,1);--ease-in-1:cubic-bezier(.25,0,1,1);--ease-in-2:cubic-bezier(.50,0,1,1);--ease-in-3:cubic-bezier(.70,0,1,1);--ease-in-4:cubic-bezier(.90,0,1,1);--ease-in-5:cubic-bezier(1,0,1,1);--ease-out-1:cubic-bezier(0,0,.75,1);--ease-out-2:cubic-bezier(0,0,.50,1);--ease-out-3:cubic-bezier(0,0,.3,1);--ease-out-4:cubic-bezier(0,0,.1,1);--ease-out-5:cubic-bezier(0,0,0,1);--ease-in-out-1:cubic-bezier(.1,0,.9,1);--ease-in-out-2:cubic-bezier(.3,0,.7,1);--ease-in-out-3:cubic-bezier(.5,0,.5,1);--ease-in-out-4:cubic-bezier(.7,0,.3,1);--ease-in-out-5:cubic-bezier(.9,0,.1,1);--ease-elastic-out-1:cubic-bezier(.5,.75,.75,1.25);--ease-elastic-out-2:cubic-bezier(.5,1,.75,1.25);--ease-elastic-out-3:cubic-bezier(.5,1.25,.75,1.25);--ease-elastic-out-4:cubic-bezier(.5,1.5,.75,1.25);--ease-elastic-out-5:cubic-bezier(.5,1.75,.75,1.25);--ease-elastic-in-1:cubic-bezier(.5,-0.25,.75,1);--ease-elastic-in-2:cubic-bezier(.5,-0.50,.75,1);--ease-elastic-in-3:cubic-bezier(.5,-0.75,.75,1);--ease-elastic-in-4:cubic-bezier(.5,-1.00,.75,1);--ease-elastic-in-5:cubic-bezier(.5,-1.25,.75,1);--ease-elastic-in-out-1:cubic-bezier(.5,-.1,.1,1.5);--ease-elastic-in-out-2:cubic-bezier(.5,-.3,.1,1.5);--ease-elastic-in-out-3:cubic-bezier(.5,-.5,.1,1.5);--ease-elastic-in-out-4:cubic-bezier(.5,-.7,.1,1.5);--ease-elastic-in-out-5:cubic-bezier(.5,-.9,.1,1.5);--ease-step-1:steps(2);--ease-step-2:steps(3);--ease-step-3:steps(4);--ease-step-4:steps(7);--ease-step-5:steps(10);--ease-elastic-1:var(--ease-elastic-out-1);--ease-elastic-2:var(--ease-elastic-out-2);--ease-elastic-3:var(--ease-elastic-out-3);--ease-elastic-4:var(--ease-elastic-out-4);--ease-elastic-5:var(--ease-elastic-out-5);--ease-squish-1:var(--ease-elastic-in-out-1);--ease-squish-2:var(--ease-elastic-in-out-2);--ease-squish-3:var(--ease-elastic-in-out-3);--ease-squish-4:var(--ease-elastic-in-out-4);--ease-squish-5:var(--ease-elastic-in-out-5);--ease-spring-1:linear(0,0.006,0.025 2.8%,0.101 6.1%,0.539 18.9%,0.721 25.3%,0.849 31.5%,0.937 38.1%,0.968 41.8%,0.991 45.7%,1.006 50.1%,1.015 55%,1.017 63.9%,1.001);--ease-spring-2:linear(0,0.007,0.029 2.2%,0.118 4.7%,0.625 14.4%,0.826 19%,0.902,0.962,1.008 26.1%,1.041 28.7%,1.064 32.1%,1.07 36%,1.061 40.5%,1.015 53.4%,0.999 61.6%,0.995 71.2%,1);--ease-spring-3:linear(0,0.009,0.035 2.1%,0.141 4.4%,0.723 12.9%,0.938 16.7%,1.017,1.077,1.121,1.149 24.3%,1.159,1.163,1.161,1.154 29.9%,1.129 32.8%,1.051 39.6%,1.017 43.1%,0.991,0.977 51%,0.974 53.8%,0.975 57.1%,0.997 69.8%,1.003 76.9%,1);--ease-spring-4:linear(0,0.009,0.037 1.7%,0.153 3.6%,0.776 10.3%,1.001,1.142 16%,1.185,1.209 19%,1.215 19.9% 20.8%,1.199,1.165 25%,1.056 30.3%,1.008 33%,0.973,0.955 39.2%,0.953 41.1%,0.957 43.3%,0.998 53.3%,1.009 59.1% 63.7%,0.998 78.9%,1);--ease-spring-5:linear(0,0.01,0.04 1.6%,0.161 3.3%,0.816 9.4%,1.046,1.189 14.4%,1.231,1.254 17%,1.259,1.257 18.6%,1.236,1.194 22.3%,1.057 27%,0.999 29.4%,0.955 32.1%,0.942,0.935 34.9%,0.933,0.939 38.4%,1 47.3%,1.011,1.017 52.6%,1.016 56.4%,1 65.2%,0.996 70.2%,1.001 87.2%,1);--ease-bounce-1:linear(0,0.004,0.016,0.035,0.063,0.098,0.141,0.191,0.25,0.316,0.391 36.8%,0.563,0.766,1 58.8%,0.946,0.908 69.1%,0.895,0.885,0.879,0.878,0.879,0.885,0.895,0.908 89.7%,0.946,1);--ease-bounce-2:linear(0,0.004,0.016,0.035,0.063,0.098,0.141 15.1%,0.25,0.391,0.562,0.765,1,0.892 45.2%,0.849,0.815,0.788,0.769,0.757,0.753,0.757,0.769,0.788,0.815,0.85,0.892 75.2%,1 80.2%,0.973,0.954,0.943,0.939,0.943,0.954,0.973,1);--ease-bounce-3:linear(0,0.004,0.016,0.035,0.062,0.098,0.141 11.4%,0.25,0.39,0.562,0.764,1 30.3%,0.847 34.8%,0.787,0.737,0.699,0.672,0.655,0.65,0.656,0.672,0.699,0.738,0.787,0.847 61.7%,1 66.2%,0.946,0.908,0.885 74.2%,0.879,0.878,0.879,0.885 79.5%,0.908,0.946,1 87.4%,0.981,0.968,0.96,0.957,0.96,0.968,0.981,1);--ease-bounce-4:linear(0,0.004,0.016 3%,0.062,0.141,0.25,0.391,0.562 18.2%,1 24.3%,0.81,0.676 32.3%,0.629,0.595,0.575,0.568,0.575,0.595,0.629,0.676 48.2%,0.811,1 56.2%,0.918,0.86,0.825,0.814,0.825,0.86,0.918,1 77.2%,0.94 80.6%,0.925,0.92,0.925,0.94 87.5%,1 90.9%,0.974,0.965,0.974,1);--ease-bounce-5:linear(0,0.004,0.016 2.5%,0.063,0.141,0.25 10.1%,0.562,1 20.2%,0.783,0.627,0.534 30.9%,0.511,0.503,0.511,0.534 38%,0.627,0.782,1 48.7%,0.892,0.815,0.769 56.3%,0.757,0.753,0.757,0.769 61.3%,0.815,0.892,1 68.8%,0.908 72.4%,0.885,0.878,0.885,0.908 79.4%,1 83%,0.954 85.5%,0.943,0.939,0.943,0.954 90.5%,1 93%,0.977,0.97,0.977,1);--ease-circ-in:cubic-bezier(.6,.04,.98,.335);--ease-circ-in-out:cubic-bezier(.785,.135,.15,.86);--ease-circ-out:cubic-bezier(.075,.82,.165,1);--ease-cubic-in:cubic-bezier(.55,.055,.675,.19);--ease-cubic-in-out:cubic-bezier(.645,.045,.355,1);--ease-cubic-out:cubic-bezier(.215,.61,.355,1);--ease-expo-in:cubic-bezier(.95,.05,.795,.035);--ease-expo-in-out:cubic-bezier(1,0,0,1);--ease-expo-out:cubic-bezier(.19,1,.22,1);--ease-quad-in:cubic-bezier(.55,.085,.68,.53);--ease-quad-in-out:cubic-bezier(.455,.03,.515,.955);--ease-quad-out:cubic-bezier(.25,.46,.45,.94);--ease-quart-in:cubic-bezier(.895,.03,.685,.22);--ease-quart-in-out:cubic-bezier(.77,0,.175,1);--ease-quart-out:cubic-bezier(.165,.84,.44,1);--ease-quint-in:cubic-bezier(.755,.05,.855,.06);--ease-quint-in-out:cubic-bezier(.86,0,.07,1);--ease-quint-out:cubic-bezier(.23,1,.32,1);--ease-sine-in:cubic-bezier(.47,0,.745,.715);--ease-sine-in-out:cubic-bezier(.445,.05,.55,.95);--ease-sine-out:cubic-bezier(.39,.575,.565,1);--layer-1:1;--layer-2:2;--layer-3:3;--layer-4:4;--layer-5:5;--layer-important:2147483647;--shadow-color:220 3% 15%;--shadow-strength:1%;--shadow-strength-3:calc(var(--shadow-strength) + 2%);--shadow-strength-4:calc(var(--shadow-strength) + 3%);--shadow-strength-5:calc(var(--shadow-strength) + 4%);--shadow-strength-6:calc(var(--shadow-strength) + 5%);--shadow-strength-7:calc(var(--shadow-strength) + 6%);--shadow-strength-8:calc(var(--shadow-strength) + 7%);--shadow-strength-10:calc(var(--shadow-strength) + 9%);--inner-shadow-highlight:inset 0 -.5px 0 0 #fff,inset 0 .5px 0 0 rgba(0,0,0,.067);--shadow-1:0 1px 2px -1px hsl(var(--shadow-color)/var(--shadow-strength-10));--shadow-2:0 3px 5px -2px hsl(var(--shadow-color)/var(--shadow-strength-4)),0 7px 14px -5px hsl(var(--shadow-color)/var(--shadow-strength-6));--shadow-3:0 -1px 3px 0 hsl(var(--shadow-color)/var(--shadow-strength-3)),0 1px 2px -5px hsl(var(--shadow-color)/var(--shadow-strength-3)),0 2px 5px -5px hsl(var(--shadow-color)/var(--shadow-strength-5)),0 4px 12px -5px hsl(var(--shadow-color)/var(--shadow-strength-6)),0 12px 15px -5px hsl(var(--shadow-color)/var(--shadow-strength-8));--shadow-4:0 -2px 5px 0 hsl(var(--shadow-color)/var(--shadow-strength-3)),0 1px 1px -2px hsl(var(--shadow-color)/var(--shadow-strength-4)),0 2px 2px -2px hsl(var(--shadow-color)/var(--shadow-strength-4)),0 5px 5px -2px hsl(var(--shadow-color)/var(--shadow-strength-5)),0 9px 9px -2px hsl(var(--shadow-color)/var(--shadow-strength-6)),0 16px 16px -2px hsl(var(--shadow-color)/var(--shadow-strength-7));--shadow-5:0 -1px 2px 0 hsl(var(--shadow-color)/var(--shadow-strength-3)),0 2px 1px -2px hsl(var(--shadow-color)/var(--shadow-strength-4)),0 5px 5px -2px hsl(var(--shadow-color)/var(--shadow-strength-4)),0 10px 10px -2px hsl(var(--shadow-color)/var(--shadow-strength-5)),0 20px 20px -2px hsl(var(--shadow-color)/var(--shadow-strength-6)),0 40px 40px -2px hsl(var(--shadow-color)/var(--shadow-strength-8));--shadow-6:0 -1px 2px 0 hsl(var(--shadow-color)/var(--shadow-strength-3)),0 3px 2px -2px hsl(var(--shadow-color)/var(--shadow-strength-4)),0 7px 5px -2px hsl(var(--shadow-color)/var(--shadow-strength-4)),0 12px 10px -2px hsl(var(--shadow-color)/var(--shadow-strength-5)),0 22px 18px -2px hsl(var(--shadow-color)/var(--shadow-strength-6)),0 41px 33px -2px hsl(var(--shadow-color)/var(--shadow-strength-7)),0 100px 80px -2px hsl(var(--shadow-color)/var(--shadow-strength-8));--inner-shadow-0:inset 0 0 0 1px hsl(var(--shadow-color)/var(--shadow-strength-10));--inner-shadow-1:inset 0 1px 2px 0 hsl(var(--shadow-color)/var(--shadow-strength-10)),var(--inner-shadow-highlight);--inner-shadow-2:inset 0 1px 4px 0 hsl(var(--shadow-color)/var(--shadow-strength-10)),var(--inner-shadow-highlight);--inner-shadow-3:inset 0 2px 8px 0 hsl(var(--shadow-color)/var(--shadow-strength-10)),var(--inner-shadow-highlight);--inner-shadow-4:inset 0 2px 14px 0 hsl(var(--shadow-color)/var(--shadow-strength-10)),var(--inner-shadow-highlight);--ratio-square:1;--ratio-landscape:4/3;--ratio-portrait:3/4;--ratio-widescreen:16/9;--ratio-ultrawide:18/5;--ratio-golden:1.6180/1;--gray-0:#f8f9fa;--gray-1:#f1f3f5;--gray-2:#e9ecef;--gray-3:#dee2e6;--gray-4:#ced4da;--gray-5:#adb5bd;--gray-6:#868e96;--gray-7:#495057;--gray-8:#343a40;--gray-9:#212529;--gray-10:#16191d;--gray-11:#0d0f12;--gray-12:#030507;--stone-0:#f8fafb;--stone-1:#f2f4f6;--stone-2:#ebedef;--stone-3:#e0e4e5;--stone-4:#d1d6d8;--stone-5:#b1b6b9;--stone-6:#979b9d;--stone-7:#7e8282;--stone-8:#666968;--stone-9:#50514f;--stone-10:#3a3a37;--stone-11:#252521;--stone-12:#121210;--red-0:#fff5f5;--red-1:#ffe3e3;--red-2:#ffc9c9;--red-3:#ffa8a8;--red-4:#ff8787;--red-5:#ff6b6b;--red-6:#fa5252;--red-7:#f03e3e;--red-8:#e03131;--red-9:#c92a2a;--red-10:#b02525;--red-11:#962020;--red-12:#7d1a1a;--pink-0:#fff0f6;--pink-1:#ffdeeb;--pink-2:#fcc2d7;--pink-3:#faa2c1;--pink-4:#f783ac;--pink-5:#f06595;--pink-6:#e64980;--pink-7:#d6336c;--pink-8:#c2255c;--pink-9:#a61e4d;--pink-10:#8c1941;--pink-11:#731536;--pink-12:#59102a;--purple-0:#f8f0fc;--purple-1:#f3d9fa;--purple-2:#eebefa;--purple-3:#e599f7;--purple-4:#da77f2;--purple-5:#cc5de8;--purple-6:#be4bdb;--purple-7:#ae3ec9;--purple-8:#9c36b5;--purple-9:#862e9c;--purple-10:#702682;--purple-11:#5a1e69;--purple-12:#44174f;--violet-0:#f3f0ff;--violet-1:#e5dbff;--violet-2:#d0bfff;--violet-3:#b197fc;--violet-4:#9775fa;--violet-5:#845ef7;--violet-6:#7950f2;--violet-7:#7048e8;--violet-8:#6741d9;--violet-9:#5f3dc4;--violet-10:#5235ab;--violet-11:#462d91;--violet-12:#3a2578;--indigo-0:#edf2ff;--indigo-1:#dbe4ff;--indigo-2:#bac8ff;--indigo-3:#91a7ff;--indigo-4:#748ffc;--indigo-5:#5c7cfa;--indigo-6:#4c6ef5;--indigo-7:#4263eb;--indigo-8:#3b5bdb;--indigo-9:#364fc7;--indigo-10:#2f44ad;--indigo-11:#283a94;--indigo-12:#21307a;--blue-0:#e7f5ff;--blue-1:#d0ebff;--blue-2:#a5d8ff;--blue-3:#74c0fc;--blue-4:#4dabf7;--blue-5:#339af0;--blue-6:#228be6;--blue-7:#1c7ed6;--blue-8:#1971c2;--blue-9:#1864ab;--blue-10:#145591;--blue-11:#114678;--blue-12:#0d375e;--cyan-0:#e3fafc;--cyan-1:#c5f6fa;--cyan-2:#99e9f2;--cyan-3:#66d9e8;--cyan-4:#3bc9db;--cyan-5:#22b8cf;--cyan-6:#15aabf;--cyan-7:#1098ad;--cyan-8:#0c8599;--cyan-9:#0b7285;--cyan-10:#095c6b;--cyan-11:#074652;--cyan-12:#053038;--teal-0:#e6fcf5;--teal-1:#c3fae8;--teal-2:#96f2d7;--teal-3:#63e6be;--teal-4:#38d9a9;--teal-5:#20c997;--teal-6:#12b886;--teal-7:#0ca678;--teal-8:#099268;--teal-9:#087f5b;--teal-10:#066649;--teal-11:#054d37;--teal-12:#033325;--green-0:#ebfbee;--green-1:#d3f9d8;--green-2:#b2f2bb;--green-3:#8ce99a;--green-4:#69db7c;--green-5:#51cf66;--green-6:#40c057;--green-7:#37b24d;--green-8:#2f9e44;--green-9:#2b8a3e;--green-10:#237032;--green-11:#1b5727;--green-12:#133d1b;--lime-0:#f4fce3;--lime-1:#e9fac8;--lime-2:#d8f5a2;--lime-3:#c0eb75;--lime-4:#a9e34b;--lime-5:#94d82d;--lime-6:#82c91e;--lime-7:#74b816;--lime-8:#66a80f;--lime-9:#5c940d;--lime-10:#4c7a0b;--lime-11:#3c6109;--lime-12:#2c4706;--yellow-0:#fff9db;--yellow-1:#fff3bf;--yellow-2:#ffec99;--yellow-3:#ffe066;--yellow-4:#ffd43b;--yellow-5:#fcc419;--yellow-6:#fab005;--yellow-7:#f59f00;--yellow-8:#f08c00;--yellow-9:#e67700;--yellow-10:#b35c00;--yellow-11:#804200;--yellow-12:#663500;--orange-0:#fff4e6;--orange-1:#ffe8cc;--orange-2:#ffd8a8;--orange-3:#ffc078;--orange-4:#ffa94d;--orange-5:#ff922b;--orange-6:#fd7e14;--orange-7:#f76707;--orange-8:#e8590c;--orange-9:#d9480f;--orange-10:#bf400d;--orange-11:#99330b;--orange-12:#802b09;--choco-0:#fff8dc;--choco-1:#fce1bc;--choco-2:#f7ca9e;--choco-3:#f1b280;--choco-4:#e99b62;--choco-5:#df8545;--choco-6:#d46e25;--choco-7:#bd5f1b;--choco-8:#a45117;--choco-9:#8a4513;--choco-10:#703a13;--choco-11:#572f12;--choco-12:#3d210d;--brown-0:#faf4eb;--brown-1:#ede0d1;--brown-2:#e0cab7;--brown-3:#d3b79e;--brown-4:#c5a285;--brown-5:#b78f6d;--brown-6:#a87c56;--brown-7:#956b47;--brown-8:#825b3a;--brown-9:#6f4b2d;--brown-10:#5e3a21;--brown-11:#4e2b15;--brown-12:#422412;--sand-0:#f8fafb;--sand-1:#e6e4dc;--sand-2:#d5cfbd;--sand-3:#c2b9a0;--sand-4:#aea58c;--sand-5:#9a9178;--sand-6:#867c65;--sand-7:#736a53;--sand-8:#5f5746;--sand-9:#4b4639;--sand-10:#38352d;--sand-11:#252521;--sand-12:#121210;--camo-0:#f9fbe7;--camo-1:#e8ed9c;--camo-2:#d2df4e;--camo-3:#c2ce34;--camo-4:#b5bb2e;--camo-5:#a7a827;--camo-6:#999621;--camo-7:#8c851c;--camo-8:#7e7416;--camo-9:#6d6414;--camo-10:#5d5411;--camo-11:#4d460e;--camo-12:#36300a;--jungle-0:#ecfeb0;--jungle-1:#def39a;--jungle-2:#d0e884;--jungle-3:#c2dd6e;--jungle-4:#b5d15b;--jungle-5:#a8c648;--jungle-6:#9bbb36;--jungle-7:#8fb024;--jungle-8:#84a513;--jungle-9:#7a9908;--jungle-10:#658006;--jungle-11:#516605;--jungle-12:#3d4d04;--gradient-space: ;--gradient-1:linear-gradient(to bottom right var(--gradient-space),#1f005c,#5b0060,#870160,#ac255e,#ca485c,#e16b5c,#f39060,#ffb56b);--gradient-2:linear-gradient(to bottom right var(--gradient-space),#48005c,#8300e2,#a269ff);--gradient-3:radial-gradient(circle at top right var(--gradient-space),#0ff,rgba(0,255,255,0)),radial-gradient(circle at bottom left var(--gradient-space),#ff1492,rgba(255,20,146,0));--gradient-4:linear-gradient(to bottom right var(--gradient-space),#00f5a0,#00d9f5);--gradient-5:conic-gradient(from -270deg at 75% 110% var(--gradient-space),#f0f,#fffaf0);--gradient-6:conic-gradient(from -90deg at top left var(--gradient-space),#000,#fff);--gradient-7:linear-gradient(to bottom right var(--gradient-space),#72c6ef,#004e8f);--gradient-8:conic-gradient(from 90deg at 50% 0% var(--gradient-space),#111,50%,#222,#111);--gradient-9:conic-gradient(from .5turn at bottom center var(--gradient-space),#add8e6,#fff);--gradient-10:conic-gradient(from 90deg at 40% -25% var(--gradient-space),gold,#f79d03,#ee6907,#e6390a,#de0d0d,#d61039,#cf1261,#c71585,#cf1261,#d61039,#de0d0d,#ee6907,#f79d03,gold,gold,gold);--gradient-11:conic-gradient(at bottom left var(--gradient-space),#ff1493,cyan);--gradient-12:conic-gradient(from 90deg at 25% -10% var(--gradient-space),#ff4500,#d3f340,#7bee85,#afeeee,#7bee85);--gradient-13:radial-gradient(circle at 50% 200% var(--gradient-space),#000142,#3b0083,#b300c3,#ff059f,#ff4661,#ffad86,#fff3c7);--gradient-14:conic-gradient(at top right var(--gradient-space),lime,cyan);--gradient-15:linear-gradient(to bottom right var(--gradient-space),#c7d2fe,#fecaca,#fef3c7);--gradient-16:radial-gradient(circle at 50% -250% var(--gradient-space),#374151,#111827,#000);--gradient-17:conic-gradient(from -90deg at 50% -25% var(--gradient-space),blue,#8a2be2);--gradient-18:linear-gradient(0deg var(--gradient-space),rgba(255,0,0,.8),rgba(255,0,0,0) 75%),linear-gradient(60deg var(--gradient-space),rgba(255,255,0,.8),rgba(255,255,0,0) 75%),linear-gradient(120deg var(--gradient-space),rgba(0,255,0,.8),rgba(0,255,0,0) 75%),linear-gradient(180deg var(--gradient-space),rgba(0,255,255,.8),rgba(0,255,255,0) 75%),linear-gradient(240deg var(--gradient-space),rgba(0,0,255,.8),rgba(0,0,255,0) 75%),linear-gradient(300deg var(--gradient-space),rgba(255,0,255,.8),rgba(255,0,255,0) 75%);--gradient-19:linear-gradient(to bottom right var(--gradient-space),#ffe259,#ffa751);--gradient-20:conic-gradient(from -135deg at -10% center var(--gradient-space),orange,#ff7715,#ff522a,#ff3f47,#ff5482,#ff69b4);--gradient-21:conic-gradient(from -90deg at 25% 115% var(--gradient-space),red,#f06,#f0c,#c0f,#60f,#00f,#00f,#00f,#00f);--gradient-22:linear-gradient(to bottom right var(--gradient-space),#acb6e5,#86fde8);--gradient-23:linear-gradient(to bottom right var(--gradient-space),#536976,#292e49);--gradient-24:conic-gradient(from .5turn at 0% 0% var(--gradient-space),#00c476,10%,#82b0ff,90%,#00c476);--gradient-25:conic-gradient(at 125% 50% var(--gradient-space),#b78cf7,#ff7c94,#ffcf0d,#ff7c94,#b78cf7);--gradient-26:linear-gradient(to bottom right var(--gradient-space),#9796f0,#fbc7d4);--gradient-27:conic-gradient(from .5turn at bottom left var(--gradient-space),#ff1493,#639);--gradient-28:conic-gradient(from -90deg at 50% 105% var(--gradient-space),#fff,orchid);--gradient-29:radial-gradient(circle at top right var(--gradient-space),#bfb3ff,rgba(191,179,255,0)),radial-gradient(circle at bottom left var(--gradient-space),#86acf9,rgba(134,172,249,0));--gradient-30:radial-gradient(circle at top right var(--gradient-space),#00ff80,rgba(0,255,128,0)),radial-gradient(circle at bottom left var(--gradient-space),#adffd6,rgba(173,255,214,0));--noise-1:url("data:image/svg+xml;charset=utf-8,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.005' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");--noise-2:url("data:image/svg+xml;charset=utf-8,%3Csvg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.05' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");--noise-3:url("data:image/svg+xml;charset=utf-8,%3Csvg viewBox='0 0 1024 1024' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.25' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");--noise-4:url("data:image/svg+xml;charset=utf-8,%3Csvg viewBox='0 0 2056 2056' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");--noise-5:url("data:image/svg+xml;charset=utf-8,%3Csvg viewBox='0 0 2056 2056' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");--noise-filter-1:contrast(300%) brightness(100%);--noise-filter-2:contrast(200%) brightness(150%);--noise-filter-3:contrast(200%) brightness(250%);--noise-filter-4:contrast(200%) brightness(500%);--noise-filter-5:contrast(200%) brightness(1000%);--animation-fade-in:fade-in .5s var(--ease-3);--animation-fade-in-bloom:fade-in-bloom 2s var(--ease-3);--animation-fade-out:fade-out .5s var(--ease-3);--animation-fade-out-bloom:fade-out-bloom 2s var(--ease-3);--animation-scale-up:scale-up .5s var(--ease-3);--animation-scale-down:scale-down .5s var(--ease-3);--animation-slide-out-up:slide-out-up .5s var(--ease-3);--animation-slide-out-down:slide-out-down .5s var(--ease-3);--animation-slide-out-right:slide-out-right .5s var(--ease-3);--animation-slide-out-left:slide-out-left .5s var(--ease-3);--animation-slide-in-up:slide-in-up .5s var(--ease-3);--animation-slide-in-down:slide-in-down .5s var(--ease-3);--animation-slide-in-right:slide-in-right .5s var(--ease-3);--animation-slide-in-left:slide-in-left .5s var(--ease-3);--animation-shake-x:shake-x .75s var(--ease-out-5);--animation-shake-y:shake-y .75s var(--ease-out-5);--animation-shake-z:shake-z 1s var(--ease-in-out-3);--animation-spin:spin 2s linear infinite;--animation-ping:ping 5s var(--ease-out-3) infinite;--animation-blink:blink 1s var(--ease-out-3) infinite;--animation-float:float 3s var(--ease-in-out-3) infinite;--animation-bounce:bounce 2s var(--ease-squish-2) infinite;--animation-pulse:pulse 2s var(--ease-out-3) infinite;--border-size-1:1px;--border-size-2:2px;--border-size-3:5px;--border-size-4:10px;--border-size-5:25px;--radius-1:2px;--radius-2:5px;--radius-3:1rem;--radius-4:2rem;--radius-5:4rem;--radius-6:8rem;--radius-drawn-1:255px 15px 225px 15px/15px 225px 15px 255px;--radius-drawn-2:125px 10px 20px 185px/25px 205px 205px 25px;--radius-drawn-3:15px 255px 15px 225px/225px 15px 255px 15px;--radius-drawn-4:15px 25px 155px 25px/225px 150px 25px 115px;--radius-drawn-5:250px 25px 15px 20px/15px 80px 105px 115px;--radius-drawn-6:28px 100px 20px 15px/150px 30px 205px 225px;--radius-round:1e5px;--radius-blob-1:30% 70% 70% 30%/53% 30% 70% 47%;--radius-blob-2:53% 47% 34% 66%/63% 46% 54% 37%;--radius-blob-3:37% 63% 56% 44%/49% 56% 44% 51%;--radius-blob-4:63% 37% 37% 63%/43% 37% 63% 57%;--radius-blob-5:49% 51% 48% 52%/57% 44% 56% 43%;--radius-conditional-1:clamp(0px,calc(100vw - 100%) * 1e5,var(--radius-1));--radius-conditional-2:clamp(0px,calc(100vw - 100%) * 1e5,var(--radius-2));--radius-conditional-3:clamp(0px,calc(100vw - 100%) * 1e5,var(--radius-3));--radius-conditional-4:clamp(0px,calc(100vw - 100%) * 1e5,var(--radius-4));--radius-conditional-5:clamp(0px,calc(100vw - 100%) * 1e5,var(--radius-5));--radius-conditional-6:clamp(0px,calc(100vw - 100%) * 1e5,var(--radius-6));--palette-hue:250;--palette-hue-rotate-by:0;--palette-chroma:0.15;--color-1:oklch(98% calc(var(--palette-chroma)*0.03) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*0));--color-2:oklch(97% calc(var(--palette-chroma)*0.06) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*1));--color-3:oklch(93% calc(var(--palette-chroma)*0.1) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*2));--color-4:oklch(84% calc(var(--palette-chroma)*0.12) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*3));--color-5:oklch(80% calc(var(--palette-chroma)*0.16) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*4));--color-6:oklch(71% calc(var(--palette-chroma)*0.19) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*5));--color-7:oklch(66% calc(var(--palette-chroma)*0.2) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*6));--color-8:oklch(58% calc(var(--palette-chroma)*0.21) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*7));--color-9:oklch(53% calc(var(--palette-chroma)*0.2) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*8));--color-10:oklch(49% calc(var(--palette-chroma)*0.19) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*9));--color-11:oklch(42% calc(var(--palette-chroma)*0.17) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*10));--color-12:oklch(35% calc(var(--palette-chroma)*0.15) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*11));--color-13:oklch(27% calc(var(--palette-chroma)*0.12) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*12));--color-14:oklch(20% calc(var(--palette-chroma)*0.09) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*13));--color-15:oklch(16% calc(var(--palette-chroma)*0.07) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*14));--color-16:oklch(10% calc(var(--palette-chroma)*0.05) calc(var(--palette-hue) + var(--palette-hue-rotate-by)*15))}@media (prefers-color-scheme:dark){:where(html){--shadow-color:220 40% 2%;--shadow-strength:25%;--inner-shadow-highlight:inset 0 -.5px 0 0 hsla(0,0%,100%,.067),inset 0 .5px 0 0 rgba(0,0,0,.467)}}@supports (background:linear-gradient(to right in oklab,#000,#fff)){:where(html){--gradient-space:in oklab}}@keyframes fade-in{to{opacity:1}}@keyframes fade-in-bloom{0%{filter:brightness(1) blur(20px);opacity:0}10%{filter:brightness(2) blur(10px);opacity:1}to{filter:brightness(1) blur(0);opacity:1}}@keyframes fade-out{to{opacity:0}}@keyframes fade-out-bloom{to{filter:brightness(1) blur(20px);opacity:0}10%{filter:brightness(2) blur(10px);opacity:1}0%{filter:brightness(1) blur(0);opacity:1}}@keyframes scale-up{to{transform:scale(1.25)}}@keyframes scale-down{to{transform:scale(.75)}}@keyframes slide-out-up{to{transform:translateY(-100%)}}@keyframes slide-out-down{to{transform:translateY(100%)}}@keyframes slide-out-right{to{transform:translateX(100%)}}@keyframes slide-out-left{to{transform:translateX(-100%)}}@keyframes slide-in-up{0%{transform:translateY(100%)}}@keyframes slide-in-down{0%{transform:translateY(-100%)}}@keyframes slide-in-right{0%{transform:translateX(-100%)}}@keyframes slide-in-left{0%{transform:translateX(100%)}}@keyframes shake-x{0%,to{transform:translateX(0)}20%{transform:translateX(-5%)}40%{transform:translateX(5%)}60%{transform:translateX(-5%)}80%{transform:translateX(5%)}}@keyframes shake-y{0%,to{transform:translateY(0)}20%{transform:translateY(-5%)}40%{transform:translateY(5%)}60%{transform:translateY(-5%)}80%{transform:translateY(5%)}}@keyframes shake-z{0%,to{transform:rotate(0deg)}20%{transform:rotate(-2deg)}40%{transform:rotate(2deg)}60%{transform:rotate(-2deg)}80%{transform:rotate(2deg)}}@keyframes spin{to{transform:rotate(1turn)}}@keyframes ping{90%,to{opacity:0;transform:scale(2)}}@keyframes blink{0%,to{opacity:1}50%{opacity:.5}}@keyframes float{50%{transform:translateY(-25%)}}@keyframes bounce{25%{transform:translateY(-20%)}40%{transform:translateY(-3%)}0%,60%,to{transform:translateY(0)}}@keyframes pulse{50%{transform:scale(.9)}}@media (prefers-color-scheme:dark){@keyframes fade-in-bloom{0%{filter:brightness(1) blur(20px);opacity:0}10%{filter:brightness(.5) blur(10px);opacity:1}to{filter:brightness(1) blur(0);opacity:1}}}@media (prefers-color-scheme:dark){@keyframes fade-out-bloom{to{filter:brightness(1) blur(20px);opacity:0}10%{filter:brightness(.5) blur(10px);opacity:1}0%{filter:brightness(1) blur(0);opacity:1}}}`;
+
+// src/theme.ts
+var OPEN_PROPS_CSS = open_props_min_default;
+var THEME_CSS = (
+  /*css*/
+  `
+:root {
+  --pb-bg: #0f1115;
+  --pb-panel: #161a22;
+  --pb-panel-2: #1c2230;
+  --pb-border: #262d3b;
+  --pb-text: #e6e9ef;
+  --pb-text-dim: #8a93a6;
+  --pb-accent: #6aa9ff;
+  --pb-danger: #ff6b6b;
+}
+#pbMainPanel {
+  --pb-bg: #0f1115;
+  --pb-panel: #161a22;
+  --pb-panel-2: #1c2230;
+  --pb-border: #262d3b;
+  --pb-text: #e6e9ef;
+  --pb-text-dim: #8a93a6;
+  --pb-accent: #6aa9ff;
+  --pb-danger: #ff6b6b;
+  --pb-chip-bg: #2a3142;
+  --pb-chip-bg-focus: #324063;
+  --pb-radius: 8px;
+  --pb-transition-fast: 120ms ease;
+  --pb-shadow-md: var(--shadow-4);
+  --pb-shadow-lg: var(--shadow-6);
+  --pb-font-sm: 12px;
+}
+/* \u6D45\u8272\uFF1A\u7C73\u9EC4\u6696\u8272\uFF0C\u6574\u4F53\u504F\u6DF1\uFF1Bpanel \u4E0E panel-2 \u5C42\u7EA7\u5DEE\u62C9\u5927 */
+#pbMainPanel.pb-light {
+  --pb-bg: #e4d5b8;           /* \u6700\u6DF1\u5E95 */
+  --pb-panel: #f2e6ce;        /* \u4E3B\u9762\u677F\uFF1A\u660E\u663E\u4EAE\u4E8E\u5E95 */
+  --pb-panel-2: #d6c4a0;      /* \u6B21\u7EA7\u9762\uFF1A\u660E\u663E\u6DF1\u4E8E\u4E3B\u9762\u677F */
+  --pb-border: #c4b08a;
+  --pb-text: #2a2416;
+  --pb-text-dim: #6e6350;
+  --pb-chip-bg: #e0d2b0;
+  --pb-chip-bg-focus: #d4c49a;
+}
+`
+);
+
+// src/ui/panel.ts
+init_dom();
+init_types();
+init_state();
+var PANEL_CSS = (
+  /*css*/
+  `
+#pbMainPanel {
+  position: fixed; z-index: 9999; display: grid;
+  grid-template-rows: auto 1fr auto;
+  width: ${PANEL_DEFAULTS.defaultWidth}px; height: ${PANEL_DEFAULTS.defaultHeight}px;
+  min-width: ${PANEL_DEFAULTS.minWidth}px; min-height: ${PANEL_DEFAULTS.minHeight}px;
+  background: var(--pb-panel); border: 1px solid var(--pb-border); border-radius: var(--pb-radius);
+  color: var(--pb-text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px; line-height: 1.4; box-shadow: var(--pb-shadow-lg);
+  user-select: none; overflow: hidden; resize: both;
+}
+#pbMainPanel.pb-hidden { display: none !important; }
+#pbMainPanel.pb-minimized {
+  height: auto !important;
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: unset !important;
+  resize: none;
+}
+#pbMainPanel.pb-minimized .pb-body,
+#pbMainPanel.pb-minimized .pb-statusbar { display: none; }
+#pbMainPanel.pb-minimized .pb-titlebar {
+  border-radius: var(--pb-radius);
+  border-bottom: none;
+  gap: 8px;
+  padding: 4px 8px;
+  width: max-content;
+}
+#pbMainPanel.pb-minimized .pb-title-name {
+  margin-right: 0; flex-shrink: 0; font-size: 12px;
+}
+#pbMainPanel.pb-minimized .pb-title-actions {
+  gap: 8px; flex-shrink: 0; margin-left: 0;
+}
+#pbMainPanel.pb-minimized .pb-min-grip {
+  opacity: 0.7; margin-right: 0; font-size: 12px; letter-spacing: 1px;
+}
+#pbMainPanel.pb-minimized .pb-btn.primary {
+  height: 22px; padding: 1px 8px; font-size: 11px;
+}
+#pbMainPanel.pb-minimized .pb-minimize {
+  font-size: 15px; padding: 0 4px; min-width: 20px; text-align: center;
+}
+
+.pb-titlebar {
+  display: flex; align-items: center; justify-content: space-between;
+  /* \u7565\u9AD8\u4E8E\u5E95\u680F\uFF08\u5E95\u680F padding 4px + 11px \u5B57\uFF09\uFF0C\u9876\u680F\u518D\u8584\u4E00\u70B9 */
+  padding: 4px 12px; background: var(--pb-panel-2); border-bottom: 1px solid var(--pb-border);
+  cursor: move; font-size: 12px; font-weight: 600; flex-shrink: 0;
+  min-height: 0;
+}
+.pb-title-name { pointer-events: none; white-space: nowrap; line-height: 1.2; }
+.pb-title-actions { display: flex; align-items: center; gap: 12px; }
+.pb-btn {
+  border: 1px solid var(--pb-border); background: var(--pb-panel-2); color: var(--pb-text);
+  border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; white-space: nowrap;
+  height: 24px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+}
+.pb-btn:hover { border-color: var(--pb-accent); color: var(--pb-accent); }
+.pb-btn.primary { background: var(--pb-accent); color: #0b1020; border-color: var(--pb-accent); font-weight: 600; }
+.pb-btn:disabled { opacity: 0.35; pointer-events: none; cursor: default; }
+.pb-minimize {
+  cursor: pointer; color: var(--pb-text-dim); font-size: 16px; padding: 0 4px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center; user-select: none;
+}
+.pb-minimize:hover { color: var(--pb-accent); }
+
+.pb-body { display: grid; grid-template-columns: 1fr 4px 260px; overflow: hidden; min-height: 0; min-width: 0; }
+.pb-main-area { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.pb-presets-area { overflow-y: auto; overflow-x: hidden; min-width: 0; min-height: 0; width: 100%; }
+.pb-row-divider { height: 4px; background: var(--pb-border); cursor: row-resize; flex-shrink: 0; }
+.pb-row-divider:hover { background: var(--pb-accent); }
+.pb-workspace-area { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; }
+.pb-col-divider { width: 4px; background: var(--pb-border); cursor: col-resize; }
+.pb-col-divider:hover { background: var(--pb-accent); }
+.pb-right-area { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.pb-statusbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 4px 10px; border-top: 1px solid var(--pb-border); background: var(--pb-panel-2);
+  cursor: move; font-size: 11px; color: var(--pb-text-dim); flex-shrink: 0;
+}
+.pb-status-left {
+  display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap;
+  cursor: default;
+}
+.pb-status-sep { opacity: 0.5; user-select: none; pointer-events: none; }
+.pb-status-link {
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; font-size: 11px; color: var(--pb-text-dim);
+  cursor: pointer; white-space: nowrap; text-decoration: none;
+  user-select: none; font-variant-numeric: tabular-nums;
+}
+.pb-status-link:hover { color: var(--pb-accent); }
+.pb-status-link.pb-disabled {
+  opacity: 0.35; pointer-events: none; cursor: default;
+}
+.pb-status-right {
+  display: flex; align-items: center; margin-left: auto; flex-shrink: 0;
+  cursor: move;
+}
+.pb-min-grip {
+  color: var(--pb-text-dim); font-size: 13px; letter-spacing: 2px; opacity: .45;
+  flex-shrink: 0; cursor: move;
+}
+`
+);
+var _rightWidth = 260;
+var _presetCollapsed = false;
+function getPanel() {
+  let panel = $("pbMainPanel");
+  if (!panel) {
+    panel = buildPanel();
+    document.body.appendChild(panel);
+    injectCSS("openprops", OPEN_PROPS_CSS);
+    injectCSS("theme", THEME_CSS);
+    injectCSS("panel", PANEL_CSS);
+    restorePos(panel);
+    bindEvents(panel);
+  }
+  return panel;
+}
+function buildPanel() {
+  const panel = div();
+  panel.id = "pbMainPanel";
+  panel.className = "pb-hidden";
+  const titlebar = div("pb-titlebar");
+  titlebar.innerHTML = `
+    <span class="pb-min-grip">\u22EE\u22EE</span>
+    <span class="pb-title-name">PromptBuilder</span>
+    <div class="pb-title-actions">
+      <button type="button" class="pb-btn primary" id="pbGenerateBtn" title="\u6267\u884C\u751F\u6210">\u25B6 \u751F\u6210</button>
+      <span class="pb-minimize" id="pbMinimizeBtn" title="\u6536\u8D77 (Ctrl+Shift+X)">\u2212</span>
+    </div>
+  `;
+  panel.appendChild(titlebar);
+  titlebar.querySelector("#pbMinimizeBtn")?.addEventListener("click", () => {
+    toggleMinimized();
+  });
+  const body = div("pb-body");
+  const main = div("pb-main-area");
+  const presets = div("pb-presets-area");
+  presets.id = "pbPresetsArea";
+  const rowDiv = div("pb-row-divider");
+  rowDiv.id = "pbRowDivider";
+  const actionBar = div();
+  actionBar.id = "pbActionBar";
+  actionBar.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:4px;padding:4px 12px;flex-shrink:0;";
+  actionBar.innerHTML = `
+    <span style="font-size:12px;font-weight:600;color:var(--pb-text-dim);">\u5DE5\u4F5C\u533A</span>
+    <div style="display:flex;gap:4px;">
+      <button type="button" id="pbTranslateBtn" class="pb-btn" style="font-size:11px;padding:2px 8px;height:26px;">\u7FFB\u8BD1</button>
+      <button type="button" id="pbClearBtn" class="pb-btn" style="font-size:11px;padding:2px 8px;height:26px;">\u6E05\u7A7A</button>
+    </div>
+  `;
+  const workspace = div("pb-workspace-area");
+  workspace.id = "pbWorkspaceArea";
+  main.appendChild(presets);
+  main.appendChild(rowDiv);
+  main.appendChild(actionBar);
+  main.appendChild(workspace);
+  const colDiv = div("pb-col-divider");
+  colDiv.id = "pbColDivider";
+  const right = div("pb-right-area");
+  right.id = "pbRightArea";
+  const out = div();
+  out.id = "pbOutputSlot";
+  out.style.cssText = "flex:1;overflow-y:auto;min-height:0;";
+  const set = div();
+  set.id = "pbSettingsSlot";
+  set.style.cssText = "flex-shrink:0;overflow-y:auto;max-height:40%;";
+  right.appendChild(out);
+  right.appendChild(set);
+  body.appendChild(main);
+  body.appendChild(colDiv);
+  body.appendChild(right);
+  panel.appendChild(body);
+  const status = div("pb-statusbar");
+  status.innerHTML = `
+    <div class="pb-status-left">
+      <span class="pb-min-grip" title="\u62D6\u62FD\u79FB\u52A8">\u22EE\u22EE</span>
+      <span class="pb-status-link pb-disabled" id="pbUndoBtn" role="button" tabindex="0" title="\u64A4\u9500">\u64A4\u9500 0</span>
+      <span class="pb-status-sep">\xB7</span>
+      <span class="pb-status-link pb-disabled" id="pbRedoBtn" role="button" tabindex="0" title="\u91CD\u505A">\u91CD\u505A 0</span>
+      <span class="pb-status-link" id="pbExportBtn" role="button" tabindex="0">\u5BFC\u51FA\u8BCD\u5E93</span>
+      <span class="pb-status-link" id="pbImportBtn" role="button" tabindex="0">\u5BFC\u5165\u8BCD\u5E93</span>
+    </div>
+    <div class="pb-status-right">
+      <span>@trancentral</span>
+    </div>
+  `;
+  panel.appendChild(status);
+  return panel;
+}
+function viewportSize() {
+  const vv = window.visualViewport;
+  return {
+    w: vv?.width ?? window.innerWidth,
+    h: vv?.height ?? window.innerHeight
+  };
+}
+function panelZoom(panel) {
+  const z = parseFloat(panel.style.zoom || "1");
+  return Number.isFinite(z) && z > 0 ? z : 1;
+}
+function clampPanelTop(top, panel) {
+  const { h: h2 } = viewportSize();
+  const z = panelZoom(panel);
+  const title = panel.querySelector(".pb-titlebar");
+  const edge = Math.max(24, (title?.offsetHeight ?? 28) * z);
+  const maxTop = Math.max(0, (h2 - edge) / z);
+  return clamp(top, 0, maxTop);
+}
+function clampPanelLeft(left, panel) {
+  const { w } = viewportSize();
+  const z = panelZoom(panel);
+  const edge = 48;
+  const pw = panel.offsetWidth * z;
+  const minL = (edge - pw) / z;
+  const maxL = (w - edge) / z;
+  return clamp(left, minL, maxL);
+}
+function restorePos(panel) {
+  const { w, h: h2 } = viewportSize();
+  const geo = loadPanelGeo();
+  if (geo) {
+    panel.style.width = clamp(geo.width, PANEL_DEFAULTS.minWidth, w) + "px";
+    panel.style.height = clamp(geo.height, PANEL_DEFAULTS.minHeight, h2) + "px";
+    panel.style.left = clampPanelLeft(geo.left, panel) + "px";
+    panel.style.top = clampPanelTop(geo.top, panel) + "px";
+  } else {
+    panel.style.left = Math.max(0, (w - PANEL_DEFAULTS.defaultWidth) / 2) + "px";
+    panel.style.top = Math.max(0, (h2 - PANEL_DEFAULTS.defaultHeight) / 2) + "px";
+  }
+  const saved = loadColWidths();
+  if (saved?.[1]) _rightWidth = saved[1];
+  applyLayout();
+}
+function applyLayout() {
+  const body = document.querySelector("#pbMainPanel .pb-body");
+  if (body) body.style.gridTemplateColumns = `1fr 4px ${_rightWidth}px`;
+}
+function bindEvents(panel) {
+  bindDrag(".pb-titlebar", panel);
+  bindDrag(".pb-statusbar", panel);
+  new ResizeObserver(() => {
+    savePanelGeo({
+      left: panel.offsetLeft,
+      top: panel.offsetTop,
+      width: panel.offsetWidth,
+      height: panel.offsetHeight
+    });
+    applyLayout();
+  }).observe(panel);
+  requestAnimationFrame(() => {
+    const col = panel.querySelector("#pbColDivider");
+    col?.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      col.setPointerCapture(e.pointerId);
+      const sx = e.clientX;
+      const start = _rightWidth;
+      const move = (ev) => {
+        const pe = ev;
+        _rightWidth = clamp(start + (sx - pe.clientX), COLUMN_MINS.rightMinWidth, 600);
+        applyLayout();
+      };
+      const up = () => {
+        col.removeEventListener("pointermove", move);
+        saveColWidths([0, _rightWidth]);
+      };
+      col.addEventListener("pointermove", move);
+      col.addEventListener("pointerup", up, { once: true });
+    });
+    const row = panel.querySelector("#pbRowDivider");
+    row?.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      row.setPointerCapture(e.pointerId);
+      const sy = e.clientY;
+      const presetsArea = $("pbPresetsArea");
+      if (!presetsArea) return;
+      const startH = presetsArea.offsetHeight;
+      let hitMin = false;
+      let collapsed = _presetCollapsed;
+      const move = (ev) => {
+        const pe = ev;
+        const dy = pe.clientY - sy;
+        let newH = startH + dy;
+        if (!collapsed && newH < PRESET_COLLAPSE_THRESHOLD) {
+          if (!hitMin) {
+            newH = PRESET_COLLAPSE_THRESHOLD;
+            hitMin = true;
+          } else if (dy < -30) {
+            collapsed = true;
+            _presetCollapsed = true;
+            const h2 = presetsArea.querySelector(".pb-preset-header");
+            const b = presetsArea.querySelector(".pb-preset-body");
+            if (h2) h2.style.display = "none";
+            if (b) b.style.display = "none";
+            presetsArea.style.height = "auto";
+            presetsArea.style.flex = "none";
+            row.style.cssText = "min-height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--pb-text-dim);cursor:row-resize;";
+            row.textContent = `${state.l1Cat || "\u8BCD\u5E93"} \u25BC`;
+            return;
+          }
+        }
+        if (collapsed && dy > 10) {
+          collapsed = false;
+          _presetCollapsed = false;
+          const h2 = presetsArea.querySelector(".pb-preset-header");
+          const b = presetsArea.querySelector(".pb-preset-body");
+          if (h2) h2.style.display = "";
+          if (b) b.style.display = "";
+          row.style.cssText = "";
+          row.textContent = "";
+          newH = PRESET_COLLAPSE_THRESHOLD;
+        }
+        if (!collapsed) {
+          newH = clamp(newH, COLUMN_MINS.presetMinHeight, window.innerHeight - 300);
+          presetsArea.style.height = newH + "px";
+          presetsArea.style.flex = "none";
+        }
+      };
+      const up = () => row.removeEventListener("pointermove", move);
+      row.addEventListener("pointermove", move);
+      row.addEventListener("pointerup", up, { once: true });
+    });
+  });
+}
+function bindDrag(sel, panel) {
+  const handle = panel.querySelector(sel);
+  if (!handle) return;
+  let sx = 0, sy = 0, sl = 0, st = 0;
+  handle.addEventListener("pointerdown", (e) => {
+    const pe = e;
+    if (pe.button !== 0) return;
+    const t = pe.target;
+    if (t.closest("button, input, select, textarea, .pb-minimize, .pb-status-link")) return;
+    sx = pe.clientX;
+    sy = pe.clientY;
+    const z = panelZoom(panel);
+    const rect = panel.getBoundingClientRect();
+    const parsedL = parseFloat(panel.style.left);
+    const parsedT = parseFloat(panel.style.top);
+    sl = Number.isFinite(parsedL) ? parsedL : rect.left / z;
+    st = Number.isFinite(parsedT) ? parsedT : rect.top / z;
+    handle.setPointerCapture(pe.pointerId);
+    const move = (ev) => {
+      const pv = ev;
+      const zz = panelZoom(panel);
+      const left = sl + (pv.clientX - sx) / zz;
+      const top = st + (pv.clientY - sy) / zz;
+      panel.style.left = clampPanelLeft(left, panel) + "px";
+      panel.style.top = clampPanelTop(top, panel) + "px";
+    };
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      const left = parseFloat(panel.style.left);
+      const top = parseFloat(panel.style.top);
+      savePanelGeo({
+        left: Number.isFinite(left) ? left : panel.offsetLeft,
+        top: Number.isFinite(top) ? top : panel.offsetTop,
+        width: panel.offsetWidth,
+        height: panel.offsetHeight
+      });
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up, { once: true });
+  });
+}
+function showPanel() {
+  getPanel().classList.remove("pb-hidden");
+  updateUndoButtons();
+}
+function isPanelVisible() {
+  const p = $("pbMainPanel");
+  return p ? !p.classList.contains("pb-hidden") : false;
+}
+function toggleMinimized() {
+  const panel = getPanel();
+  if (panel.classList.contains("pb-hidden")) return;
+  const min = panel.classList.toggle("pb-minimized");
+  const btn = panel.querySelector("#pbMinimizeBtn");
+  if (btn) {
+    btn.textContent = min ? "\u26F6" : "\u2212";
+    btn.title = min ? "\u5C55\u5F00 (Ctrl+Shift+X)" : "\u6536\u8D77 (Ctrl+Shift+X)";
+  }
+  updateUndoButtons();
+}
+function updateUndoButtons() {
+  const undoBtn = document.getElementById("pbUndoBtn");
+  const redoBtn = document.getElementById("pbRedoBtn");
+  const u = canUndo();
+  const r = canRedo();
+  if (undoBtn) {
+    undoBtn.textContent = `\u64A4\u9500 ${getUndoDepth()}`;
+    undoBtn.classList.toggle("pb-disabled", !u);
+  }
+  if (redoBtn) {
+    redoBtn.textContent = `\u91CD\u505A ${getRedoDepth()}`;
+    redoBtn.classList.toggle("pb-disabled", !r);
+  }
+}
+
+// src/ui/workspace.ts
+init_state();
+init_pipe();
+init_dom();
+
+// src/ui/chip.ts
+init_pipe();
+init_dom();
+init_toast();
+init_state();
+var CSS2 = (
+  /*css*/
+  `
+.pb-chip {
+  position: relative; display: inline-flex; flex-direction: column; justify-content: center;
+  min-width: 40px; max-width: 280px; height: 36px;
+  padding: 3px 20px 3px 16px; margin: 3px;
+  border-radius: 6px; background: var(--pb-chip-bg); cursor: grab;
+  user-select: none; box-sizing: border-box; overflow: hidden;
+}
+.pb-chip:hover { background: var(--pb-chip-bg-focus); }
+.pb-chip.pb-chip-selected {
+  /* fallback for browsers without color-mix */
+  background: var(--pb-chip-bg-focus);
+  background: color-mix(in srgb, var(--pb-accent) 28%, var(--pb-chip-bg));
+}
+.pb-chip.pb-chip-multi-ghost { opacity: 0.35; }
+.pb-chip::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+  border-radius: 5px 0 0 5px; background: var(--pb-chip-color, var(--pb-text-dim));
+}
+.pb-chip-top-row { display: flex; align-items: baseline; gap: 2px; min-width: 0; }
+.pb-chip-main {
+  font-size: 12px; font-weight: 500; line-height: 1.25; color: var(--pb-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.pb-chip-weight { font-size: 10px; line-height: 1.25; color: var(--pb-text-dim); flex-shrink: 0; }
+.pb-chip-sub {
+  font-size: 10px; line-height: 1.2; color: var(--pb-text-dim); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.pb-chip-del {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 16px;
+  display: none; align-items: center; justify-content: center;
+  border: none; background: transparent; color: var(--pb-text-dim);
+  font-size: 10px; cursor: pointer; border-radius: 0 6px 6px 0;
+}
+.pb-chip:hover .pb-chip-del { display: flex; }
+.pb-chip-del:hover { color: var(--pb-danger); }
+.pb-chip.pb-bypass { opacity: 0.45; }
+.pb-chip.pb-bypass .pb-chip-main { text-decoration: line-through; }
+.pb-chip.pb-translating { opacity: 0.7; }
+.pb-chip.pb-translating::after {
+  content: '...'; position: absolute; right: 18px; top: 50%;
+  transform: translateY(-50%); font-size: 10px; color: var(--pb-accent);
+}
+.pb-chip.sortable-ghost { opacity: 0.25; border: 1px dashed var(--pb-border); background: transparent; }
+.pb-chip.sortable-chosen { opacity: 0.55; box-shadow: 0 4px 12px rgba(0,0,0,0.35); }
+
+.pb-chip-toolbar {
+  position: fixed; z-index: 10007; display: flex; gap: 2px; padding: 2px; align-items: center;
+  background: var(--pb-panel); border: 1px solid var(--pb-border); border-radius: 6px;
+  box-shadow: var(--pb-shadow-md); opacity: 0; pointer-events: none; transition: opacity 120ms;
+}
+.pb-chip-toolbar.pb-visible { opacity: 1; pointer-events: auto; }
+.pb-chip-toolbar button {
+  min-width: 26px; height: 24px; padding: 0 4px; border: none; border-radius: 4px;
+  background: transparent; color: var(--pb-text); cursor: pointer; font-size: 12px;
+  white-space: nowrap;
+}
+.pb-chip-toolbar button:hover { background: var(--pb-border); }
+.pb-chip-toolbar .pb-tb-count {
+  font-size: 10px; color: var(--pb-text-dim); padding: 0 4px; white-space: nowrap;
+}
+
+.pb-chip-edit-panel {
+  position: fixed; z-index: 10009; min-width: 220px; padding: 10px;
+  background: var(--pb-panel); border: 1px solid var(--pb-border); border-radius: 8px;
+  box-shadow: var(--pb-shadow-lg); display: flex; flex-direction: column; gap: 6px;
+}
+.pb-chip-edit-panel label {
+  font-size: 10px; color: var(--pb-text-dim); display: flex; flex-direction: column; gap: 2px;
+}
+.pb-chip-edit-panel input {
+  width: 100%; box-sizing: border-box; padding: 4px 6px; font-size: 12px;
+  border: 1px solid var(--pb-border); border-radius: 4px;
+  background: var(--pb-bg); color: var(--pb-text); outline: none;
+}
+.pb-chip-edit-panel input:focus { border-color: var(--pb-accent); }
+.pb-chip-edit-panel input.pb-ce-weight {
+  width: 100%; box-sizing: border-box;
+}
+.pb-chip-edit-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+.pb-chip-edit-actions button {
+  font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--pb-border); background: var(--pb-panel-2); color: var(--pb-text);
+}
+.pb-chip-edit-actions button.primary {
+  background: var(--pb-accent); border-color: var(--pb-accent); color: #0b1020; font-weight: 600;
+}
+`
+);
+var _css2 = false;
+var _toolbar = null;
+var _hideTimer = null;
+var _active = null;
+var _editPanel = null;
+function ensureCss() {
+  if (!_css2) {
+    injectCSS("chip", CSS2);
+    _css2 = true;
+  }
+}
+function getToolbar() {
+  if (!_toolbar) {
+    ensureCss();
+    _toolbar = div("pb-chip-toolbar");
+    document.body.appendChild(_toolbar);
+    _toolbar.addEventListener("pointerenter", () => {
+      if (_hideTimer) clearTimeout(_hideTimer);
+    });
+    _toolbar.addEventListener("pointerleave", () => hideToolbar());
+    _toolbar.addEventListener("pointerdown", onToolbarPointerDown);
+  }
+  return _toolbar;
+}
+function onToolbarPointerDown(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const act = e.target.closest("button")?.getAttribute("data-act");
+  if (!act) return;
+  const multi = getSelectedCount() > 1 && _active && isSelected(_active.chip.id);
+  const ids = multi ? getSelectedIds() : _active ? [_active.chip.id] : [];
+  if (!ids.length) return;
+  if (act === "minus" || act === "plus") {
+    const delta = act === "minus" ? -0.1 : 0.1;
+    if (ids.length > 1) {
+      dispatch({ type: "chip/batchAdjustWeight", chipIds: ids, delta });
+    } else {
+      const chip = findChip(ids[0])?.chip;
+      if (!chip) return;
+      dispatch({
+        type: "chip/update",
+        chipId: chip.id,
+        patch: { weight: clamp(Math.round((chip.weight + delta) * 10) / 10, 0.1, 5) }
+      });
+    }
+    return;
+  }
+  if (act === "bypass") {
+    if (ids.length > 1) {
+      const anyOn = ids.some((id) => findChip(id)?.chip.enabled);
+      dispatch({ type: "chip/batchUpdate", chipIds: ids, patch: { enabled: !anyOn } });
+    } else {
+      const chip = findChip(ids[0])?.chip;
+      if (!chip) return;
+      dispatch({ type: "chip/update", chipId: chip.id, patch: { enabled: !chip.enabled } });
+    }
+    return;
+  }
+  if (act === "edit") {
+    if (ids.length !== 1 || !_active) return;
+    const { el, chip } = _active;
+    hideToolbar(true);
+    openChipEdit(el, chip);
+    return;
+  }
+  if (act === "translate") {
+    hideToolbar(true);
+    if (ids.length > 1) void translateMany(ids);
+    else {
+      const chip = findChip(ids[0])?.chip;
+      if (chip) void translateOneChip(chip);
+    }
+    return;
+  }
+  if (act === "delete") {
+    hideToolbar(true);
+    dispatch({ type: "chip/batchRemove", chipIds: ids });
+    clearSelection();
+  }
+}
+function fillToolbar(multi, count) {
+  const tb = getToolbar();
+  if (multi) {
+    tb.innerHTML = `
+      <span class="pb-tb-count">${count} \u9879</span>
+      <button type="button" data-act="minus" title="\u6279\u91CF\u51CF\u6743\u91CD">\u2212</button>
+      <button type="button" data-act="plus" title="\u6279\u91CF\u52A0\u6743\u91CD">+</button>
+      <button type="button" data-act="bypass" title="\u6279\u91CF\u542F\u7528/\u7981\u7528">\u{1F441}</button>
+      <button type="button" data-act="translate" title="\u6279\u91CF\u5F3A\u5236\u7FFB\u8BD1">\u{1F310}</button>
+      <button type="button" data-act="delete" title="\u6279\u91CF\u5220\u9664">\xD7</button>
+    `;
+  } else {
+    tb.innerHTML = `
+      <button type="button" data-act="minus" title="\u51CF\u6743\u91CD">\u2212</button>
+      <button type="button" data-act="plus" title="\u52A0\u6743\u91CD">+</button>
+      <button type="button" data-act="bypass" title="\u542F\u7528/\u7981\u7528">\u{1F441}</button>
+      <button type="button" data-act="edit" title="\u7F16\u8F91\u4E2D\u82F1\u6587">\u270F\uFE0F</button>
+      <button type="button" data-act="translate" title="\u7FFB\u8BD1\u6B64\u8BCD\uFF08\u5F3A\u5236\uFF09">\u{1F310}</button>
+    `;
+  }
+}
+function showToolbar(chipEl, chip, box) {
+  if (window.__pb_dragging) return;
+  if (_editPanel) return;
+  if (_hideTimer) clearTimeout(_hideTimer);
+  _active = { chip, box, el: chipEl };
+  const multi = getSelectedCount() > 1 && isSelected(chip.id);
+  fillToolbar(multi, getSelectedCount());
+  const tb = getToolbar();
+  const rect = chipEl.getBoundingClientRect();
+  const tw = multi ? 200 : 150;
+  let left = rect.left + rect.width / 2 - tw / 2;
+  let top = rect.top - 32;
+  if (top < 0) top = rect.bottom + 4;
+  if (left < 0) left = 4;
+  if (left + tw > window.innerWidth) left = window.innerWidth - tw - 4;
+  tb.style.left = left + "px";
+  tb.style.top = top + "px";
+  tb.classList.add("pb-visible");
+}
+function hideToolbar(immediate = false) {
+  const run = () => {
+    _toolbar?.classList.remove("pb-visible");
+    if (!_editPanel) _active = null;
+  };
+  if (immediate) {
+    if (_hideTimer) clearTimeout(_hideTimer);
+    run();
+    return;
+  }
+  _hideTimer = setTimeout(run, 160);
+}
+function renderChip(chip, box) {
+  ensureCss();
+  const el = div("pb-chip");
+  el.setAttribute("data-chip-id", chip.id);
+  el.setAttribute("data-chip-text", chip.text);
+  if (chip.cnText) el.setAttribute("data-chip-cn", chip.cnText);
+  if (chip.categoryColor) el.style.setProperty("--pb-chip-color", chip.categoryColor);
+  if (!chip.enabled) el.classList.add("pb-bypass");
+  if (chip.translating) el.classList.add("pb-translating");
+  if (isSelected(chip.id)) el.classList.add("pb-chip-selected");
+  const top = div("pb-chip-top-row");
+  const main = span("pb-chip-main");
+  main.textContent = chip.text;
+  const openEdit = (e) => {
+    e.stopPropagation();
+    openChipEdit(el, chip);
+  };
+  main.addEventListener("dblclick", openEdit);
+  top.appendChild(main);
+  if (chip.weight !== 1) {
+    top.appendChild(span("pb-chip-weight", `\xB7${chip.weight}`));
+  }
+  el.appendChild(top);
+  const del = document.createElement("button");
+  del.type = "button";
+  del.className = "pb-chip-del";
+  del.textContent = "\xD7";
+  del.addEventListener("pointerdown", (e) => e.stopPropagation());
+  del.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (getSelectedCount() > 1 && isSelected(chip.id)) {
+      dispatch({ type: "chip/batchRemove", chipIds: getSelectedIds() });
+      clearSelection();
+    } else {
+      dispatch({ type: "chip/remove", boxId: box.id, chipId: chip.id });
+    }
+  });
+  el.appendChild(del);
+  if (chip.cnText) {
+    const sub = span("pb-chip-sub");
+    sub.textContent = chip.cnText;
+    sub.addEventListener("dblclick", openEdit);
+    el.appendChild(sub);
+  }
+  el.addEventListener("click", (e) => {
+    if (e.target.closest("button")) return;
+    e.stopPropagation();
+    if (e.shiftKey) selectRangeTo(chip.id);
+    else if (e.ctrlKey || e.metaKey) toggleSelect(chip.id);
+    else selectOnly(chip.id);
+  });
+  el.addEventListener("pointerenter", () => showToolbar(el, chip, box));
+  el.addEventListener("pointerleave", () => hideToolbar());
+  return el;
+}
+function openChipEdit(anchor, chip) {
+  closeChipEdit();
+  ensureCss();
+  const w0 = Number.isFinite(chip.weight) ? chip.weight : 1;
+  const panel = div("pb-chip-edit-panel");
+  panel.innerHTML = `
+    <label>\u82F1\u6587 / \u4E3B\u6587\u672C
+      <input type="text" class="pb-ce-en" value="${escapeHtml(chip.text)}">
+    </label>
+    <label>\u4E2D\u6587
+      <input type="text" class="pb-ce-cn" value="${escapeHtml(chip.cnText || "")}">
+    </label>
+    <label>\u6743\u91CD
+      <input type="number" class="pb-ce-weight" min="0.1" max="5" step="0.1" value="${w0}" placeholder="1.0">
+    </label>
+    <div class="pb-chip-edit-actions">
+      <button type="button" data-act="cancel">\u53D6\u6D88</button>
+      <button type="button" class="primary" data-act="save">\u4FDD\u5B58</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  _editPanel = panel;
+  const rect = anchor.getBoundingClientRect();
+  let left = rect.left;
+  let top = rect.bottom + 6;
+  if (left + 240 > window.innerWidth) left = window.innerWidth - 248;
+  if (top + 180 > window.innerHeight) top = Math.max(8, rect.top - 180);
+  panel.style.left = Math.max(8, left) + "px";
+  panel.style.top = top + "px";
+  const en = panel.querySelector(".pb-ce-en");
+  const cn = panel.querySelector(".pb-ce-cn");
+  const weightInp = panel.querySelector(".pb-ce-weight");
+  en.focus();
+  en.select();
+  const readWeight = () => {
+    const raw = weightInp.value.trim();
+    if (!raw) return null;
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n)) return null;
+    return clamp(Math.round(n * 10) / 10, 0.1, 5);
+  };
+  const save2 = () => {
+    const text = en.value.trim();
+    const cnText = cn.value.trim();
+    const weight = readWeight();
+    if (!text) {
+      toast("\u82F1\u6587\u4E0D\u80FD\u4E3A\u7A7A", "warn");
+      return;
+    }
+    if (weight == null) {
+      toast("\u8BF7\u8F93\u5165\u6709\u6548\u6743\u91CD\uFF080.1\u20135\uFF09", "warn");
+      weightInp.focus();
+      return;
+    }
+    weightInp.value = String(weight);
+    const patch = {};
+    if (text !== chip.text) patch.text = text;
+    if (cnText !== (chip.cnText || "")) patch.cnText = cnText;
+    if (weight !== chip.weight) patch.weight = weight;
+    if (Object.keys(patch).length) {
+      dispatch({ type: "chip/update", chipId: chip.id, patch });
+    }
+    closeChipEdit();
+  };
+  panel.querySelector('[data-act="save"]')?.addEventListener("click", save2);
+  panel.querySelector('[data-act="cancel"]')?.addEventListener("click", () => closeChipEdit());
+  panel.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      save2();
+    }
+    if (e.key === "Escape") closeChipEdit();
+  });
+  setTimeout(() => {
+    document.addEventListener("pointerdown", onChipEditOutside, true);
+  }, 0);
+}
+function onChipEditOutside(e) {
+  if (_editPanel && !_editPanel.contains(e.target)) closeChipEdit();
+}
+function closeChipEdit() {
+  document.removeEventListener("pointerdown", onChipEditOutside, true);
+  _editPanel?.remove();
+  _editPanel = null;
+}
+function commitAfterTranslate(before, ok) {
+  if (ok) {
+    recordUndoSnapshot(before);
+    updateUndoButtons();
+  }
+  dispatch(
+    {
+      type: "workspace/replace",
+      workspace: cur.workspace,
+      negativeGroup: cur.negativeGroup,
+      focusedBox: cur.focusedBox
+    },
+    { noUndo: true }
+  );
+}
+async function translateOneChip(chip) {
+  if (!chip.text.trim()) {
+    toast("\u65E0\u53EF\u7FFB\u8BD1\u6587\u672C", "warn");
+    return;
+  }
+  const before = cloneUndoSnapshot();
+  dispatch({ type: "chip/update", chipId: chip.id, patch: { translating: true } }, { noUndo: true });
+  const { translateChips: translateChips2 } = await Promise.resolve().then(() => (init_translation(), translation_exports));
+  const { ok } = await translateChips2([chip], { force: true });
+  if (!ok) {
+    dispatch({ type: "chip/update", chipId: chip.id, patch: { translating: false } }, { noUndo: true });
+    return;
+  }
+  recordUndoSnapshot(before);
+  updateUndoButtons();
+  dispatch({
+    type: "chip/update",
+    chipId: chip.id,
+    patch: { text: chip.text, cnText: chip.cnText, translating: false }
+  }, { noUndo: true });
+}
+async function translateMany(ids) {
+  const chips = [];
+  for (const id of ids) {
+    const hit = findChip(id);
+    if (hit?.chip.text.trim()) chips.push(hit.chip);
+  }
+  if (!chips.length) {
+    toast("\u65E0\u53EF\u7FFB\u8BD1\u6587\u672C", "warn");
+    return;
+  }
+  const before = cloneUndoSnapshot();
+  for (const c of chips) c.translating = true;
+  dispatch(
+    {
+      type: "workspace/replace",
+      workspace: cur.workspace,
+      negativeGroup: cur.negativeGroup,
+      focusedBox: cur.focusedBox
+    },
+    { noUndo: true }
+  );
+  const { translateChips: translateChips2 } = await Promise.resolve().then(() => (init_translation(), translation_exports));
+  const { ok } = await translateChips2(chips, { force: true });
+  commitAfterTranslate(before, ok > 0);
+}
+
+// node_modules/sortablejs/modular/sortable.esm.js
+function _defineProperty(e, r, t) {
+  return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
+    value: t,
+    enumerable: true,
+    configurable: true,
+    writable: true
+  }) : e[r] = t, e;
+}
+function _extends() {
+  return _extends = Object.assign ? Object.assign.bind() : function(n) {
+    for (var e = 1; e < arguments.length; e++) {
+      var t = arguments[e];
+      for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]);
+    }
+    return n;
+  }, _extends.apply(null, arguments);
+}
+function ownKeys(e, r) {
+  var t = Object.keys(e);
+  if (Object.getOwnPropertySymbols) {
+    var o = Object.getOwnPropertySymbols(e);
+    r && (o = o.filter(function(r2) {
+      return Object.getOwnPropertyDescriptor(e, r2).enumerable;
+    })), t.push.apply(t, o);
+  }
+  return t;
+}
+function _objectSpread2(e) {
+  for (var r = 1; r < arguments.length; r++) {
+    var t = null != arguments[r] ? arguments[r] : {};
+    r % 2 ? ownKeys(Object(t), true).forEach(function(r2) {
+      _defineProperty(e, r2, t[r2]);
+    }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function(r2) {
+      Object.defineProperty(e, r2, Object.getOwnPropertyDescriptor(t, r2));
+    });
+  }
+  return e;
+}
+function _objectWithoutProperties(e, t) {
+  if (null == e) return {};
+  var o, r, i = _objectWithoutPropertiesLoose(e, t);
+  if (Object.getOwnPropertySymbols) {
+    var n = Object.getOwnPropertySymbols(e);
+    for (r = 0; r < n.length; r++) o = n[r], -1 === t.indexOf(o) && {}.propertyIsEnumerable.call(e, o) && (i[o] = e[o]);
+  }
+  return i;
+}
+function _objectWithoutPropertiesLoose(r, e) {
+  if (null == r) return {};
+  var t = {};
+  for (var n in r) if ({}.hasOwnProperty.call(r, n)) {
+    if (-1 !== e.indexOf(n)) continue;
+    t[n] = r[n];
+  }
+  return t;
+}
+function _toPrimitive(t, r) {
+  if ("object" != typeof t || !t) return t;
+  var e = t[Symbol.toPrimitive];
+  if (void 0 !== e) {
+    var i = e.call(t, r || "default");
+    if ("object" != typeof i) return i;
+    throw new TypeError("@@toPrimitive must return a primitive value.");
+  }
+  return ("string" === r ? String : Number)(t);
+}
+function _toPropertyKey(t) {
+  var i = _toPrimitive(t, "string");
+  return "symbol" == typeof i ? i : i + "";
+}
+function _typeof(o) {
+  "@babel/helpers - typeof";
+  return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function(o2) {
+    return typeof o2;
+  } : function(o2) {
+    return o2 && "function" == typeof Symbol && o2.constructor === Symbol && o2 !== Symbol.prototype ? "symbol" : typeof o2;
+  }, _typeof(o);
+}
+var version = "1.15.7";
+function userAgent(pattern) {
+  if (typeof window !== "undefined" && window.navigator) {
+    return !!/* @__PURE__ */ navigator.userAgent.match(pattern);
+  }
+}
+var IE11OrLess = userAgent(/(?:Trident.*rv[ :]?11\.|msie|iemobile|Windows Phone)/i);
+var Edge = userAgent(/Edge/i);
+var FireFox = userAgent(/firefox/i);
+var Safari = userAgent(/safari/i) && !userAgent(/chrome/i) && !userAgent(/android/i);
+var IOS = userAgent(/iP(ad|od|hone)/i);
+var ChromeForAndroid = userAgent(/chrome/i) && userAgent(/android/i);
+var captureMode = {
+  capture: false,
+  passive: false
+};
+function on(el, event, fn) {
+  el.addEventListener(event, fn, !IE11OrLess && captureMode);
+}
+function off(el, event, fn) {
+  el.removeEventListener(event, fn, !IE11OrLess && captureMode);
+}
+function matches(el, selector) {
+  if (!selector) return;
+  selector[0] === ">" && (selector = selector.substring(1));
+  if (el) {
+    try {
+      if (el.matches) {
+        return el.matches(selector);
+      } else if (el.msMatchesSelector) {
+        return el.msMatchesSelector(selector);
+      } else if (el.webkitMatchesSelector) {
+        return el.webkitMatchesSelector(selector);
+      }
+    } catch (_) {
       return false;
     }
-    /** 绑定某节点为活动节点：切 activeNode → 重载 cur → 清撤销栈 → 全量重渲染。 */
-    function loadNodeIntoPanel(node) {
-      activeNode = node;
-      panel.dataset.activeNode = String(node.id);
-      clearUndoStacks();
-      deserializeNodeState(node);
-      applySettings(); renderPresets(); renderWorkspace(); renderOutput();
-      _lastSnapshot = snapshotState(); // 撤销基准
-    }
-
-    // ==================== 设置：界面缩放 / 翻译引擎 / 主题 ====================
-    function applySettings() {
-      const st = state.settings;
-      // 缩放：用 zoom（Chromium 支持，不影响 getBoundingClientRect 坐标体系）
-      const zoomMap = { sm: 0.85, mid: 1.0, lg: 1.2 };
-      panel.style.zoom = zoomMap[st.scale] ?? 1.0;
-      // 主题
-      panel.classList.toggle("pb-light", st.theme === "light");
-      // 同步分段按钮高亮
-      syncSeg("pbSegScale", st.scale);
-      const selTrans = $("pbSelTranslator"); if (selTrans) selTrans.value = st.translator;
-      syncSeg("pbSegTheme", st.theme);
-      // 自定义 API 配置行仅在选中"自定义"时显示
-      const customRow = $("pbCustomApiRow"); if (customRow) customRow.style.display = (st.translator === "custom") ? "" : "none";
-    }
-    function syncSeg(segId, value) {
-      const seg = $(segId); if (!seg) return;
-      seg.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.v === value));
-    }
-    function bindSeg(segId, key) {
-      const seg = $(segId); if (!seg) return;
-      seg.querySelectorAll("button").forEach(b => {
-        b.onclick = (e) => {
-          e.stopPropagation();
-          state.settings[key] = b.dataset.v;
-          applySettings(); persist();
-        };
-      });
-    }
-    bindSeg("pbSegScale", "scale");
-    const selTrans = $("pbSelTranslator");
-    if (selTrans) selTrans.onchange = (e) => { e.stopPropagation(); state.settings.translator = selTrans.value; applySettings(); persist(); };
-    bindSeg("pbSegTheme", "theme");
-    // 自定义 API 配置弹窗
-    const cfgBtn = $("pbCustomApiCfg");
-    if (cfgBtn) cfgBtn.onclick = (e) => {
-      e.stopPropagation();
-      const ca = state.settings.customApi || {};
-      const form = document.createElement("div");
-      // URL
-      const urlRow = document.createElement("div"); urlRow.className = "pb-form-row";
-      urlRow.innerHTML = '<label>请求 URL（支持 {text} {src} {tgt} 占位符）</label>';
-      const urlInp = document.createElement("input"); urlInp.value = ca.url || ""; urlInp.placeholder = "https://api.example.com/translate?q={text}&from={src}&to={tgt}";
-      urlRow.appendChild(urlInp); form.appendChild(urlRow);
-      // 方法
-      const methodRow = document.createElement("div"); methodRow.className = "pb-form-row";
-      methodRow.innerHTML = '<label>请求方法</label>';
-      const methodSel = document.createElement("select"); methodSel.style.cssText = "background:var(--pb-panel-2);color:var(--pb-text);border:1px solid var(--pb-border);border-radius:4px;padding:5px 6px;font-size:13px";
-      ["GET", "POST"].forEach(m => { const o = document.createElement("option"); o.value = m; o.textContent = m; if ((ca.method || "GET") === m) o.selected = true; methodSel.appendChild(o); });
-      methodRow.appendChild(methodSel); form.appendChild(methodRow);
-      // Body
-      const bodyRow = document.createElement("div"); bodyRow.className = "pb-form-row";
-      bodyRow.innerHTML = '<label>请求体（POST 时使用，JSON 模板，支持 {text} {src} {tgt}）</label>';
-      const bodyInp = document.createElement("textarea"); bodyInp.value = ca.body || ""; bodyInp.placeholder = '{"text":"{text}","source":"{src}","target":"{tgt}"}';
-      bodyRow.appendChild(bodyInp); form.appendChild(bodyRow);
-      // 响应字段
-      const respRow = document.createElement("div"); respRow.className = "pb-form-row";
-      respRow.innerHTML = '<label>响应字段路径（点号分隔，如 data.result 或 0.0.0）</label>';
-      const respInp = document.createElement("input"); respInp.value = ca.responseField || ""; respInp.placeholder = "data.result";
-      respRow.appendChild(respInp); form.appendChild(respRow);
-      openModal({
-        title: "自定义翻译 API", bodyEl: form, submitText: "保存",
-        onSubmit: () => {
-          state.settings.customApi = { url: urlInp.value.trim(), method: methodSel.value, body: bodyInp.value, responseField: respInp.value.trim() };
-          persist(); toast("自定义 API 配置已保存", "ok", 1500);
-        }
-      });
-    };
-    applySettings();
-
-    // ==================== 翻译（按 settings.translator 分支） ====================
-    
-    function detectPair(text) { return /[\u4e00-\u9fff]|\p{sc=Han}/u.test(text) ? { src: "zh", tgt: "en" } : { src: "en", tgt: "zh" }; }
-    /** 通用并发池：限制同时执行的异步任务数量 */
-    async function runPool(items, limit, fn) {
-      let i = 0;
-      const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-        while (i < items.length) { const idx = i++; await fn(items[idx], idx); }
-      });
-      await Promise.all(workers);
-    }
-    // 按点号路径取值：支持 "data.result"、"0.0.0"（数组索引）等
-    function getByPath(obj, path) {
-      if (!path) return obj;
-      return path.split(".").reduce((cur, key) => (cur == null ? cur : cur[key]), obj);
-    }
-    // 占位符替换：{text} {src} {tgt}
-    // jsonSafe=true 时对 {text} 的值做 JSON 字符串内容转义（仅用于 POST body 模板），
-    // 保证用户词语文本中的 " \ 换行等字符不会破坏 JSON 结构。{src}/{tgt} 为固定语言代码，无需转义。
-    function fillTemplate(tpl, text, src, tgt, jsonSafe) {
-      const textVal = jsonSafe ? text.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t") : text;
-      return (tpl || "").replace(/\{text\}/g, () => textVal).replace(/\{src\}/g, src).replace(/\{tgt\}/g, tgt);
-    }
-    // 返回 { ok, text?, reason? }：ok=true 且 text 为空表示"无需翻译"；reason 用于 toast
-    async function translateText(text) {
-      if (!text || !text.trim()) return { ok: true, text: "" };
-      const { src, tgt } = detectPair(text);
-      if (src === tgt) return { ok: true, text };
-      const engine = state.settings.translator || "mymemory";
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 5000);
-      try {
-        let out;
-        if (engine === "google") {
-          // Google 非官方端点（免费、无需 key，稳定性一般）
-          const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${src}&tl=${tgt}&dt=t&q=${encodeURIComponent(text)}`, { signal: ctrl.signal });
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const data = await res.json();
-          // 返回格式：[[[译文, 原文, ...], ...], ...]
-          out = (data?.[0] || []).map(seg => seg?.[0] || "").join("");
-        } else if (engine === "custom") {
-          // 自定义 API
-          const ca = state.settings.customApi || {};
-          if (!ca.url) return { ok: false, reason: "未配置自定义 API（请点⚙配置）" };
-          const url = fillTemplate(ca.url, encodeURIComponent(text), src, tgt);
-          const opt = { signal: ctrl.signal };
-          if (ca.method === "POST") {
-            opt.method = "POST"; opt.headers = { "Content-Type": "application/json" };
-            opt.body = fillTemplate(ca.body || "{}", text, src, tgt, true);
-          }
-          const res = await fetch(url, opt);
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const data = await res.json().catch(() => ({}));
-          out = getByPath(data, ca.responseField);
-          if (typeof out !== "string") out = out != null ? String(out) : "";
-        } else {
-          // MyMemory（默认）
-          const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${src}|${tgt}`, { signal: ctrl.signal });
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          const data = await res.json();
-          out = data?.responseData?.translatedText;
-          if (out && /MYMEMORY WARNING|QUERY LENGTH LIMIT/i.test(out)) return { ok: false, reason: "翻译额度已达上限，请稍后再试" };
-        }
-        if (!out) return { ok: false, reason: "翻译接口未返回结果" };
-        return { ok: true, text: out };
-      } catch (e) {
-        const reason = e.name === "AbortError" ? "翻译请求超时" : "翻译请求失败（网络错误）";
-        return { ok: false, reason };
+  }
+  return false;
+}
+function getParentOrHost(el) {
+  return el.host && el !== document && el.host.nodeType && el.host !== el ? el.host : el.parentNode;
+}
+function closest(el, selector, ctx, includeCTX) {
+  if (el) {
+    ctx = ctx || document;
+    do {
+      if (selector != null && (selector[0] === ">" ? el.parentNode === ctx && matches(el, selector) : matches(el, selector)) || includeCTX && el === ctx) {
+        return el;
       }
-      finally { clearTimeout(tid); }
+      if (el === ctx) break;
+    } while (el = getParentOrHost(el));
+  }
+  return null;
+}
+var R_SPACE = /\s+/g;
+function toggleClass(el, name, state2) {
+  if (el && name) {
+    if (el.classList) {
+      el.classList[state2 ? "add" : "remove"](name);
+    } else {
+      var className = (" " + el.className + " ").replace(R_SPACE, " ").replace(" " + name + " ", " ");
+      el.className = (className + (state2 ? " " + name : "")).replace(R_SPACE, " ");
     }
-
-    // ==================== 弹窗 ====================
-    let _modalMask = null;
-    function openModal({ title, bodyEl, onSubmit, submitText = "保存", cancelText = "取消" }) {
-      closeModal();
-      const mask = document.createElement("div"); mask.className = "pb-modal-mask";
-      const modal = document.createElement("div"); modal.className = "pb-modal";
-      const h = document.createElement("h3"); h.textContent = title;
-      const actions = document.createElement("div"); actions.className = "pb-row";
-      const cancel = document.createElement("button"); cancel.className = "pb-btn"; cancel.textContent = cancelText;
-      const ok = document.createElement("button"); ok.className = "pb-btn primary"; ok.textContent = submitText;
-      actions.append(cancel, ok); modal.append(h, bodyEl, actions); mask.appendChild(modal);
-      mask.addEventListener("click", (e) => { if (e.target === mask) closeModal(); });
-      cancel.onclick = closeModal;
-      ok.onclick = () => { if (onSubmit() !== false) closeModal(); };
-      document.body.appendChild(mask); _modalMask = mask;
-      setTimeout(() => modal.querySelector("input, textarea")?.focus(), 0);
-      return { close: closeModal, okBtn: ok };
+  }
+}
+function css(el, prop, val) {
+  var style = el && el.style;
+  if (style) {
+    if (val === void 0) {
+      if (document.defaultView && document.defaultView.getComputedStyle) {
+        val = document.defaultView.getComputedStyle(el, "");
+      } else if (el.currentStyle) {
+        val = el.currentStyle;
+      }
+      return prop === void 0 ? val : val[prop];
+    } else {
+      if (!(prop in style) && prop.indexOf("webkit") === -1) {
+        prop = "-webkit-" + prop;
+      }
+      style[prop] = val + (typeof val === "string" ? "" : "px");
     }
-    function closeModal() { if (_modalMask) { _modalMask.remove(); _modalMask = null; } }
-
-    // ==================== Toast ====================
-    let _toastWrap = null;
-    function toast(msg, type = "", ms = 2200) {
-      if (!_toastWrap) { _toastWrap = document.createElement("div"); _toastWrap.className = "pb-toast-wrap"; document.body.appendChild(_toastWrap); }
-      const t = document.createElement("div"); t.className = "pb-toast " + type; t.textContent = msg;
-      _toastWrap.appendChild(t);
-      setTimeout(() => { t.classList.add("fade"); setTimeout(() => t.remove(), 300); }, ms);
+  }
+}
+function matrix(el, selfOnly) {
+  var appliedTransforms = "";
+  if (typeof el === "string") {
+    appliedTransforms = el;
+  } else {
+    do {
+      var transform = css(el, "transform");
+      if (transform && transform !== "none") {
+        appliedTransforms = transform + " " + appliedTransforms;
+      }
+    } while (!selfOnly && (el = el.parentNode));
+  }
+  var matrixFn = window.DOMMatrix || window.WebKitCSSMatrix || window.CSSMatrix || window.MSCSSMatrix;
+  return matrixFn && new matrixFn(appliedTransforms);
+}
+function find(ctx, tagName, iterator) {
+  if (ctx) {
+    var list = ctx.getElementsByTagName(tagName), i = 0, n = list.length;
+    if (iterator) {
+      for (; i < n; i++) {
+        iterator(list[i], i);
+      }
     }
-    // promise 化的确认弹窗，复用 openModal，返回 true/false
-    function confirmModal(msg, opts = {}) {
-      return new Promise(resolve => {
-        let settled = false;
-        const body = document.createElement("p"); body.textContent = msg; body.style.margin = "0 0 12px";
-        body.style.fontSize = "13px"; body.style.lineHeight = "1.5";
-        openModal({
-          title: opts.title || "确认",
-          bodyEl: body,
-          submitText: opts.okText || "确定",
-          cancelText: opts.cancelText || "取消",
-          onSubmit: () => { settled = true; resolve(true); }
-        });
-        // 点确定：onSubmit 已 resolve(true)；否则遮罩消失即为取消
-        const obs = new MutationObserver(() => { if (!_modalMask && !settled) { resolve(false); obs.disconnect(); } });
-        obs.observe(document.body, { childList: true });
-      });
+    return list;
+  }
+  return [];
+}
+function getWindowScrollingElement() {
+  var scrollingElement = document.scrollingElement;
+  if (scrollingElement) {
+    return scrollingElement;
+  } else {
+    return document.documentElement;
+  }
+}
+function getRect(el, relativeToContainingBlock, relativeToNonStaticParent, undoScale, container) {
+  if (!el.getBoundingClientRect && el !== window) return;
+  var elRect, top, left, bottom, right, height, width;
+  if (el !== window && el.parentNode && el !== getWindowScrollingElement()) {
+    elRect = el.getBoundingClientRect();
+    top = elRect.top;
+    left = elRect.left;
+    bottom = elRect.bottom;
+    right = elRect.right;
+    height = elRect.height;
+    width = elRect.width;
+  } else {
+    top = 0;
+    left = 0;
+    bottom = window.innerHeight;
+    right = window.innerWidth;
+    height = window.innerHeight;
+    width = window.innerWidth;
+  }
+  if ((relativeToContainingBlock || relativeToNonStaticParent) && el !== window) {
+    container = container || el.parentNode;
+    if (!IE11OrLess) {
+      do {
+        if (container && container.getBoundingClientRect && (css(container, "transform") !== "none" || relativeToNonStaticParent && css(container, "position") !== "static")) {
+          var containerRect = container.getBoundingClientRect();
+          top -= containerRect.top + parseInt(css(container, "border-top-width"));
+          left -= containerRect.left + parseInt(css(container, "border-left-width"));
+          bottom = top + elRect.height;
+          right = left + elRect.width;
+          break;
+        }
+      } while (container = container.parentNode);
     }
-    // promise 化的文本输入弹窗，返回输入值或 null（取消）
-    function promptModal(message, defaultValue = "", opts = {}) {
-      return new Promise(resolve => {
-        let settled = false;
-        const wrap = document.createElement("div");
-        const label = document.createElement("div"); label.textContent = message; label.style.cssText = "font-size:13px;margin-bottom:6px;line-height:1.5";
-        const inp = document.createElement("input"); inp.value = defaultValue; inp.style.cssText = "width:100%;background:var(--pb-panel-2);color:var(--pb-text);border:1px solid var(--pb-border);border-radius:4px;padding:6px 8px;font-size:13px;box-sizing:border-box";
-        inp.onkeydown = (ev) => { if (ev.key === "Enter") { ev.preventDefault(); settled = true; resolve(inp.value); closeModal(); } };
-        wrap.append(label, inp);
-        openModal({
-          title: opts.title || "输入",
-          bodyEl: wrap,
-          submitText: opts.okText || "确定",
-          cancelText: opts.cancelText || "取消",
-          onSubmit: () => { settled = true; resolve(inp.value); }
-        });
-        const obs = new MutationObserver(() => { if (!_modalMask && !settled) { resolve(null); obs.disconnect(); } });
-        obs.observe(document.body, { childList: true });
-      });
+  }
+  if (undoScale && el !== window) {
+    var elMatrix = matrix(container || el), scaleX = elMatrix && elMatrix.a, scaleY = elMatrix && elMatrix.d;
+    if (elMatrix) {
+      top /= scaleY;
+      left /= scaleX;
+      width /= scaleX;
+      height /= scaleY;
+      bottom = top + height;
+      right = left + width;
     }
-
-    // ==================== 拖动插入指示线（共享） ====================
-    let _indicator = null;
-    function getIndicator() {
-      if (!_indicator) { _indicator = document.createElement("div"); _indicator.className = "pb-drop-indicator"; document.body.appendChild(_indicator); }
-      return _indicator;
+  }
+  return {
+    top,
+    left,
+    bottom,
+    right,
+    width,
+    height
+  };
+}
+function isScrolledPast(el, elSide, parentSide) {
+  var parent = getParentAutoScrollElement(el, true), elSideVal = getRect(el)[elSide];
+  while (parent) {
+    var parentSideVal = getRect(parent)[parentSide], visible = void 0;
+    if (parentSide === "top" || parentSide === "left") {
+      visible = elSideVal >= parentSideVal;
+    } else {
+      visible = elSideVal <= parentSideVal;
     }
-    function hideIndicator() { if (_indicator) _indicator.classList.remove("show"); }
-    // orient: "h"=横向流(chip)，"v"=纵向流(分组/输入框/词)
-    // 返回 "before" | "after"，表示光标相对 target 的插入侧
-    function showIndicatorAt(target, e, orient) {
-      const ind = getIndicator();
-      const r = target.getBoundingClientRect();
-      let before;
-      if (orient === "h") {
-        before = (e.clientX - r.left) < r.width / 2; // 左半区→before
-        ind.classList.add("v"); ind.classList.remove("h");
-        const x = before ? r.left : r.right;
-        ind.style.left = (x - 2) + "px"; ind.style.top = (r.top + 2) + "px"; ind.style.height = (r.height - 4) + "px"; ind.style.width = "";
+    if (!visible) return parent;
+    if (parent === getWindowScrollingElement()) break;
+    parent = getParentAutoScrollElement(parent, false);
+  }
+  return false;
+}
+function getChild(el, childNum, options, includeDragEl) {
+  var currentChild = 0, i = 0, children = el.children;
+  while (i < children.length) {
+    if (children[i].style.display !== "none" && children[i] !== Sortable.ghost && (includeDragEl || children[i] !== Sortable.dragged) && closest(children[i], options.draggable, el, false)) {
+      if (currentChild === childNum) {
+        return children[i];
+      }
+      currentChild++;
+    }
+    i++;
+  }
+  return null;
+}
+function lastChild(el, selector) {
+  var last = el.lastElementChild;
+  while (last && (last === Sortable.ghost || css(last, "display") === "none" || selector && !matches(last, selector))) {
+    last = last.previousElementSibling;
+  }
+  return last || null;
+}
+function index(el, selector) {
+  var index2 = 0;
+  if (!el || !el.parentNode) {
+    return -1;
+  }
+  while (el = el.previousElementSibling) {
+    if (el.nodeName.toUpperCase() !== "TEMPLATE" && el !== Sortable.clone && (!selector || matches(el, selector))) {
+      index2++;
+    }
+  }
+  return index2;
+}
+function getRelativeScrollOffset(el) {
+  var offsetLeft = 0, offsetTop = 0, winScroller = getWindowScrollingElement();
+  if (el) {
+    do {
+      var elMatrix = matrix(el), scaleX = elMatrix.a, scaleY = elMatrix.d;
+      offsetLeft += el.scrollLeft * scaleX;
+      offsetTop += el.scrollTop * scaleY;
+    } while (el !== winScroller && (el = el.parentNode));
+  }
+  return [offsetLeft, offsetTop];
+}
+function indexOfObject(arr, obj) {
+  for (var i in arr) {
+    if (!arr.hasOwnProperty(i)) continue;
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key) && obj[key] === arr[i][key]) return Number(i);
+    }
+  }
+  return -1;
+}
+function getParentAutoScrollElement(el, includeSelf) {
+  if (!el || !el.getBoundingClientRect) return getWindowScrollingElement();
+  var elem = el;
+  var gotSelf = false;
+  do {
+    if (elem.clientWidth < elem.scrollWidth || elem.clientHeight < elem.scrollHeight) {
+      var elemCSS = css(elem);
+      if (elem.clientWidth < elem.scrollWidth && (elemCSS.overflowX == "auto" || elemCSS.overflowX == "scroll") || elem.clientHeight < elem.scrollHeight && (elemCSS.overflowY == "auto" || elemCSS.overflowY == "scroll")) {
+        if (!elem.getBoundingClientRect || elem === document.body) return getWindowScrollingElement();
+        if (gotSelf || includeSelf) return elem;
+        gotSelf = true;
+      }
+    }
+  } while (elem = elem.parentNode);
+  return getWindowScrollingElement();
+}
+function extend(dst, src) {
+  if (dst && src) {
+    for (var key in src) {
+      if (src.hasOwnProperty(key)) {
+        dst[key] = src[key];
+      }
+    }
+  }
+  return dst;
+}
+function isRectEqual(rect1, rect2) {
+  return Math.round(rect1.top) === Math.round(rect2.top) && Math.round(rect1.left) === Math.round(rect2.left) && Math.round(rect1.height) === Math.round(rect2.height) && Math.round(rect1.width) === Math.round(rect2.width);
+}
+var _throttleTimeout;
+function throttle(callback, ms) {
+  return function() {
+    if (!_throttleTimeout) {
+      var args = arguments, _this = this;
+      if (args.length === 1) {
+        callback.call(_this, args[0]);
       } else {
-        before = (e.clientY - r.top) < r.height / 2; // 上半区→before
-        ind.classList.add("h"); ind.classList.remove("v");
-        const y = before ? r.top : r.bottom;
-        ind.style.top = (y - 2) + "px"; ind.style.left = (r.left + 2) + "px"; ind.style.width = (r.width - 4) + "px"; ind.style.height = "";
+        callback.apply(_this, args);
       }
-      ind.classList.add("show");
-      return before ? "before" : "after";
+      _throttleTimeout = setTimeout(function() {
+        _throttleTimeout = void 0;
+      }, ms);
     }
-
-    // ==================== chip 跨输入框拖拽（专用，支持跨容器） ====================
-    let chipDragCtx = null; // { chip, fromBox }
-    function attachChipDrag(el, sourceBox, chip) {
-      el.addEventListener("dragstart", (e) => {
-        chipDragCtx = { chip, fromBox: sourceBox };
-        el.classList.add("dragging");
-        clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer); if (_toolbarEl) _toolbarEl.classList.remove("show"); _activeChipEl = null;
-        try { e.dataTransfer.setData("text/plain", "chip"); } catch (_) {}
-        e.dataTransfer.effectAllowed = "move";
-        e.stopPropagation();
-      });
-      el.addEventListener("dragend", () => { el.classList.remove("dragging"); chipDragCtx = null; hideIndicator(); });
-      // 作为 drop 目标：拖到某个 chip 上时，按光标左/右半区决定插在它之前/之后
-      el.addEventListener("dragover", (e) => {
-        if (!chipDragCtx) return;
-        e.preventDefault();
-        if (chipDragCtx.chip === chip) { hideIndicator(); return; } // 拖到自身：不显示
-        chipDragCtx.side = showIndicatorAt(el, e, "h");
-      });
-      el.addEventListener("drop", (e) => {
-        if (!chipDragCtx) return;
-        e.preventDefault(); e.stopPropagation();
-        hideIndicator();
-        const { chip: dragged, fromBox, side } = chipDragCtx;
-        if (dragged === chip) { chipDragCtx = null; return; } // 拖到自身：无操作
-        const toBox = sourceBox;
-        const fromIdx = fromBox.chips.indexOf(dragged);
-        // 先从源数组删除，再基于删除后的目标数组计算插入位置（避免索引错位）
-        fromBox.chips.splice(fromIdx, 1);
-        let toIdx = toBox.chips.indexOf(chip);
-        if (side === "after") toIdx += 1;   // 光标在目标 chip 右半区 → 插到它后面
-        // 同容器内拖到原位置：还原，避免无意义的删除再插入
-        if (fromBox === toBox && toIdx === fromIdx) { toBox.chips.splice(fromIdx, 0, dragged); chipDragCtx = null; return; }
-        toBox.chips.splice(toIdx, 0, dragged);
-        chipDragCtx = null;
-        commit();
-      });
-    }
-    // chip-area 容器接收 drop（拖到空白区域 → 追加到末尾）
-    function attachChipAreaDrop(area, box) {
-      area.addEventListener("dragover", (e) => {
-        // 词库词拖入：接收并显示追加指示线
-        if (dragCtx && dragCtx.kind === "preset" && dragCtx.payload) {
-          if (e.target.closest(".pb-chip")) return;
-          e.preventDefault();
-          const ind = getIndicator();
-          const r = area.getBoundingClientRect();
-          ind.classList.add("v"); ind.classList.remove("h");
-          ind.style.left = (r.right - 2) + "px"; ind.style.top = (r.top + 2) + "px";
-          ind.style.height = (r.height - 4) + "px"; ind.style.width = "";
-          ind.classList.add("show");
-          return;
-        }
-        if (!chipDragCtx) return;
-        if (e.target.closest(".pb-chip")) return; // 命中具体 chip：交给 chip 自己显示
-        e.preventDefault();
-        // 空白处：指示线显示在容器右边缘（追加位置）
-        if (chipDragCtx.fromBox !== box || box.chips.length) {
-          const ind = getIndicator();
-          const r = area.getBoundingClientRect();
-          ind.classList.add("v"); ind.classList.remove("h");
-          ind.style.left = (r.right - 2) + "px"; ind.style.top = (r.top + 2) + "px";
-          ind.style.height = (r.height - 4) + "px"; ind.style.width = "";
-          ind.classList.add("show");
-          chipDragCtx.side = "append";
-        } else { hideIndicator(); }
-      });
-      area.addEventListener("dragleave", (e) => { if (!area.contains(e.relatedTarget)) hideIndicator(); });
-      area.addEventListener("drop", (e) => {
-        // 词库词拖入：添加为 chip（带翻译）
-        if (dragCtx && dragCtx.kind === "preset" && dragCtx.payload) {
-          if (e.target.closest(".pb-chip")) return;
-          e.preventDefault(); e.stopPropagation();
-          hideIndicator();
-          const w = dragCtx.payload;
-          box.chips.push(mkChip(w.text, w.cnText));
-          cur.focusedBox = box.id;
-          dragCtx = null;
-          commit();
-          return;
-        }
-        if (!chipDragCtx) return;
-        if (e.target.closest(".pb-chip")) return;
-        e.preventDefault(); e.stopPropagation();
-        hideIndicator();
-        const { chip: dragged, fromBox } = chipDragCtx;
-        if (fromBox === box) { chipDragCtx = null; return; } // 同容器空白处：无操作
-        const fromIdx = fromBox.chips.indexOf(dragged);
-        fromBox.chips.splice(fromIdx, 1);
-        box.chips.push(dragged);
-        chipDragCtx = null;
-        commit();
-      });
-    }
-
-    // ==================== 拖拽排序引擎（分组 / 输入框 / 词库 通用） ====================
-    let dragCtx = null;
-    function attachListDrag(el, arr, onDrop, kind) {
-      el.addEventListener("dragstart", (e) => {
-        dragCtx = { kind, fromIndex: arr.indexOf(el._payload), payload: el._payload };
-        el.classList.add("dragging");
-        try { e.dataTransfer.setData("text/plain", kind); } catch (_) {}
-        e.dataTransfer.effectAllowed = "move";
-        e.stopPropagation();
-      });
-      el.addEventListener("dragend", () => { el.classList.remove("dragging"); dragCtx = null; hideIndicator(); });
-      el.addEventListener("dragover", (e) => {
-        if (!dragCtx || dragCtx.kind !== kind) return;
-        e.preventDefault();
-        if (dragCtx.fromIndex === arr.indexOf(el._payload)) { hideIndicator(); return; } // 拖到自身
-        dragCtx.side = showIndicatorAt(el, e, "v");
-        dragCtx.toIndex = arr.indexOf(el._payload);
-      });
-      el.addEventListener("dragleave", (e) => { if (el === e.target) hideIndicator(); });
-      el.addEventListener("drop", (e) => {
-        if (!dragCtx || dragCtx.kind !== kind) return;
-        e.preventDefault(); e.stopPropagation();
-        hideIndicator();
-        const from = dragCtx.fromIndex;
-        const side = dragCtx.side || "before";     // dragover 时记录的插入侧
-        let to = dragCtx.toIndex ?? arr.indexOf(el._payload);
-        if (from < 0 || to < 0 || from === to) { dragCtx = null; return; }
-        const [item] = arr.splice(from, 1);          // 先删除源元素
-        // 删除后重新计算目标索引：after → to+1；若源在目标之前，删除使目标前移一位需补偿
-        let target = (side === "after") ? to + 1 : to;
-        if (from < to) target -= 1;
-        if (target < 0) target = 0;
-        if (target === from) { arr.splice(from, 0, item); dragCtx = null; return; } // 拖到原位置：还原
-        arr.splice(target, 0, item);
-        dragCtx = null;
-        onDrop && onDrop();
-      });
-    }
-
-    // ==================== 颜色选择器 ====================
-    let pickerEl = null;
-    function openColorPicker(anchor, group) {
-      if (pickerEl) { pickerEl.remove(); pickerEl = null; return; }
-      const r = anchor.getBoundingClientRect();
-      pickerEl = document.createElement("div"); pickerEl.className = "pb-color-picker";
-      COLORS.forEach(c => {
-        const s = document.createElement("div"); s.className = "pb-color-swatch"; s.style.background = c;
-        s.onclick = () => { group.color = c; pickerEl.remove(); pickerEl = null; renderWorkspace(); persist(); };
-        pickerEl.appendChild(s);
-      });
-      document.body.appendChild(pickerEl);
-      // 边界判断：右/下溢出时向左/上弹出
-      const pw = pickerEl.offsetWidth, ph = pickerEl.offsetHeight;
-      let left = r.left, top = r.bottom + 6;
-      if (left + pw > window.innerWidth - 6) left = Math.max(6, window.innerWidth - pw - 6);
-      if (top + ph > window.innerHeight - 6) top = Math.max(6, r.top - ph - 6);
-      pickerEl.style.left = left + "px"; pickerEl.style.top = top + "px";
-      setTimeout(() => document.addEventListener("click", () => { if (pickerEl) { pickerEl.remove(); pickerEl = null; } }, { once: true }), 0);
-    }
-
-    // ==================== 输出构建：拼接 chip → 文本 → 同步到节点 ====================
-    // collapsed 仅为视觉折叠，不影响输出；group/box enabled=false 才不参与输出
-    function buildGroup(g) {
-      if (g.enabled === false) return []; // 显式禁用（分组级）
-      const parts = [];
-      g.inputboxes.forEach(box => {
-        if (box.enabled === false) return; // 显式禁用（输入框级 bypass）
-        if (cur.focusedBox !== box.id && !box.chips.length) return;
-        box.chips.forEach(c => {
-          if (c.enabled === false) return;
-          const w = +c.weight.toFixed(1);
-          if (w === 1.0) { parts.push(c.text); return; }
-          parts.push(`(${c.text}:${w.toFixed(1)})`);
+  };
+}
+function cancelThrottle() {
+  clearTimeout(_throttleTimeout);
+  _throttleTimeout = void 0;
+}
+function scrollBy(el, x, y) {
+  el.scrollLeft += x;
+  el.scrollTop += y;
+}
+function clone(el) {
+  var Polymer = window.Polymer;
+  var $2 = window.jQuery || window.Zepto;
+  if (Polymer && Polymer.dom) {
+    return Polymer.dom(el).cloneNode(true);
+  } else if ($2) {
+    return $2(el).clone(true)[0];
+  } else {
+    return el.cloneNode(true);
+  }
+}
+function getChildContainingRectFromElement(container, options, ghostEl2) {
+  var rect = {};
+  Array.from(container.children).forEach(function(child) {
+    var _rect$left, _rect$top, _rect$right, _rect$bottom;
+    if (!closest(child, options.draggable, container, false) || child.animated || child === ghostEl2) return;
+    var childRect = getRect(child);
+    rect.left = Math.min((_rect$left = rect.left) !== null && _rect$left !== void 0 ? _rect$left : Infinity, childRect.left);
+    rect.top = Math.min((_rect$top = rect.top) !== null && _rect$top !== void 0 ? _rect$top : Infinity, childRect.top);
+    rect.right = Math.max((_rect$right = rect.right) !== null && _rect$right !== void 0 ? _rect$right : -Infinity, childRect.right);
+    rect.bottom = Math.max((_rect$bottom = rect.bottom) !== null && _rect$bottom !== void 0 ? _rect$bottom : -Infinity, childRect.bottom);
+  });
+  rect.width = rect.right - rect.left;
+  rect.height = rect.bottom - rect.top;
+  rect.x = rect.left;
+  rect.y = rect.top;
+  return rect;
+}
+var expando = "Sortable" + (/* @__PURE__ */ new Date()).getTime();
+function AnimationStateManager() {
+  var animationStates = [], animationCallbackId;
+  return {
+    captureAnimationState: function captureAnimationState() {
+      animationStates = [];
+      if (!this.options.animation) return;
+      var children = [].slice.call(this.el.children);
+      children.forEach(function(child) {
+        if (css(child, "display") === "none" || child === Sortable.ghost) return;
+        animationStates.push({
+          target: child,
+          rect: getRect(child)
         });
-      });
-      if (!parts.length) return [];
-      if (g.break) { parts.unshift("BREAK"); parts.push("BREAK"); }
-      return parts;
-    }
-    function buildPositive() {
-      const parts = [];
-      cur.workspace.forEach(g => { parts.push(...buildGroup(g)); });
-      return parts.join(", ");
-    }
-    function buildNegative() {
-      return buildGroup(cur.negativeGroup).join(", ");
-    }
-    /** CLIP token 近似估算：英文约 1.3 token/word，中文约 1 token/字，权重语法 +2 */
-    function estimateTokens(text) {
-      if (!text) return 0;
-      let tokens = 0;
-      text.split(",").map(s => s.trim()).filter(Boolean).forEach(term => {
-        const hasWeight = /^\(.+:.+\)$/.test(term);
-        const inner = hasWeight ? term.slice(1, term.lastIndexOf(":")) : term;
-        // 英文词（按空格/连字符拆）
-        const enParts = inner.replace(/[\u4e00-\u9fff]+/g, " ").split(/\s+/).filter(Boolean);
-        tokens += Math.ceil(enParts.length * 1.3);
-        // 中文字符（逐字计）
-        const cnChars = (inner.match(/[\u4e00-\u9fff]/g) || []).length;
-        tokens += cnChars;
-        if (hasWeight) tokens += 2;
-      });
-      return tokens;
-    }
-    /** 计算单个输入框的 token 估算文本（含颜色分级 HTML） */
-    function boxTokenHtml(box) {
-      const parts = [];
-      box.chips.forEach(c => {
-        if (c.enabled === false) return;
-        const w = +(c.weight ?? 1).toFixed(1);
-        parts.push(w === 1.0 ? c.text : `(${c.text}:${w.toFixed(1)})`);
-      });
-      const txt = parts.join(", ");
-      const tok = estimateTokens(txt);
-      const cls = tok > 150 ? "tok-over" : (tok > 75 ? "tok-warn" : "");
-      return tok > 0 ? (cls ? `<span class="${cls}">~${tok} token</span>` : `~${tok} token`) : "";
-    }
-    function renderOutput() {
-      const posRaw = buildPositive();        // 只算一次，复用于显示与计数
-      const negRaw = buildNegative();
-      const pos = posRaw || "（空）";
-      const neg = negRaw || "（空）";
-      $("pbOutputBoxPos").textContent = pos;
-      $("pbOutputBoxNeg").textContent = neg;
-      // 词条计数 + token 估算：仅在非空时显示，token 超 75 标黄、超 150 标红
-      const fmtCount = (txt) => {
-        if (!txt) return "";
-        const words = txt.split(",").map(s => s.trim()).filter(Boolean).length;
-        const tok = estimateTokens(txt);
-        const cls = tok > 150 ? "tok-over" : (tok > 75 ? "tok-warn" : "");
-        const tokHtml = cls ? `<span class="${cls}">· ~${tok} token</span>` : `· ~${tok} token`;
-        return `${words} 词 · ${txt.length} 字符 ${tokHtml}`;
-      };
-      $("pbOutputCountPos").innerHTML = posRaw ? fmtCount(posRaw) : "";
-      $("pbOutputCountNeg").innerHTML = negRaw ? fmtCount(negRaw) : "";
-      syncToNode("positive", pos);
-      syncToNode("negative", neg);
-    }
-    /** 把构建出的文本同步到【活动节点】的 positive/negative widget。
-     *  只写当前绑定节点，不再广播到所有节点（每节点状态独立）。 */
-    function syncToNode(field, text) {
-      if (!activeNode) return;
-      const widget = activeNode.widgets?.find(w => w.name === field);
-      if (widget && widget.value !== text) {
-        widget.value = text;
-        try { app.graph?.change?.(); } catch (e) {}
-      }
-    }
-
-    let _copyTimer;
-    $("pbCopyPos").onclick = () => {
-      const txt = buildPositive(); if (!txt) return;
-      navigator.clipboard?.writeText(txt);
-      const b = $("pbCopyPos"); clearTimeout(_copyTimer); b.textContent = "已复制"; _copyTimer = setTimeout(() => b.textContent = "复制", 1200);
-    };
-    $("pbCopyNeg").onclick = () => {
-      const txt = buildNegative(); if (!txt) return;
-      navigator.clipboard?.writeText(txt);
-      const b = $("pbCopyNeg"); clearTimeout(_copyTimer); b.textContent = "已复制"; _copyTimer = setTimeout(() => b.textContent = "复制", 1200);
-    };
-
-    // ==================== 渲染：预设词库 ====================
-    function renderPresets() {
-      // L1 行
-      const catsEl = $("pbPresetCats"); catsEl.innerHTML = "";
-      Object.keys(state.presets.children).forEach(cat => {
-        const t = mkCatTag(cat, state.l1Cat === cat);
-        t.querySelector(".pb-cat-name").onclick = () => {
-          state.l1Cat = cat; const keys = Object.keys(state.presets.children[cat].children); state.l2Cat = keys[0] || null; renderPresets();
-        };
-        t.querySelector(".pb-cat-name").ondblclick = () => renameCat(cat, t, state.presets.children, "l1Cat");
-        t.querySelector(".pb-cat-x").onclick = e => { e.stopPropagation(); delCat(cat, state.presets.children, "l1Cat"); };
-        catsEl.appendChild(t);
-      });
-      renderCatAdd(catsEl, state.presets.children, "l1Cat");
-
-      // L2 行
-      const l2El = $("pbPresetCatsL2"); l2El.innerHTML = "";
-      const l1Node = state.l1Cat ? state.presets.children[state.l1Cat] : null;
-      if (l1Node) {
-        Object.keys(l1Node.children).forEach(cat => {
-          const t = mkCatTag(cat, state.l2Cat === cat);
-          t.querySelector(".pb-cat-name").onclick = () => { state.l2Cat = cat; renderPresets(); };
-          t.querySelector(".pb-cat-name").ondblclick = () => renameCat(cat, t, l1Node.children, "l2Cat");
-          t.querySelector(".pb-cat-x").onclick = e => { e.stopPropagation(); delCat(cat, l1Node.children, "l2Cat"); };
-          l2El.appendChild(t);
-        });
-        renderCatAdd(l2El, l1Node.children, "l2Cat");
-      }
-
-      // 词语列表 — 仅在 L1+L2 都选中时显示
-      const listEl = $("pbPresetList"); listEl.innerHTML = "";
-      if (!l1Node || !state.l2Cat) return;
-      const words = l1Node.children[state.l2Cat]?.items || [];
-      words.forEach((w) => {
-        listEl.appendChild(renderPresetWord(w, { items: words, draggable: true, onDeleted: () => { renderPresets(); persist(); } }));
-      });
-      // 新建词语行
-      const addBtn = document.createElement("button"); addBtn.className = "pb-preset-add-btn"; addBtn.textContent = "+ 新建词语";
-      const addRow = document.createElement("div"); addRow.className = "pb-preset-add-row"; addRow.style.display = "none";
-      const addCN = document.createElement("input"); addCN.placeholder = "中文"; addCN.className = "pb-preset-cn";
-      const addEN = document.createElement("input"); addEN.placeholder = "English"; addEN.className = "pb-preset-en";
-      const actions = document.createElement("div"); actions.className = "pb-row-actions";
-      const transMini = document.createElement("button"); transMini.textContent = "翻译"; transMini.className = "pb-translate-mini";
-      const saveMini = document.createElement("button"); saveMini.textContent = "保存"; saveMini.className = "pb-save-mini";
-      actions.append(transMini, saveMini); addRow.append(addCN, addEN, actions);
-      addBtn.onclick = () => { addBtn.style.display = "none"; addRow.style.display = ""; addCN.focus(); };
-      const saveWord = () => {
-        const cn = addCN.value.trim(), en = addEN.value.trim();
-        if (!cn && !en) { addRow.style.display = "none"; addBtn.style.display = ""; addCN.value = addEN.value = ""; return; }
-        const entry = cn && en ? { text: en, cnText: cn } : { text: cn || en };
-        words.push(entry); addCN.value = addEN.value = ""; addRow.style.display = "none"; addBtn.style.display = "";
-        renderPresets(); persist();
-      };
-      transMini.onclick = async () => {
-        const cn = addCN.value.trim(), en = addEN.value.trim();
-        const run = async (src, fillTarget, focusTarget) => {
-          transMini.textContent = "…"; const r = await translateText(src); transMini.textContent = "翻译";
-          if (r.ok && r.text) { fillTarget.value = r.text; focusTarget.focus(); }
-          else if (!r.ok) { toast(r.reason, "error"); }
-        };
-        if (cn && !en) run(cn, addEN, addEN);
-        else if (en && !cn) run(en, addCN, addCN);
-      };
-      saveMini.onclick = saveWord;
-      addCN.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); saveWord(); } };
-      addEN.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); saveWord(); } };
-      listEl.appendChild(addBtn); listEl.appendChild(addRow);
-      // 重建词库索引缓存，供输入框自动补全使用
-      _presetIndex = [];
-      Object.keys(state.presets.children).forEach(l1 => {
-        const n1 = state.presets.children[l1];
-        Object.keys(n1.children || {}).forEach(l2 => {
-          (n1.children[l2].items || []).forEach(w => _presetIndex.push(w));
-        });
-      });
-    }
-    /** 统一渲染词库词（renderPresets 和 renderSearchResults 共用）
-     * opts: { items, onDeleted, draggable, path } */
-    function renderPresetWord(w, opts) {
-      const wrap = document.createElement("div");
-      wrap.className = "pb-preset-word";
-      if (opts.draggable) { wrap.draggable = true; wrap._payload = w; }
-      const hasCN = !!w.cnText;
-      const sub = hasCN ? `<small class="pb-chip-sub">${escapeHtml(w.cnText)}</small>` : "";
-      const pathTag = opts.path ? `<small class="pb-chip-path">${escapeHtml(opts.path)}</small>` : "";
-      wrap.innerHTML = `<span class="text"><span class="pb-chip-main">${escapeHtml(w.text)}</span>${sub}${pathTag}</span><button class="pb-preset-x" title="删除">×</button>`;
-      wrap.onclick = (e) => {
-        if (e.target.classList.contains("pb-preset-x")) {
-          const idx = opts.items.indexOf(w); if (idx >= 0) opts.items.splice(idx, 1);
-          opts.onDeleted && opts.onDeleted(); return;
-        }
-        addChipsToFocused(w);
-      };
-      if (opts.draggable) attachListDrag(wrap, opts.items, opts.onDeleted, "preset");
-      return wrap;
-    }
-    function mkCatTag(name, active) {
-      const t = document.createElement("div");
-      t.className = "pb-cat-tag" + (active ? " active" : "");
-      t.innerHTML = `<span class="pb-cat-name">${escapeHtml(name)}</span><span class="pb-cat-x">×</span>`;
-      return t;
-    }
-    function renameCat(oldName, tagEl, parentObj, stateKey) {
-      const nameEl = tagEl.querySelector(".pb-cat-name");
-      nameEl.innerHTML = `<input value="${escapeHtml(oldName)}" style="background:transparent;border:1px solid var(--pb-accent);color:inherit;border-radius:4px;padding:2px 4px;font-size:12px;width:90px;outline:none">`;
-      const inp = nameEl.querySelector("input"); inp.focus(); inp.select();
-      const done = (cancel) => { if (cancel) { renderPresets(); return; } const v = inp.value.trim(); if (v && v !== oldName && !parentObj[v]) { const entries = Object.entries(parentObj); const idx = entries.findIndex(([k]) => k === oldName); entries[idx] = [v, entries[idx][1]]; Object.assign(parentObj, Object.fromEntries(entries)); if (state[stateKey] === oldName) state[stateKey] = v; renderPresets(); persist(); } else { renderPresets(); } };
-      inp.onblur = () => done(true);
-      inp.onkeydown = ev => { if (ev.key === "Enter") { ev.preventDefault(); done(false); } else if (ev.key === "Escape") done(true); };
-    }
-    function delCat(name, parentObj, stateKey) {
-      delete parentObj[name];
-      if (state[stateKey] === name) {
-        state[stateKey] = Object.keys(parentObj)[0] || null;
-        if (stateKey === "l1Cat" && state.l1Cat) {
-          const l2s = Object.keys(state.presets.children[state.l1Cat].children);
-          state.l2Cat = l2s[0] || null;
-        } else if (stateKey === "l2Cat") state.l2Cat = Object.keys(parentObj)[0] || null;
-      }
-      renderPresets(); persist();
-    }
-    function renderCatAdd(parentEl, parentObj, stateKey) {
-      const btn = document.createElement("span"); btn.className = "pb-cat-tag pb-cat-add"; btn.textContent = "+ 新建";
-      btn.onclick = () => {
-        btn.style.display = "none";
-        const inp = document.createElement("input"); inp.className = "pb-cat-input"; inp.placeholder = "名称…";
-        const done = () => { btn.style.display = ""; inp.remove(); const v = inp.value.trim(); if (v && !parentObj[v]) { parentObj[v] = { items: [], children: {} }; state[stateKey] = v; if (stateKey === "l1Cat") state.l2Cat = null; renderPresets(); persist(); } };
-        inp.onblur = done; inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); done(); } else if (e.key === "Escape") { inp.value = ""; done(); } };
-        parentEl.appendChild(inp); inp.focus();
-      };
-      parentEl.appendChild(btn);
-    }
-
-    // ==================== 渲染：负面提示词（固定在底部） ====================
-    function renderNegativeGroup() {
-      const root = $("pbWorkspace");
-      const ng = cur.negativeGroup;
-      const ngEnabled = ng.enabled !== false;
-      const g = document.createElement("div");
-      g.className = "pb-group negative-fixed" + (ng.collapsed ? " collapsed" : "") + (ngEnabled ? "" : " disabled");
-      g.dataset.gid = ng.id; g._payload = ng;
-      const bar = document.createElement("div"); bar.className = "pb-group-color-bar"; bar.style.background = ng.color; g.appendChild(bar);
-      const header = document.createElement("div"); header.className = "pb-group-header";
-      header.innerHTML = `<span class="caret">▾</span><div class="pb-color-dot" style="background:${ng.color}"></div><div class="name">${escapeHtml(ng.name)}</div><button class="pb-btn pb-group-break" data-act="break" title="${ng.break ? "取消隔离" : "隔离此分组"}" style="font-size:11px;padding:2px 6px;color:${ng.break ? 'var(--pb-accent)' : 'var(--pb-text-dim)'}">隔离</button><button class="pb-btn pb-group-toggle" data-act="toggle" title="${ngEnabled ? "禁用输出" : "启用输出"}" style="font-size:11px;padding:2px 6px;margin-left:auto">${ngEnabled ? "👁" : "🚫"}</button><button class="pb-btn" data-act="clear" style="font-size:11px;padding:2px 6px;" title="一键清空">清空</button>`;
-      header.onclick = (e) => {
-        if (e.target.dataset.act === "clear") { ng.inputboxes.forEach(box => box.chips = []); commit(); return; }
-        if (e.target.dataset.act === "toggle") { ng.enabled = ng.enabled === false; commit(); return; }
-        if (e.target.dataset.act === "break") { ng.break = ng.break === false; commit(); return; }
-        if (e.target.classList.contains("name")) return;
-        if (e.target.classList.contains("pb-color-dot")) { openColorPicker(e.target, ng); return; }
-        ng.collapsed = !ng.collapsed; commit();
-      };
-      g.appendChild(header);
-      if (!ng.collapsed) { const body = document.createElement("div"); body.className = "pb-group-body"; ng.inputboxes.forEach(box => body.appendChild(renderInputBox(ng, box))); g.appendChild(body); }
-      root.appendChild(g);
-    }
-
-    // ==================== 渲染：工作区（分组 → 输入框 → chip） ====================
-    function renderWorkspace() {
-      const root = $("pbWorkspace"); root.innerHTML = "";
-      cur.workspace.forEach(group => {
-        const g = document.createElement("div");
-        g.className = "pb-group" + (group.collapsed ? " collapsed" : "");
-        g.dataset.gid = group.id; g._payload = group; g.draggable = true;
-        attachListDrag(g, cur.workspace, () => { commit(); }, "group");
-        const bar = document.createElement("div"); bar.className = "pb-group-color-bar"; bar.style.background = group.color; g.appendChild(bar);
-        const gEnabled = group.enabled !== false;
-        g.classList.toggle("disabled", !gEnabled);
-        const header = document.createElement("div"); header.className = "pb-group-header";
-      header.innerHTML = `<span class="caret">▾</span><div class="pb-color-dot" style="background:${group.color}"></div><div class="name">${escapeHtml(group.name)}</div><button class="pb-btn pb-group-break" data-act="break" title="${group.break ? "取消隔离" : "隔离此分组"}" style="font-size:11px;padding:2px 6px;color:${group.break ? 'var(--pb-accent)' : 'var(--pb-text-dim)'}">隔离</button><button class="pb-btn pb-group-toggle" data-act="toggle" title="${gEnabled ? "禁用输出" : "启用输出"}" style="font-size:11px;padding:2px 6px;">${gEnabled ? "👁" : "🚫"}</button><button class="pb-btn" data-act="del" style="font-size:11px;padding:2px 6px;" title="删除分组">删除</button>`;
-      header.onclick = (e) => {
-        if (e.target.dataset.act === "del") { cur.workspace = cur.workspace.filter(x => x.id !== group.id); commit(); return; }
-        if (e.target.dataset.act === "toggle") { group.enabled = group.enabled === false; commit(); return; }
-        if (e.target.dataset.act === "break") { group.break = group.break === false; commit(); return; }
-        if (e.target.classList.contains("name")) return;
-        if (e.target.classList.contains("pb-color-dot")) { openColorPicker(e.target, group); return; }
-        group.collapsed = !group.collapsed; renderWorkspace(); persist();
-      };
-        header.querySelector(".name").ondblclick = (e) => { e.stopPropagation(); promptModal("分组新名称：", group.name, { title: "重命名分组" }).then(nn => { if (nn != null) { const v = nn.trim(); if (v) { group.name = v; renderWorkspace(); persist(); } } }); };
-        g.appendChild(header);
-        if (!group.collapsed) {
-          const body = document.createElement("div"); body.className = "pb-group-body";
-          group.inputboxes.forEach(box => body.appendChild(renderInputBox(group, box)));
-          const addBtn = document.createElement("button"); addBtn.className = "pb-add-inputbox"; addBtn.textContent = "+ 添加输入框";
-          addBtn.onclick = () => { group.inputboxes.push(mkBox()); renderWorkspace(); persist(); };
-          body.appendChild(addBtn); g.appendChild(body);
-        }
-        root.appendChild(g);
-      });
-      const add = document.createElement("button"); add.className = "pb-add-group"; add.textContent = "+ 添加输入分组";
-      add.onclick = () => { cur.workspace.push(mkGroup("新分组", COLORS[(cur.workspace.length) % COLORS.length])); commit(); };
-      root.appendChild(add);
-      renderNegativeGroup();
-      const ae = document.activeElement;
-      if (ae && (ae.classList.contains("pb-chip-input") || ae.classList.contains("pb-inputbox-title"))) {
-        const bid = ae.closest(".pb-inputbox")?.dataset?.bid;
-        const target = bid ? root.querySelector(`.pb-inputbox[data-bid="${bid}"] .pb-chip-input`) : null;
-        if (target) { target.focus(); try { target.setSelectionRange(ae.selectionStart ?? ae.value.length, ae.selectionEnd ?? ae.value.length); } catch (_) {} }
-      } else if (_pendingFocusBox) {
-        const target = root.querySelector(`.pb-inputbox[data-bid="${_pendingFocusBox}"] .pb-chip-input`);
-        if (target) { target.focus(); }
-        _pendingFocusBox = null;
-      }
-    }
-
-    // ==================== 渲染：输入框 ====================
-    function renderInputBox(group, box) {
-      const isFixed = group === cur.negativeGroup;
-      const boxEnabled = box.enabled !== false;
-      const el = document.createElement("div");
-      el.className = "pb-inputbox" + (cur.focusedBox === box.id ? " focused" : "") + (!isFixed && !boxEnabled ? " disabled" : "");
-      el.dataset.bid = box.id; el._payload = box;
-      // 注入分组色为 CSS 变量，供 .pb-inputbox.focused 的边框/竖条/outline 取色（与分组色条一致）
-      el.style.setProperty("--pb-box-color", group.color || "var(--pb-accent)");
-      el.innerHTML = `<div class="pb-inputbox-header"${isFixed?"":' draggable="true"'}>${isFixed?"":`<button class="pb-inputbox-toggle" data-act="toggle" title="${boxEnabled ? "Bypass（不参与输出）" : "启用输出"}">${boxEnabled ? "👁" : "🚫"}</button>`}<input class="pb-inputbox-title" value="${escapeHtml(box.title)}"/>${isFixed?"":'<span class="pb-inputbox-remove" title="删除">×</span>'}</div><div class="pb-chip-area"></div><div class="pb-box-token"></div>`;
-      if (!isFixed) { const header = el.querySelector(".pb-inputbox-header"); header._payload = box; attachListDrag(header, group.inputboxes, () => { commit(); }, "inputbox"); }
-      // bypass toggle（仅普通分组的输入框）
-      if (!isFixed) el.querySelector('.pb-inputbox-toggle').onclick = (e) => { e.stopPropagation(); box.enabled = box.enabled === false; commit(); };
-      el.onclick = (e) => {
-        const skip = e.target.closest("button, .pb-chip");
-        if (skip) return;
-        // 移除其它输入框的聚焦态
-        document.querySelectorAll(".pb-inputbox.focused").forEach(el2 => el2.classList.remove("focused"));
-        cur.focusedBox = box.id; el.classList.add("focused");
-      };
-      el.querySelector(".pb-inputbox-title").oninput = (e) => { box.title = e.target.value; renderOutput(); persist(); };
-      if (!isFixed) el.querySelector(".pb-inputbox-remove").onclick = (e) => { e.stopPropagation(); group.inputboxes = group.inputboxes.filter(b => b.id !== box.id); if (cur.focusedBox === box.id) cur.focusedBox = null; commit(); };
-      const area = el.querySelector(".pb-chip-area");
-      attachChipAreaDrop(area, box);
-      box.chips.forEach(chip => area.appendChild(renderChip(chip, box)));
-      // 填充输入框 token 计数
-      const tokEl = el.querySelector(".pb-box-token");
-      if (tokEl) tokEl.innerHTML = boxTokenHtml(box);
-      const input = document.createElement("input"); input.className = "pb-chip-input"; input.placeholder = "输入词语，逗号分隔可批量…";
-      input.oninput = () => showAc(input, box);
-      input.onkeydown = (e) => {
-        // 上下键移动补全高亮
-        if ((e.key === "ArrowDown" || e.key === "ArrowUp") && _acItems.length) {
-          e.preventDefault();
-          _acActive = (_acActive + (e.key === "ArrowDown" ? 1 : -1) + _acItems.length) % _acItems.length;
-          renderAcActive(); return;
-        }
-        if (e.key === "Escape") { hideAc(); return; }
-        // Tab：选中推荐补全
-        if (e.key === "Tab") {
-          if (_acItems.length && _acActive >= 0) { e.preventDefault(); selectAc(input, box, _acActive); return; }
-        }
-        // Enter / 逗号：直接输入原始内容
-        if (e.key === "Enter" || e.key === "," || e.key === "，") {
-          e.preventDefault(); const v = input.value; if (v.trim()) { _pendingFocusBox = box.id; addChipsToBox(box, v); input.value = ""; hideAc(); }
-        }
-        else if (e.key === "Backspace" && !input.value && box.chips.length) { box.chips.pop(); _pendingFocusBox = box.id; commit(); }
-      };
-      input.onblur = () => { setTimeout(hideAc, 150); };
-      area.appendChild(input);
-      return el;
-    }
-
-    /** 局部更新 chip 权重显示，不重建 DOM（性能优化：避免全量 renderWorkspace） */
-    function updateChipWeight(el, chip) {
-      const main = el.querySelector(".pb-chip-main");
-      if (!main) return;
-      const oldW = main.querySelector(".w");
-      if (oldW) oldW.remove();
-      if (chip.weight.toFixed(1) !== "1.0") {
-        const wSpan = document.createElement("span");
-        wSpan.className = "w";
-        wSpan.textContent = chip.weight.toFixed(1);
-        main.appendChild(wSpan);
-      }
-      // 同步刷新所属输入框的 token 计数
-      const inputbox = el.closest(".pb-inputbox");
-      const box = inputbox?._payload;
-      if (box) { const tokEl = inputbox.querySelector(".pb-box-token"); if (tokEl) tokEl.innerHTML = boxTokenHtml(box); }
-    }
-    // ==================== chip 浮动工具栏（单例，mouseenter 定位到 chip 上方 / 下方） ====================
-    /** 浮动栏的创建与隐藏。参考 autocomplete 单例模式。 */
-    function getToolbar() {
-      if (!_toolbarEl) { _toolbarEl = document.createElement("div"); _toolbarEl.className = "pb-chip-toolbar"; document.body.appendChild(_toolbarEl); }
-      return _toolbarEl;
-    }
-    function hideToolbar() {
-      clearTimeout(_toolbarHideTimer);
-      clearTimeout(_switchTimer);
-      _toolbarHideTimer = setTimeout(() => {
-        if (_toolbarEl) _toolbarEl.classList.remove("show");
-        _activeChipEl = null;
-      }, 200);
-    }
-    function showToolbar(chipEl) {
-      clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer);
-      const tb = getToolbar();
-      tb.classList.add("show");
-      const cr = chipEl.getBoundingClientRect();
-      const tw = tb.offsetWidth, th = tb.offsetHeight;
-      let left = cr.left + cr.width / 2 - tw / 2;
-      let top = cr.top - th - 6;
-      if (top < 6) top = cr.bottom + 6;
-      if (left < 6) left = 6;
-      if (left + tw > window.innerWidth - 6) left = window.innerWidth - tw - 6;
-      tb.style.left = left + "px"; tb.style.top = top + "px";
-    }
-    /** 绑定 chip → toolbar：mouseenter 延时切换（150ms 防抖，避免路过 chip 抢 toolbar）。 */
-    function attachToolbarToChip(el, box, chip) {
-      const tb = getToolbar();
-      el.addEventListener("mouseenter", () => {
-        if (el.classList.contains("dragging")) return;
-        if (_activeChipEl === el) { clearTimeout(_toolbarHideTimer); return; }
-        clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer);
-        _switchTimer = setTimeout(() => {
-          _activeChipEl = el;
-          const bypassed = chip.enabled === false;
-          tb.innerHTML = `
-            <button class="pb-chiptb-wminus" title="减权 0.1">−</button>
-            <button class="pb-chiptb-wplus" title="加权 0.1">+</button>
-            <button class="pb-chiptb-bypass" title="${bypassed ? "恢复输出" : "Bypass（不参与输出）"}">${bypassed ? "🚫" : "👁"}</button>`;
-          tb.querySelector(".pb-chiptb-wminus").onmousedown = e => e.preventDefault();
-          tb.querySelector(".pb-chiptb-wplus").onmousedown = e => e.preventDefault();
-          tb.querySelector(".pb-chiptb-wminus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight - 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
-          tb.querySelector(".pb-chiptb-wplus").onclick = e => { e.stopPropagation(); chip.weight = clamp(+(chip.weight + 0.1).toFixed(1), 0.1, MAX_WEIGHT); updateChipWeight(el, chip); commit(); };
-          tb.querySelector(".pb-chiptb-bypass").onclick = e => { e.stopPropagation(); chip.enabled = chip.enabled === false; commit(); };
-          showToolbar(el);
-        }, _activeChipEl ? 150 : 0);
-      });
-      el.addEventListener("mouseleave", () => hideToolbar());
-      tb.addEventListener("mouseenter", () => { clearTimeout(_toolbarHideTimer); clearTimeout(_switchTimer); });
-      tb.addEventListener("mouseleave", () => hideToolbar());
-    }
-    // ==================== 渲染：chip（权重 / 删除 / 双击编辑 / 拖拽排序） ====================
-    function renderChip(chip, box) {
-      const el = document.createElement("span");
-      const bypassedClass = chip.enabled === false ? " bypassed" : "";
-      el.className = "pb-chip" + (chip.translating ? " translating" : "") + bypassedClass;
-      el.draggable = true; el.dataset.cid = chip.id; el._payload = chip;
-      const hasCN = !!chip.cnText;
-      const sub = hasCN ? `<small class="pb-chip-sub">${escapeHtml(chip.cnText)}</small>` : "";
-      const w = chip.weight.toFixed(1) === "1.0" ? "" : `<span class="w">${chip.weight.toFixed(1)}</span>`;
-      el.innerHTML = `<span class="text"><span class="pb-chip-main">${escapeHtml(chip.text)}${w}</span>${sub}</span><button class="pb-chip-x" title="删除">×</button>`;
-      el.querySelector(".pb-chip-x").onclick = e => { e.stopPropagation(); _pendingFocusBox = box.id; box.chips = box.chips.filter(c => c.id !== chip.id); commit(); };
-      // 双击编辑
-      const startEdit = (targetEl, field, value) => {
-        el.draggable = false;
-        targetEl.innerHTML = `<input value="${escapeHtml(value)}" style="background:var(--pb-chip-bg-focus);border:1px solid var(--pb-accent);color:var(--pb-text);border-radius:4px;padding:2px 5px;font-size:12px;width:110px;outline:none">`;
-        const inp = targetEl.querySelector("input"); inp.focus(); inp.select();
-        const done = (cancel) => {
-          el.draggable = true;
-          if (cancel) { renderWorkspace(); return; }
-          const v = inp.value.trim();
-          if (v && v !== value) {
-            chip[field] = v;
-            commit();
-          } else { renderWorkspace(); }
-        };
-        inp.onblur = () => done(true);
-        inp.onkeydown = ev => { if (ev.key === "Enter") { ev.preventDefault(); done(false); } else if (ev.key === "Escape") done(true); };
-      };
-      el.querySelector(".pb-chip-main").ondblclick = e => {
-        e.stopPropagation();
-        startEdit(el.querySelector(".pb-chip-main"), "text", chip.text);
-      };
-      if (hasCN) {
-        el.querySelector(".pb-chip-sub").ondblclick = e => {
-          e.stopPropagation();
-          startEdit(el.querySelector(".pb-chip-sub"), "cnText", chip.cnText);
-        };
-      }
-      attachToolbarToChip(el, box, chip);
-      attachChipDrag(el, box, chip);
-      return el;
-    }
-
-    async function addChipsToFocused(word) {
-      if (!cur.focusedBox) {
-        // 自动聚焦第一个可用输入框；若一个都没有则 toast 提示
-        const firstBox = cur.workspace[0]?.inputboxes?.[0];
-        if (firstBox) {
-          cur.focusedBox = firstBox.id;
-          renderWorkspace();
-          toast("已自动聚焦到「" + (cur.workspace[0].name) + " / " + (firstBox.title || "默认") + "」", "ok", 1600);
-        } else {
-          toast("请先在工作区添加一个输入框", "warn");
-          return;
-        }
-      }
-      for (const g of [...cur.workspace, cur.negativeGroup]) {
-        const box = g.inputboxes.find(b => b.id === cur.focusedBox);
-        if (!box) continue;
-        if (typeof word === "object") {
-          box.chips.push(mkChip(word.text, word.cnText));
-        } else {
-          await addChipsToBox(box, word);
-        }
-        commit();
-        return;
-      }
-    }
-    // ==================== 输入框自动补全 ====================
-    function getAcLayer() {
-      if (!_acLayer) { _acLayer = document.createElement("div"); _acLayer.className = "pb-autocomplete"; document.body.appendChild(_acLayer); }
-      return _acLayer;
-    }
-    function hideAc() { if (_acLayer) _acLayer.classList.remove("show"); _acItems = []; _acActive = -1; }
-    // 取输入框光标前、最后一个逗号后的片段作为当前补全词
-    function currentTerm(input) {
-      const v = input.value.slice(0, input.selectionStart ?? input.value.length);
-      const parts = v.split(/[，,]/);
-      return parts[parts.length - 1].trim();
-    }
-    function showAc(input, box) {
-      const term = currentTerm(input).toLowerCase();
-      if (!term) { hideAc(); return; }
-      const seen = new Set(); const matches = [];
-      const limit = 20;
-      // 1. 用户词库匹配
-      for (const w of _presetIndex) {
-        const en = (w.text || "").toLowerCase();
-        const cn = (w.cnText || "").toLowerCase();
-        if (en.includes(term) || cn.includes(term)) {
-          const key = en;
-          if (seen.has(key)) continue; seen.add(key);
-          matches.push({ text: w.text, cnText: w.cnText, source: null });
-          if (matches.length >= limit) break;
-        }
-      }
-      // 2. danbooru 词库匹配（用户词库不够 limit 条时补充）
-      if (matches.length < limit && _danbooruIndex.length) {
-        for (const [en, zh] of _danbooruIndex) {
-          const enLow = en.toLowerCase();
-          const zhLow = (zh || "").toLowerCase();
-          const termAlt = term.includes(" ") ? term.replace(/\s+/g, "_") : term.includes("_") ? term.replace(/_/g, " ") : null;
-          if (enLow.includes(term) || zhLow.includes(term) || (termAlt && (enLow.includes(termAlt) || zhLow.includes(termAlt)))) {
-            const key = enLow;
-            if (seen.has(key)) continue; seen.add(key);
-            matches.push({ text: en, cnText: zh, source: "📦 danbooru" });
-            if (matches.length >= limit) break;
+        var fromRect = _objectSpread2({}, animationStates[animationStates.length - 1].rect);
+        if (child.thisAnimationDuration) {
+          var childMatrix = matrix(child, true);
+          if (childMatrix) {
+            fromRect.top -= childMatrix.f;
+            fromRect.left -= childMatrix.e;
           }
         }
-      }
-      // 排序：英文前缀 > 英文子串 > 仅中文，同级按词条长度升序
-      matches.sort((a, b) => {
-        const ea = (a.text || "").toLowerCase(), eb = (b.text || "").toLowerCase();
-        const sa = ea.startsWith(term) ? 0 : ea.includes(term) ? 1 : 2;
-        const sb = eb.startsWith(term) ? 0 : eb.includes(term) ? 1 : 2;
-        return sa - sb || a.text.length - b.text.length;
+        child.fromRect = fromRect;
       });
-      _acItems = matches; _acActive = matches.length ? 0 : -1;
-      const layer = getAcLayer();
-      if (!matches.length) { hideAc(); return; }
-      layer.innerHTML = "";
-      matches.forEach((w, i) => {
-        const item = document.createElement("div"); item.className = "pb-ac-item" + (i === 0 ? " active" : "");
-        const sourceTag = w.source ? '<span class="cn" style="color:var(--pb-accent-2)">' + w.source + '</span>' : "";
-        item.innerHTML = '<span class="en">' + escapeHtml(w.text) + '</span>' + (w.cnText ? '<span class="cn">' + escapeHtml(w.cnText) + '</span>' : "") + sourceTag;
-        // mousedown 而非 click，避免输入框失焦
-        item.onmousedown = (e) => { e.preventDefault(); selectAc(input, box, i); };
-        layer.appendChild(item);
-      });
-      // 定位：输入框下方
-      const r = input.getBoundingClientRect();
-      layer.style.left = r.left + "px"; layer.style.top = (r.bottom + 2) + "px";
-      layer.classList.add("show");
-    }
-    function renderAcActive() {
-      if (!_acLayer) return;
-      _acLayer.querySelectorAll(".pb-ac-item").forEach((el, i) => el.classList.toggle("active", i === _acActive));
-      const active = _acLayer.children[_acActive];
-      if (active) active.scrollIntoView({ block: "nearest" });
-    }
-    // 选中第 idx 个候选：用词库词创建 chip（带 cnText），并从输入框移除当前片段
-    function selectAc(input, box, idx) {
-      const w = _acItems[idx]; if (!w) return;
-      // 移除当前片段（光标前最后一个逗号后的内容）
-      const before = input.value.slice(0, input.selectionStart ?? input.value.length);
-      const after = input.value.slice(input.selectionStart ?? input.value.length);
-      const cut = before.lastIndexOf(","); const cut2 = before.lastIndexOf("，");
-      const cutAt = Math.max(cut, cut2);
-      const prefix = cutAt >= 0 ? before.slice(0, cutAt + 1) : "";
-      input.value = prefix + after;
-      // 创建 chip（带词库翻译）
-      _pendingFocusBox = box.id;
-      box.chips.push(mkChip(w.text, w.cnText));
-      hideAc(); commit();
-    }
-
-    async function addChipsToBox(box, text) {
-      const terms = text.split(/[，,]/).map(s => s.trim()).filter(Boolean);
-      if (!terms.length) return;
-      terms.forEach(t => {
-        const low = t.toLowerCase();
-        const lowAlt = low.includes(" ") ? low.replace(/\s+/g, "_") : low.includes("_") ? low.replace(/_/g, " ") : null;
-        // 先在用户词库匹配
-        let match = _presetIndex.find(w => {
-          const elow = (w.text || "").toLowerCase();
-          return elow === low || (lowAlt && elow === lowAlt);
-        })?.cnText;
-        if (match) match = { cnText: match };
-        // 再在 danbooru 词库匹配
-        if (!match && _danbooruIndex.length) {
-          const db = _danbooruIndex.find(([en]) => {
-            const elow = en.toLowerCase();
-            return elow === low || (lowAlt && elow === lowAlt);
-          });
-          if (db && db[1]) match = { cnText: db[1] };
-        }
-        box.chips.push(mkChip(t, match ? match.cnText : null));
-      });
-      commit();
-    }
-    // ==================== 翻译按钮（一次性全量翻译） ====================
-    (function () {
-      const toggle = $("pbTranslateToggle");
-      if (!toggle) return;
-      toggle.classList.remove("on"); toggle.textContent = "🌐 翻译";
-      toggle.onclick = () => {
-        toggle.textContent = "🌐 翻译中…"; toggle.classList.add("on");
-        const allChips = []; [...cur.workspace, cur.negativeGroup].forEach(g => g.inputboxes.forEach(b => b.chips.forEach(c => { if (!c.cnText && !c.translating) allChips.push(c); })));
-        if (!allChips.length) { toggle.textContent = "🌐 翻译"; toggle.classList.remove("on"); toast("没有需要翻译的词语", "", 1400); return; }
-        allChips.forEach(c => c.translating = true); renderWorkspace(); renderOutput();
-        let done = 0, failed = 0;
-        runPool(allChips, 4, async (c) => {
-          try {
-            const r = await translateText(c.text);
-            if (r.ok && r.text) {
-              // 按译文语言归位：英文进 text（主/输出），中文进 cnText（备注）
-              const isCn = /[\u4e00-\u9fff]/.test(r.text);
-              if (isCn) { c.cnText = r.text; }
-              else { c.cnText = /[\u4e00-\u9fff]/.test(c.text) ? c.text : (c.cnText || null); c.text = r.text; }
-            } else if (!r.ok) failed++;
-          } finally { delete c.translating; done++; }
-        }).then(() => { commit(); toggle.textContent = "🌐 翻译"; toggle.classList.remove("on"); if (failed > 0) toast(`${failed} 个词语翻译失败（额度或网络问题）`, "warn", 2600); });
-      };
-    })();
-
-    // ==================== 清空工作区 ====================
-    (function () {
-      const btn = $("pbClearAll");
-      if (!btn) return;
-      btn.onclick = () => {
-        cur.workspace = [mkGroup("人物", COLORS[0])];
-        cur.negativeGroup = mkNegativeGroup();
-        cur.focusedBox = null;
-        commit();
-      };
-    })();
-
-    // ==================== 导入 / 导出 ====================
-    (function bindIO() {
-      const exportBtn = $("pbExportPresets"), importBtn = $("pbImport");
-      /** 导出词库 JSON 文件。 */
-      if (exportBtn) {
-        exportBtn.onclick = (e) => {
-          e.stopPropagation();
-          try {
-            const data = { type: "presets", presets: state.presets, l1Cat: state.l1Cat, l2Cat: state.l2Cat };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url; a.download = `promptbuilder-presets-${new Date().toISOString().slice(0, 10)}.json`;
-            document.body.appendChild(a); a.click(); a.remove();
-            URL.revokeObjectURL(url);
-            toast("词库已导出", "ok", 1500);
-          } catch (err) { toast("导出失败：" + err.message, "error"); }
-        };
-      }
-      /** 导入：自动识别词库（presets.children）或提示词（workspace）。 */
-      if (importBtn) {
-        importBtn.onclick = (e) => {
-          e.stopPropagation();
-          const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json";
-          inp.onchange = async () => {
-            const file = inp.files?.[0]; if (!file) return;
-            try {
-              const text = await file.text();
-              const parsed = JSON.parse(text);
-              if (!parsed || (!parsed.presets && !parsed.workspace)) throw new Error("文件格式不正确");
-              const isPresets = !!(parsed.presets?.children);
-              const isPrompt = !!(parsed.workspace);
-              const label = isPresets && isPrompt ? "词库 + 提示词" : isPresets ? "词库" : "提示词";
-              const ok = await confirmModal(`检测到「${label}」备份，导入将覆盖当前对应数据，确定继续？`, {
-                okText: "覆盖导入", title: "导入 " + label
-              });
-              if (!ok) return;
-              if (isPresets) {
-                state.presets = parsed.presets;
-                state.l1Cat = parsed.l1Cat || Object.keys(state.presets.children)[0] || null;
-                state.l2Cat = parsed.l2Cat || Object.keys(state.presets.children[state.l1Cat]?.children || {})[0] || null;
-                saveSharedState();
-                renderPresets();
-              }
-              if (isPrompt) {
-                cur.workspace = parsed.workspace;
-                cur.negativeGroup = parsed.negativeGroup || mkNegativeGroup();
-                cur.focusedBox = parsed.focusedBox ?? null;
-                migrateGroups(cur.workspace);
-                migrateGroups([cur.negativeGroup]);
-                if (!cur.negativeGroup?.inputboxes?.length) cur.negativeGroup = mkNegativeGroup();
-                if (!cur.workspace.length) cur.workspace = [mkGroup("人物", COLORS[0])];
-                cur.focusedBox = cur.focusedBox || cur.workspace[0]?.inputboxes?.[0]?.id || null;
-                saveCurrentNodeState();
-                renderWorkspace(); renderOutput();
-              }
-              toast("导入成功", "ok", 1800);
-            } catch (err) { toast("导入失败：" + err.message, "error"); }
-          };
-          inp.click();
-        };
-      }
-    })();
-
-    // ==================== 撤销/重做：按钮 + 快捷键 ====================
-    (function bindUndoRedo() {
-      const u = $("pbUndo"), r = $("pbRedo");
-      if (u) u.onclick = (e) => { e.stopPropagation(); undo(); };
-      if (r) r.onclick = (e) => { e.stopPropagation(); redo(); };
-      // 仅在面板可见时响应快捷键
-      document.addEventListener("keydown", (e) => {
-        if (!panel.classList.contains("visible")) return;
-        const mod = e.ctrlKey || e.metaKey;
-        if (!mod) return;
-        // 输入框里编辑文本时也允许，但避免与浏览器原生冲突：仅在面板内命中时拦截
-        if (e.key === "z" || e.key === "Z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
-        else if (e.key === "y" || e.key === "Y") { e.preventDefault(); redo(); }
-      });
-    })();
-
-    // Generate 按钮：触发 ComfyUI 生成 1 张
-    (function bindGenerate() {
-      const btn = $("pbGenerate"); if (!btn) return;
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        if (app?.queuePrompt) { app.queuePrompt(0, 1); }
-      };
-    })();
-
-    // 鼠标滚轮横向滚动分类行
-    (function bindCatScroll() {
-      [$("pbPresetCats"), $("pbPresetCatsL2")].forEach(el => {
-        el?.addEventListener("wheel", (e) => {
-          if (el.scrollWidth <= el.clientWidth) return;
-          e.preventDefault();
-          el.scrollLeft += e.deltaY;
-        }, { passive: false });
-      });
-    })();
-
-    // ==================== chip 拖拽保存到当前选中分类 ====================
-    (function bindChipToPreset() {
-      const presetCol = panel.querySelector(".pb-col"); // 左栏第一列
-      if (!presetCol) return;
-      presetCol.addEventListener("dragover", (e) => {
-        if (!chipDragCtx) return;
-        e.preventDefault();
-        presetCol.classList.add("drop-hover");
-      });
-      presetCol.addEventListener("dragleave", (e) => {
-        // 仅当离开整个列时移除高亮
-        if (!presetCol.contains(e.relatedTarget)) presetCol.classList.remove("drop-hover");
-      });
-      presetCol.addEventListener("drop", (e) => {
-        if (!chipDragCtx) return;
-        e.preventDefault();
-        presetCol.classList.remove("drop-hover");
-        const chip = chipDragCtx.chip;
-        // 检查当前是否有选中的 L1/L2 分类
-        if (!state.l1Cat || !state.l2Cat) { toast("请先在左栏选择一个分类", "warn"); return; }
-        const l2Node = state.presets.children[state.l1Cat]?.children?.[state.l2Cat];
-        if (!l2Node) { toast("目标分类不存在", "error"); return; }
-        // 存入当前分类（允许重复）
-        l2Node.items.push({ text: chip.text, cnText: chip.cnText || null });
-        renderPresets(); persist();
-        toast(`已保存「${chip.text}」到 ${state.l1Cat} / ${state.l2Cat}`, "ok", 1800);
-      });
-    })();
-
-    // ==================== 搜索结果（跨所有分类，独立渲染，不影响 renderPresets） ====================
-    function renderSearchResults(q) {
-      const box = $("pbPresetSearchResults");
-      if (!box) return;
-      box.innerHTML = "";
-      // 收集所有分类下的命中项，记录来源 items 数组用于删除
-      const hits = [];
-      Object.keys(state.presets.children).forEach(l1 => {
-        const l1Node = state.presets.children[l1];
-        Object.keys(l1Node.children || {}).forEach(l2 => {
-          const items = l1Node.children[l2].items || [];
-          items.forEach(w => {
-            const cn = (w.cnText || "").toLowerCase();
-            const en = (w.text || "").toLowerCase();
-            if (cn.includes(q) || en.includes(q)) hits.push({ w, items, path: l1 + " / " + l2 });
-          });
-        });
-      });
-      if (!hits.length) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "color:var(--pb-text-dim);font-size:12px;text-align:center;padding:14px 4px";
-        empty.textContent = "无匹配结果";
-        box.appendChild(empty);
+    },
+    addAnimationState: function addAnimationState(state2) {
+      animationStates.push(state2);
+    },
+    removeAnimationState: function removeAnimationState(target) {
+      animationStates.splice(indexOfObject(animationStates, {
+        target
+      }), 1);
+    },
+    animateAll: function animateAll(callback) {
+      var _this = this;
+      if (!this.options.animation) {
+        clearTimeout(animationCallbackId);
+        if (typeof callback === "function") callback();
         return;
       }
-      hits.forEach(({ w, items, path }) => {
-        box.appendChild(renderPresetWord(w, { items, path, onDeleted: () => { renderSearchResults(q); persist(); } }));
-      });
-    }
-
-    // 搜索框实时过滤：搜索态切换 pbPresetList / pbPresetSearchResults 的显示，
-    // 由独立的 renderSearchResults 渲染结果，完全不调用 renderPresets（解耦，避免互相干扰）
-    (function bindPresetSearch() {
-      const inp = $("pbPresetSearch");
-      if (!inp) return;
-      const listEl = $("pbPresetList");
-      const resEl = $("pbPresetSearchResults");
-      let st;
-      inp.addEventListener("input", () => {
-        clearTimeout(st);
-        st = setTimeout(() => {
-          const q = (inp.value || "").trim().toLowerCase();
-          if (q) {
-            if (listEl) listEl.style.display = "none";
-            if (resEl) resEl.style.display = "";
-            renderSearchResults(q);
-          } else {
-            if (listEl) listEl.style.display = "";
-            if (resEl) resEl.style.display = "none";
+      var animating = false, animationTime = 0;
+      animationStates.forEach(function(state2) {
+        var time = 0, target = state2.target, fromRect = target.fromRect, toRect = getRect(target), prevFromRect = target.prevFromRect, prevToRect = target.prevToRect, animatingRect = state2.rect, targetMatrix = matrix(target, true);
+        if (targetMatrix) {
+          toRect.top -= targetMatrix.f;
+          toRect.left -= targetMatrix.e;
+        }
+        target.toRect = toRect;
+        if (target.thisAnimationDuration) {
+          if (isRectEqual(prevFromRect, toRect) && !isRectEqual(fromRect, toRect) && // Make sure animatingRect is on line between toRect & fromRect
+          (animatingRect.top - toRect.top) / (animatingRect.left - toRect.left) === (fromRect.top - toRect.top) / (fromRect.left - toRect.left)) {
+            time = calculateRealTime(animatingRect, prevFromRect, prevToRect, _this.options);
           }
-        }, 100);
+        }
+        if (!isRectEqual(toRect, fromRect)) {
+          target.prevFromRect = fromRect;
+          target.prevToRect = toRect;
+          if (!time) {
+            time = _this.options.animation;
+          }
+          _this.animate(target, animatingRect, toRect, time);
+        }
+        if (time) {
+          animating = true;
+          animationTime = Math.max(animationTime, time);
+          clearTimeout(target.animationResetTimer);
+          target.animationResetTimer = setTimeout(function() {
+            target.animationTime = 0;
+            target.prevFromRect = null;
+            target.fromRect = null;
+            target.prevToRect = null;
+            target.thisAnimationDuration = null;
+          }, time);
+          target.thisAnimationDuration = time;
+        }
       });
-    })();
-
-    // 预加载 danbooru 词库（仅一次，不阻塞渲染）
-    if (!_danbooruIndex.length && !_danbooruLoading) {
-      _danbooruLoading = true;
-      const base = import.meta.url.substring(0, import.meta.url.lastIndexOf("/"));
-      fetch(base + "/danbooru-tags.json").then(r => r.json()).then(arr => {
-        _danbooruIndex = arr;
-      }).catch(() => {}).finally(() => { _danbooruLoading = false; });
+      clearTimeout(animationCallbackId);
+      if (!animating) {
+        if (typeof callback === "function") callback();
+      } else {
+        animationCallbackId = setTimeout(function() {
+          if (typeof callback === "function") callback();
+        }, animationTime);
+      }
+      animationStates = [];
+    },
+    animate: function animate(target, currentRect, toRect, duration) {
+      if (duration) {
+        css(target, "transition", "");
+        css(target, "transform", "");
+        var elMatrix = matrix(this.el), scaleX = elMatrix && elMatrix.a, scaleY = elMatrix && elMatrix.d, translateX = (currentRect.left - toRect.left) / (scaleX || 1), translateY = (currentRect.top - toRect.top) / (scaleY || 1);
+        target.animatingX = !!translateX;
+        target.animatingY = !!translateY;
+        css(target, "transform", "translate3d(" + translateX + "px," + translateY + "px,0)");
+        this.forRepaintDummy = repaint(target);
+        css(target, "transition", "transform " + duration + "ms" + (this.options.easing ? " " + this.options.easing : ""));
+        css(target, "transform", "translate3d(0,0,0)");
+        typeof target.animated === "number" && clearTimeout(target.animated);
+        target.animated = setTimeout(function() {
+          css(target, "transition", "");
+          css(target, "transform", "");
+          target.animated = false;
+          target.animatingX = false;
+          target.animatingY = false;
+        }, duration);
+      }
     }
-
-    renderPresets(); renderWorkspace(); renderOutput();
-    _lastSnapshot = snapshotState(); // 撤销基准：记录初始状态
-    (function autoFocus() { if (cur.workspace.length && cur.workspace[0].inputboxes.length) { cur.focusedBox = cur.workspace[0].inputboxes[0].id; $("pbWorkspace").querySelector(".pb-chip-input")?.focus(); } })();
-    // 暴露给 extension 层的其他钩子（nodeCreated / getNodeMenuItems / beforeRegisterNodeDef）
-    panel._loadNodeIntoPanel = loadNodeIntoPanel;
-  },
-
-  // ==================== 节点集成：按钮入口 + 右键菜单 ====================
-  nodeCreated(node) {
-    if (node.comfyClass !== "PromptBuilderCLIPEncode" && node.comfyClass !== "PromptBuilderText") return;
-    const panel = document.querySelector(".pb-panel");
-    if (!panel) return;
-    node.addWidget("button", "✏️ 在 PromptBuilder 中编辑", null, () => {
-      if (panel._loadNodeIntoPanel) panel._loadNodeIntoPanel(node);
-      panel.classList.remove("minimized");
-      panel.classList.add("visible");
-      const mb = panel.querySelector(".pb-minimize"); if (mb) { mb.textContent = "−"; mb.title = "收起面板"; }
+  };
+}
+function repaint(target) {
+  return target.offsetWidth;
+}
+function calculateRealTime(animatingRect, fromRect, toRect, options) {
+  return Math.sqrt(Math.pow(fromRect.top - animatingRect.top, 2) + Math.pow(fromRect.left - animatingRect.left, 2)) / Math.sqrt(Math.pow(fromRect.top - toRect.top, 2) + Math.pow(fromRect.left - toRect.left, 2)) * options.animation;
+}
+var plugins = [];
+var defaults = {
+  initializeByDefault: true
+};
+var PluginManager = {
+  mount: function mount(plugin) {
+    for (var option2 in defaults) {
+      if (defaults.hasOwnProperty(option2) && !(option2 in plugin)) {
+        plugin[option2] = defaults[option2];
+      }
+    }
+    plugins.forEach(function(p) {
+      if (p.pluginName === plugin.pluginName) {
+        throw "Sortable: Cannot mount plugin ".concat(plugin.pluginName, " more than once");
+      }
     });
-    // 节点上只预览不可编辑
+    plugins.push(plugin);
+  },
+  pluginEvent: function pluginEvent(eventName, sortable, evt) {
+    var _this = this;
+    this.eventCanceled = false;
+    evt.cancel = function() {
+      _this.eventCanceled = true;
+    };
+    var eventNameGlobal = eventName + "Global";
+    plugins.forEach(function(plugin) {
+      if (!sortable[plugin.pluginName]) return;
+      if (sortable[plugin.pluginName][eventNameGlobal]) {
+        sortable[plugin.pluginName][eventNameGlobal](_objectSpread2({
+          sortable
+        }, evt));
+      }
+      if (sortable.options[plugin.pluginName] && sortable[plugin.pluginName][eventName]) {
+        sortable[plugin.pluginName][eventName](_objectSpread2({
+          sortable
+        }, evt));
+      }
+    });
+  },
+  initializePlugins: function initializePlugins(sortable, el, defaults2, options) {
+    plugins.forEach(function(plugin) {
+      var pluginName = plugin.pluginName;
+      if (!sortable.options[pluginName] && !plugin.initializeByDefault) return;
+      var initialized = new plugin(sortable, el, sortable.options);
+      initialized.sortable = sortable;
+      initialized.options = sortable.options;
+      sortable[pluginName] = initialized;
+      _extends(defaults2, initialized.defaults);
+    });
+    for (var option2 in sortable.options) {
+      if (!sortable.options.hasOwnProperty(option2)) continue;
+      var modified = this.modifyOption(sortable, option2, sortable.options[option2]);
+      if (typeof modified !== "undefined") {
+        sortable.options[option2] = modified;
+      }
+    }
+  },
+  getEventProperties: function getEventProperties(name, sortable) {
+    var eventProperties = {};
+    plugins.forEach(function(plugin) {
+      if (typeof plugin.eventProperties !== "function") return;
+      _extends(eventProperties, plugin.eventProperties.call(sortable[plugin.pluginName], name));
+    });
+    return eventProperties;
+  },
+  modifyOption: function modifyOption(sortable, name, value) {
+    var modifiedValue;
+    plugins.forEach(function(plugin) {
+      if (!sortable[plugin.pluginName]) return;
+      if (plugin.optionListeners && typeof plugin.optionListeners[name] === "function") {
+        modifiedValue = plugin.optionListeners[name].call(sortable[plugin.pluginName], value);
+      }
+    });
+    return modifiedValue;
+  }
+};
+function dispatchEvent(_ref) {
+  var sortable = _ref.sortable, rootEl2 = _ref.rootEl, name = _ref.name, targetEl = _ref.targetEl, cloneEl2 = _ref.cloneEl, toEl = _ref.toEl, fromEl = _ref.fromEl, oldIndex2 = _ref.oldIndex, newIndex2 = _ref.newIndex, oldDraggableIndex2 = _ref.oldDraggableIndex, newDraggableIndex2 = _ref.newDraggableIndex, originalEvent = _ref.originalEvent, putSortable2 = _ref.putSortable, extraEventProperties = _ref.extraEventProperties;
+  sortable = sortable || rootEl2 && rootEl2[expando];
+  if (!sortable) return;
+  var evt, options = sortable.options, onName = "on" + name.charAt(0).toUpperCase() + name.substr(1);
+  if (window.CustomEvent && !IE11OrLess && !Edge) {
+    evt = new CustomEvent(name, {
+      bubbles: true,
+      cancelable: true
+    });
+  } else {
+    evt = document.createEvent("Event");
+    evt.initEvent(name, true, true);
+  }
+  evt.to = toEl || rootEl2;
+  evt.from = fromEl || rootEl2;
+  evt.item = targetEl || rootEl2;
+  evt.clone = cloneEl2;
+  evt.oldIndex = oldIndex2;
+  evt.newIndex = newIndex2;
+  evt.oldDraggableIndex = oldDraggableIndex2;
+  evt.newDraggableIndex = newDraggableIndex2;
+  evt.originalEvent = originalEvent;
+  evt.pullMode = putSortable2 ? putSortable2.lastPutMode : void 0;
+  var allEventProperties = _objectSpread2(_objectSpread2({}, extraEventProperties), PluginManager.getEventProperties(name, sortable));
+  for (var option2 in allEventProperties) {
+    evt[option2] = allEventProperties[option2];
+  }
+  if (rootEl2) {
+    rootEl2.dispatchEvent(evt);
+  }
+  if (options[onName]) {
+    options[onName].call(sortable, evt);
+  }
+}
+var _excluded = ["evt"];
+var pluginEvent2 = function pluginEvent3(eventName, sortable) {
+  var _ref = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : {}, originalEvent = _ref.evt, data = _objectWithoutProperties(_ref, _excluded);
+  PluginManager.pluginEvent.bind(Sortable)(eventName, sortable, _objectSpread2({
+    dragEl,
+    parentEl,
+    ghostEl,
+    rootEl,
+    nextEl,
+    lastDownEl,
+    cloneEl,
+    cloneHidden,
+    dragStarted: moved,
+    putSortable,
+    activeSortable: Sortable.active,
+    originalEvent,
+    oldIndex,
+    oldDraggableIndex,
+    newIndex,
+    newDraggableIndex,
+    hideGhostForTarget: _hideGhostForTarget,
+    unhideGhostForTarget: _unhideGhostForTarget,
+    cloneNowHidden: function cloneNowHidden() {
+      cloneHidden = true;
+    },
+    cloneNowShown: function cloneNowShown() {
+      cloneHidden = false;
+    },
+    dispatchSortableEvent: function dispatchSortableEvent(name) {
+      _dispatchEvent({
+        sortable,
+        name,
+        originalEvent
+      });
+    }
+  }, data));
+};
+function _dispatchEvent(info) {
+  dispatchEvent(_objectSpread2({
+    putSortable,
+    cloneEl,
+    targetEl: dragEl,
+    rootEl,
+    oldIndex,
+    oldDraggableIndex,
+    newIndex,
+    newDraggableIndex
+  }, info));
+}
+var dragEl;
+var parentEl;
+var ghostEl;
+var rootEl;
+var nextEl;
+var lastDownEl;
+var cloneEl;
+var cloneHidden;
+var oldIndex;
+var newIndex;
+var oldDraggableIndex;
+var newDraggableIndex;
+var activeGroup;
+var putSortable;
+var awaitingDragStarted = false;
+var ignoreNextClick = false;
+var sortables = [];
+var tapEvt;
+var touchEvt;
+var lastDx;
+var lastDy;
+var tapDistanceLeft;
+var tapDistanceTop;
+var moved;
+var lastTarget;
+var lastDirection;
+var pastFirstInvertThresh = false;
+var isCircumstantialInvert = false;
+var targetMoveDistance;
+var ghostRelativeParent;
+var ghostRelativeParentInitialScroll = [];
+var _silent = false;
+var savedInputChecked = [];
+var documentExists = typeof document !== "undefined";
+var PositionGhostAbsolutely = IOS;
+var CSSFloatProperty = Edge || IE11OrLess ? "cssFloat" : "float";
+var supportDraggable = documentExists && !ChromeForAndroid && !IOS && "draggable" in document.createElement("div");
+var supportCssPointerEvents = (function() {
+  if (!documentExists) return;
+  if (IE11OrLess) {
+    return false;
+  }
+  var el = document.createElement("x");
+  el.style.cssText = "pointer-events:auto";
+  return el.style.pointerEvents === "auto";
+})();
+var _detectDirection = function _detectDirection2(el, options) {
+  var elCSS = css(el), elWidth = parseInt(elCSS.width) - parseInt(elCSS.paddingLeft) - parseInt(elCSS.paddingRight) - parseInt(elCSS.borderLeftWidth) - parseInt(elCSS.borderRightWidth), child1 = getChild(el, 0, options), child2 = getChild(el, 1, options), firstChildCSS = child1 && css(child1), secondChildCSS = child2 && css(child2), firstChildWidth = firstChildCSS && parseInt(firstChildCSS.marginLeft) + parseInt(firstChildCSS.marginRight) + getRect(child1).width, secondChildWidth = secondChildCSS && parseInt(secondChildCSS.marginLeft) + parseInt(secondChildCSS.marginRight) + getRect(child2).width;
+  if (elCSS.display === "flex") {
+    return elCSS.flexDirection === "column" || elCSS.flexDirection === "column-reverse" ? "vertical" : "horizontal";
+  }
+  if (elCSS.display === "grid") {
+    return elCSS.gridTemplateColumns.split(" ").length <= 1 ? "vertical" : "horizontal";
+  }
+  if (child1 && firstChildCSS["float"] && firstChildCSS["float"] !== "none") {
+    var touchingSideChild2 = firstChildCSS["float"] === "left" ? "left" : "right";
+    return child2 && (secondChildCSS.clear === "both" || secondChildCSS.clear === touchingSideChild2) ? "vertical" : "horizontal";
+  }
+  return child1 && (firstChildCSS.display === "block" || firstChildCSS.display === "flex" || firstChildCSS.display === "table" || firstChildCSS.display === "grid" || firstChildWidth >= elWidth && elCSS[CSSFloatProperty] === "none" || child2 && elCSS[CSSFloatProperty] === "none" && firstChildWidth + secondChildWidth > elWidth) ? "vertical" : "horizontal";
+};
+var _dragElInRowColumn = function _dragElInRowColumn2(dragRect, targetRect, vertical) {
+  var dragElS1Opp = vertical ? dragRect.left : dragRect.top, dragElS2Opp = vertical ? dragRect.right : dragRect.bottom, dragElOppLength = vertical ? dragRect.width : dragRect.height, targetS1Opp = vertical ? targetRect.left : targetRect.top, targetS2Opp = vertical ? targetRect.right : targetRect.bottom, targetOppLength = vertical ? targetRect.width : targetRect.height;
+  return dragElS1Opp === targetS1Opp || dragElS2Opp === targetS2Opp || dragElS1Opp + dragElOppLength / 2 === targetS1Opp + targetOppLength / 2;
+};
+var _detectNearestEmptySortable = function _detectNearestEmptySortable2(x, y) {
+  var ret;
+  sortables.some(function(sortable) {
+    var threshold = sortable[expando].options.emptyInsertThreshold;
+    if (!threshold || lastChild(sortable)) return;
+    var rect = getRect(sortable), insideHorizontally = x >= rect.left - threshold && x <= rect.right + threshold, insideVertically = y >= rect.top - threshold && y <= rect.bottom + threshold;
+    if (insideHorizontally && insideVertically) {
+      return ret = sortable;
+    }
+  });
+  return ret;
+};
+var _prepareGroup = function _prepareGroup2(options) {
+  function toFn(value, pull) {
+    return function(to, from, dragEl2, evt) {
+      var sameGroup = to.options.group.name && from.options.group.name && to.options.group.name === from.options.group.name;
+      if (value == null && (pull || sameGroup)) {
+        return true;
+      } else if (value == null || value === false) {
+        return false;
+      } else if (pull && value === "clone") {
+        return value;
+      } else if (typeof value === "function") {
+        return toFn(value(to, from, dragEl2, evt), pull)(to, from, dragEl2, evt);
+      } else {
+        var otherGroup = (pull ? to : from).options.group.name;
+        return value === true || typeof value === "string" && value === otherGroup || value.join && value.indexOf(otherGroup) > -1;
+      }
+    };
+  }
+  var group = {};
+  var originalGroup = options.group;
+  if (!originalGroup || _typeof(originalGroup) != "object") {
+    originalGroup = {
+      name: originalGroup
+    };
+  }
+  group.name = originalGroup.name;
+  group.checkPull = toFn(originalGroup.pull, true);
+  group.checkPut = toFn(originalGroup.put);
+  group.revertClone = originalGroup.revertClone;
+  options.group = group;
+};
+var _hideGhostForTarget = function _hideGhostForTarget2() {
+  if (!supportCssPointerEvents && ghostEl) {
+    css(ghostEl, "display", "none");
+  }
+};
+var _unhideGhostForTarget = function _unhideGhostForTarget2() {
+  if (!supportCssPointerEvents && ghostEl) {
+    css(ghostEl, "display", "");
+  }
+};
+if (documentExists && !ChromeForAndroid) {
+  document.addEventListener("click", function(evt) {
+    if (ignoreNextClick) {
+      evt.preventDefault();
+      evt.stopPropagation && evt.stopPropagation();
+      evt.stopImmediatePropagation && evt.stopImmediatePropagation();
+      ignoreNextClick = false;
+      return false;
+    }
+  }, true);
+}
+var nearestEmptyInsertDetectEvent = function nearestEmptyInsertDetectEvent2(evt) {
+  if (dragEl) {
+    evt = evt.touches ? evt.touches[0] : evt;
+    var nearest = _detectNearestEmptySortable(evt.clientX, evt.clientY);
+    if (nearest) {
+      var event = {};
+      for (var i in evt) {
+        if (evt.hasOwnProperty(i)) {
+          event[i] = evt[i];
+        }
+      }
+      event.target = event.rootEl = nearest;
+      event.preventDefault = void 0;
+      event.stopPropagation = void 0;
+      nearest[expando]._onDragOver(event);
+    }
+  }
+};
+var _checkOutsideTargetEl = function _checkOutsideTargetEl2(evt) {
+  if (dragEl) {
+    dragEl.parentNode[expando]._isOutsideThisEl(evt.target);
+  }
+};
+function Sortable(el, options) {
+  if (!(el && el.nodeType && el.nodeType === 1)) {
+    throw "Sortable: `el` must be an HTMLElement, not ".concat({}.toString.call(el));
+  }
+  this.el = el;
+  this.options = options = _extends({}, options);
+  el[expando] = this;
+  var defaults2 = {
+    group: null,
+    sort: true,
+    disabled: false,
+    store: null,
+    handle: null,
+    draggable: /^[uo]l$/i.test(el.nodeName) ? ">li" : ">*",
+    swapThreshold: 1,
+    // percentage; 0 <= x <= 1
+    invertSwap: false,
+    // invert always
+    invertedSwapThreshold: null,
+    // will be set to same as swapThreshold if default
+    removeCloneOnHide: true,
+    direction: function direction() {
+      return _detectDirection(el, this.options);
+    },
+    ghostClass: "sortable-ghost",
+    chosenClass: "sortable-chosen",
+    dragClass: "sortable-drag",
+    ignore: "a, img",
+    filter: null,
+    preventOnFilter: true,
+    animation: 0,
+    easing: null,
+    setData: function setData(dataTransfer, dragEl2) {
+      dataTransfer.setData("Text", dragEl2.textContent);
+    },
+    dropBubble: false,
+    dragoverBubble: false,
+    dataIdAttr: "data-id",
+    delay: 0,
+    delayOnTouchOnly: false,
+    touchStartThreshold: (Number.parseInt ? Number : window).parseInt(window.devicePixelRatio, 10) || 1,
+    forceFallback: false,
+    fallbackClass: "sortable-fallback",
+    fallbackOnBody: false,
+    fallbackTolerance: 0,
+    fallbackOffset: {
+      x: 0,
+      y: 0
+    },
+    // Disabled on Safari: #1571; Enabled on Safari IOS: #2244
+    supportPointer: Sortable.supportPointer !== false && "PointerEvent" in window && (!Safari || IOS),
+    emptyInsertThreshold: 5
+  };
+  PluginManager.initializePlugins(this, el, defaults2);
+  for (var name in defaults2) {
+    !(name in options) && (options[name] = defaults2[name]);
+  }
+  _prepareGroup(options);
+  for (var fn in this) {
+    if (fn.charAt(0) === "_" && typeof this[fn] === "function") {
+      this[fn] = this[fn].bind(this);
+    }
+  }
+  this.nativeDraggable = options.forceFallback ? false : supportDraggable;
+  if (this.nativeDraggable) {
+    this.options.touchStartThreshold = 1;
+  }
+  if (options.supportPointer) {
+    on(el, "pointerdown", this._onTapStart);
+  } else {
+    on(el, "mousedown", this._onTapStart);
+    on(el, "touchstart", this._onTapStart);
+  }
+  if (this.nativeDraggable) {
+    on(el, "dragover", this);
+    on(el, "dragenter", this);
+  }
+  sortables.push(this.el);
+  options.store && options.store.get && this.sort(options.store.get(this) || []);
+  _extends(this, AnimationStateManager());
+}
+Sortable.prototype = /** @lends Sortable.prototype */
+{
+  constructor: Sortable,
+  _isOutsideThisEl: function _isOutsideThisEl(target) {
+    if (!this.el.contains(target) && target !== this.el) {
+      lastTarget = null;
+    }
+  },
+  _getDirection: function _getDirection(evt, target) {
+    return typeof this.options.direction === "function" ? this.options.direction.call(this, evt, target, dragEl) : this.options.direction;
+  },
+  _onTapStart: function _onTapStart(evt) {
+    if (!evt.cancelable) return;
+    var _this = this, el = this.el, options = this.options, preventOnFilter = options.preventOnFilter, type = evt.type, touch = evt.touches && evt.touches[0] || evt.pointerType && evt.pointerType === "touch" && evt, target = (touch || evt).target, originalTarget = evt.target.shadowRoot && (evt.path && evt.path[0] || evt.composedPath && evt.composedPath()[0]) || target, filter = options.filter;
+    _saveInputCheckedState(el);
+    if (dragEl) {
+      return;
+    }
+    if (/mousedown|pointerdown/.test(type) && evt.button !== 0 || options.disabled) {
+      return;
+    }
+    if (originalTarget.isContentEditable) {
+      return;
+    }
+    if (!this.nativeDraggable && Safari && target && target.tagName.toUpperCase() === "SELECT") {
+      return;
+    }
+    target = closest(target, options.draggable, el, false);
+    if (target && target.animated) {
+      return;
+    }
+    if (lastDownEl === target) {
+      return;
+    }
+    oldIndex = index(target);
+    oldDraggableIndex = index(target, options.draggable);
+    if (typeof filter === "function") {
+      if (filter.call(this, evt, target, this)) {
+        _dispatchEvent({
+          sortable: _this,
+          rootEl: originalTarget,
+          name: "filter",
+          targetEl: target,
+          toEl: el,
+          fromEl: el
+        });
+        pluginEvent2("filter", _this, {
+          evt
+        });
+        preventOnFilter && evt.preventDefault();
+        return;
+      }
+    } else if (filter) {
+      filter = filter.split(",").some(function(criteria) {
+        criteria = closest(originalTarget, criteria.trim(), el, false);
+        if (criteria) {
+          _dispatchEvent({
+            sortable: _this,
+            rootEl: criteria,
+            name: "filter",
+            targetEl: target,
+            fromEl: el,
+            toEl: el
+          });
+          pluginEvent2("filter", _this, {
+            evt
+          });
+          return true;
+        }
+      });
+      if (filter) {
+        preventOnFilter && evt.preventDefault();
+        return;
+      }
+    }
+    if (options.handle && !closest(originalTarget, options.handle, el, false)) {
+      return;
+    }
+    this._prepareDragStart(evt, touch, target);
+  },
+  _prepareDragStart: function _prepareDragStart(evt, touch, target) {
+    var _this = this, el = _this.el, options = _this.options, ownerDocument = el.ownerDocument, dragStartFn;
+    if (target && !dragEl && target.parentNode === el) {
+      var dragRect = getRect(target);
+      rootEl = el;
+      dragEl = target;
+      parentEl = dragEl.parentNode;
+      nextEl = dragEl.nextSibling;
+      lastDownEl = target;
+      activeGroup = options.group;
+      Sortable.dragged = dragEl;
+      tapEvt = {
+        target: dragEl,
+        clientX: (touch || evt).clientX,
+        clientY: (touch || evt).clientY
+      };
+      tapDistanceLeft = tapEvt.clientX - dragRect.left;
+      tapDistanceTop = tapEvt.clientY - dragRect.top;
+      this._lastX = (touch || evt).clientX;
+      this._lastY = (touch || evt).clientY;
+      dragEl.style["will-change"] = "all";
+      dragStartFn = function dragStartFn2() {
+        pluginEvent2("delayEnded", _this, {
+          evt
+        });
+        if (Sortable.eventCanceled) {
+          _this._onDrop();
+          return;
+        }
+        _this._disableDelayedDragEvents();
+        if (!FireFox && _this.nativeDraggable) {
+          dragEl.draggable = true;
+        }
+        _this._triggerDragStart(evt, touch);
+        _dispatchEvent({
+          sortable: _this,
+          name: "choose",
+          originalEvent: evt
+        });
+        toggleClass(dragEl, options.chosenClass, true);
+      };
+      options.ignore.split(",").forEach(function(criteria) {
+        find(dragEl, criteria.trim(), _disableDraggable);
+      });
+      on(ownerDocument, "dragover", nearestEmptyInsertDetectEvent);
+      on(ownerDocument, "mousemove", nearestEmptyInsertDetectEvent);
+      on(ownerDocument, "touchmove", nearestEmptyInsertDetectEvent);
+      if (options.supportPointer) {
+        on(ownerDocument, "pointerup", _this._onDrop);
+        !this.nativeDraggable && on(ownerDocument, "pointercancel", _this._onDrop);
+      } else {
+        on(ownerDocument, "mouseup", _this._onDrop);
+        on(ownerDocument, "touchend", _this._onDrop);
+        on(ownerDocument, "touchcancel", _this._onDrop);
+      }
+      if (FireFox && this.nativeDraggable) {
+        this.options.touchStartThreshold = 4;
+        dragEl.draggable = true;
+      }
+      pluginEvent2("delayStart", this, {
+        evt
+      });
+      if (options.delay && (!options.delayOnTouchOnly || touch) && (!this.nativeDraggable || !(Edge || IE11OrLess))) {
+        if (Sortable.eventCanceled) {
+          this._onDrop();
+          return;
+        }
+        if (options.supportPointer) {
+          on(ownerDocument, "pointerup", _this._disableDelayedDrag);
+          on(ownerDocument, "pointercancel", _this._disableDelayedDrag);
+        } else {
+          on(ownerDocument, "mouseup", _this._disableDelayedDrag);
+          on(ownerDocument, "touchend", _this._disableDelayedDrag);
+          on(ownerDocument, "touchcancel", _this._disableDelayedDrag);
+        }
+        on(ownerDocument, "mousemove", _this._delayedDragTouchMoveHandler);
+        on(ownerDocument, "touchmove", _this._delayedDragTouchMoveHandler);
+        options.supportPointer && on(ownerDocument, "pointermove", _this._delayedDragTouchMoveHandler);
+        _this._dragStartTimer = setTimeout(dragStartFn, options.delay);
+      } else {
+        dragStartFn();
+      }
+    }
+  },
+  _delayedDragTouchMoveHandler: function _delayedDragTouchMoveHandler(e) {
+    var touch = e.touches ? e.touches[0] : e;
+    if (Math.max(Math.abs(touch.clientX - this._lastX), Math.abs(touch.clientY - this._lastY)) >= Math.floor(this.options.touchStartThreshold / (this.nativeDraggable && window.devicePixelRatio || 1))) {
+      this._disableDelayedDrag();
+    }
+  },
+  _disableDelayedDrag: function _disableDelayedDrag() {
+    dragEl && _disableDraggable(dragEl);
+    clearTimeout(this._dragStartTimer);
+    this._disableDelayedDragEvents();
+  },
+  _disableDelayedDragEvents: function _disableDelayedDragEvents() {
+    var ownerDocument = this.el.ownerDocument;
+    off(ownerDocument, "mouseup", this._disableDelayedDrag);
+    off(ownerDocument, "touchend", this._disableDelayedDrag);
+    off(ownerDocument, "touchcancel", this._disableDelayedDrag);
+    off(ownerDocument, "pointerup", this._disableDelayedDrag);
+    off(ownerDocument, "pointercancel", this._disableDelayedDrag);
+    off(ownerDocument, "mousemove", this._delayedDragTouchMoveHandler);
+    off(ownerDocument, "touchmove", this._delayedDragTouchMoveHandler);
+    off(ownerDocument, "pointermove", this._delayedDragTouchMoveHandler);
+  },
+  _triggerDragStart: function _triggerDragStart(evt, touch) {
+    touch = touch || evt.pointerType == "touch" && evt;
+    if (!this.nativeDraggable || touch) {
+      if (this.options.supportPointer) {
+        on(document, "pointermove", this._onTouchMove);
+      } else if (touch) {
+        on(document, "touchmove", this._onTouchMove);
+      } else {
+        on(document, "mousemove", this._onTouchMove);
+      }
+    } else {
+      on(dragEl, "dragend", this);
+      on(rootEl, "dragstart", this._onDragStart);
+    }
+    try {
+      if (document.selection) {
+        _nextTick(function() {
+          document.selection.empty();
+        });
+      } else {
+        window.getSelection().removeAllRanges();
+      }
+    } catch (err) {
+    }
+  },
+  _dragStarted: function _dragStarted(fallback, evt) {
+    awaitingDragStarted = false;
+    if (rootEl && dragEl) {
+      pluginEvent2("dragStarted", this, {
+        evt
+      });
+      if (this.nativeDraggable) {
+        on(document, "dragover", _checkOutsideTargetEl);
+      }
+      var options = this.options;
+      !fallback && toggleClass(dragEl, options.dragClass, false);
+      toggleClass(dragEl, options.ghostClass, true);
+      Sortable.active = this;
+      fallback && this._appendGhost();
+      _dispatchEvent({
+        sortable: this,
+        name: "start",
+        originalEvent: evt
+      });
+    } else {
+      this._nulling();
+    }
+  },
+  _emulateDragOver: function _emulateDragOver() {
+    if (touchEvt) {
+      this._lastX = touchEvt.clientX;
+      this._lastY = touchEvt.clientY;
+      _hideGhostForTarget();
+      var target = document.elementFromPoint(touchEvt.clientX, touchEvt.clientY);
+      var parent = target;
+      while (target && target.shadowRoot) {
+        target = target.shadowRoot.elementFromPoint(touchEvt.clientX, touchEvt.clientY);
+        if (target === parent) break;
+        parent = target;
+      }
+      dragEl.parentNode[expando]._isOutsideThisEl(target);
+      if (parent) {
+        do {
+          if (parent[expando]) {
+            var inserted = void 0;
+            inserted = parent[expando]._onDragOver({
+              clientX: touchEvt.clientX,
+              clientY: touchEvt.clientY,
+              target,
+              rootEl: parent
+            });
+            if (inserted && !this.options.dragoverBubble) {
+              break;
+            }
+          }
+          target = parent;
+        } while (parent = getParentOrHost(parent));
+      }
+      _unhideGhostForTarget();
+    }
+  },
+  _onTouchMove: function _onTouchMove(evt) {
+    if (tapEvt) {
+      var options = this.options, fallbackTolerance = options.fallbackTolerance, fallbackOffset = options.fallbackOffset, touch = evt.touches ? evt.touches[0] : evt, ghostMatrix = ghostEl && matrix(ghostEl, true), scaleX = ghostEl && ghostMatrix && ghostMatrix.a, scaleY = ghostEl && ghostMatrix && ghostMatrix.d, relativeScrollOffset = PositionGhostAbsolutely && ghostRelativeParent && getRelativeScrollOffset(ghostRelativeParent), dx = (touch.clientX - tapEvt.clientX + fallbackOffset.x) / (scaleX || 1) + (relativeScrollOffset ? relativeScrollOffset[0] - ghostRelativeParentInitialScroll[0] : 0) / (scaleX || 1), dy = (touch.clientY - tapEvt.clientY + fallbackOffset.y) / (scaleY || 1) + (relativeScrollOffset ? relativeScrollOffset[1] - ghostRelativeParentInitialScroll[1] : 0) / (scaleY || 1);
+      if (!Sortable.active && !awaitingDragStarted) {
+        if (fallbackTolerance && Math.max(Math.abs(touch.clientX - this._lastX), Math.abs(touch.clientY - this._lastY)) < fallbackTolerance) {
+          return;
+        }
+        this._onDragStart(evt, true);
+      }
+      if (ghostEl) {
+        if (ghostMatrix) {
+          ghostMatrix.e += dx - (lastDx || 0);
+          ghostMatrix.f += dy - (lastDy || 0);
+        } else {
+          ghostMatrix = {
+            a: 1,
+            b: 0,
+            c: 0,
+            d: 1,
+            e: dx,
+            f: dy
+          };
+        }
+        var cssMatrix = "matrix(".concat(ghostMatrix.a, ",").concat(ghostMatrix.b, ",").concat(ghostMatrix.c, ",").concat(ghostMatrix.d, ",").concat(ghostMatrix.e, ",").concat(ghostMatrix.f, ")");
+        css(ghostEl, "webkitTransform", cssMatrix);
+        css(ghostEl, "mozTransform", cssMatrix);
+        css(ghostEl, "msTransform", cssMatrix);
+        css(ghostEl, "transform", cssMatrix);
+        lastDx = dx;
+        lastDy = dy;
+        touchEvt = touch;
+      }
+      evt.cancelable && evt.preventDefault();
+    }
+  },
+  _appendGhost: function _appendGhost() {
+    if (!ghostEl) {
+      var container = this.options.fallbackOnBody ? document.body : rootEl, rect = getRect(dragEl, true, PositionGhostAbsolutely, true, container), options = this.options;
+      if (PositionGhostAbsolutely) {
+        ghostRelativeParent = container;
+        while (css(ghostRelativeParent, "position") === "static" && css(ghostRelativeParent, "transform") === "none" && ghostRelativeParent !== document) {
+          ghostRelativeParent = ghostRelativeParent.parentNode;
+        }
+        if (ghostRelativeParent !== document.body && ghostRelativeParent !== document.documentElement) {
+          if (ghostRelativeParent === document) ghostRelativeParent = getWindowScrollingElement();
+          rect.top += ghostRelativeParent.scrollTop;
+          rect.left += ghostRelativeParent.scrollLeft;
+        } else {
+          ghostRelativeParent = getWindowScrollingElement();
+        }
+        ghostRelativeParentInitialScroll = getRelativeScrollOffset(ghostRelativeParent);
+      }
+      ghostEl = dragEl.cloneNode(true);
+      toggleClass(ghostEl, options.ghostClass, false);
+      toggleClass(ghostEl, options.fallbackClass, true);
+      toggleClass(ghostEl, options.dragClass, true);
+      css(ghostEl, "transition", "");
+      css(ghostEl, "transform", "");
+      css(ghostEl, "box-sizing", "border-box");
+      css(ghostEl, "margin", 0);
+      css(ghostEl, "top", rect.top);
+      css(ghostEl, "left", rect.left);
+      css(ghostEl, "width", rect.width);
+      css(ghostEl, "height", rect.height);
+      css(ghostEl, "opacity", "0.8");
+      css(ghostEl, "position", PositionGhostAbsolutely ? "absolute" : "fixed");
+      css(ghostEl, "zIndex", "100000");
+      css(ghostEl, "pointerEvents", "none");
+      Sortable.ghost = ghostEl;
+      container.appendChild(ghostEl);
+      css(ghostEl, "transform-origin", tapDistanceLeft / parseInt(ghostEl.style.width) * 100 + "% " + tapDistanceTop / parseInt(ghostEl.style.height) * 100 + "%");
+    }
+  },
+  _onDragStart: function _onDragStart(evt, fallback) {
+    var _this = this;
+    var dataTransfer = evt.dataTransfer;
+    var options = _this.options;
+    pluginEvent2("dragStart", this, {
+      evt
+    });
+    if (Sortable.eventCanceled) {
+      this._onDrop();
+      return;
+    }
+    pluginEvent2("setupClone", this);
+    if (!Sortable.eventCanceled) {
+      cloneEl = clone(dragEl);
+      cloneEl.removeAttribute("id");
+      cloneEl.draggable = false;
+      cloneEl.style["will-change"] = "";
+      this._hideClone();
+      toggleClass(cloneEl, this.options.chosenClass, false);
+      Sortable.clone = cloneEl;
+    }
+    _this.cloneId = _nextTick(function() {
+      pluginEvent2("clone", _this);
+      if (Sortable.eventCanceled) return;
+      if (!_this.options.removeCloneOnHide) {
+        rootEl.insertBefore(cloneEl, dragEl);
+      }
+      _this._hideClone();
+      _dispatchEvent({
+        sortable: _this,
+        name: "clone"
+      });
+    });
+    !fallback && toggleClass(dragEl, options.dragClass, true);
+    if (fallback) {
+      ignoreNextClick = true;
+      _this._loopId = setInterval(_this._emulateDragOver, 50);
+    } else {
+      off(document, "mouseup", _this._onDrop);
+      off(document, "touchend", _this._onDrop);
+      off(document, "touchcancel", _this._onDrop);
+      if (dataTransfer) {
+        dataTransfer.effectAllowed = "move";
+        options.setData && options.setData.call(_this, dataTransfer, dragEl);
+      }
+      on(document, "drop", _this);
+      css(dragEl, "transform", "translateZ(0)");
+    }
+    awaitingDragStarted = true;
+    _this._dragStartId = _nextTick(_this._dragStarted.bind(_this, fallback, evt));
+    on(document, "selectstart", _this);
+    moved = true;
+    window.getSelection().removeAllRanges();
+    if (Safari) {
+      css(document.body, "user-select", "none");
+    }
+  },
+  // Returns true - if no further action is needed (either inserted or another condition)
+  _onDragOver: function _onDragOver(evt) {
+    var el = this.el, target = evt.target, dragRect, targetRect, revert, options = this.options, group = options.group, activeSortable = Sortable.active, isOwner = activeGroup === group, canSort = options.sort, fromSortable = putSortable || activeSortable, vertical, _this = this, completedFired = false;
+    if (_silent) return;
+    function dragOverEvent(name, extra) {
+      pluginEvent2(name, _this, _objectSpread2({
+        evt,
+        isOwner,
+        axis: vertical ? "vertical" : "horizontal",
+        revert,
+        dragRect,
+        targetRect,
+        canSort,
+        fromSortable,
+        target,
+        completed,
+        onMove: function onMove(target2, after2) {
+          return _onMove(rootEl, el, dragEl, dragRect, target2, getRect(target2), evt, after2);
+        },
+        changed
+      }, extra));
+    }
+    function capture() {
+      dragOverEvent("dragOverAnimationCapture");
+      _this.captureAnimationState();
+      if (_this !== fromSortable) {
+        fromSortable.captureAnimationState();
+      }
+    }
+    function completed(insertion) {
+      dragOverEvent("dragOverCompleted", {
+        insertion
+      });
+      if (insertion) {
+        if (isOwner) {
+          activeSortable._hideClone();
+        } else {
+          activeSortable._showClone(_this);
+        }
+        if (_this !== fromSortable) {
+          toggleClass(dragEl, putSortable ? putSortable.options.ghostClass : activeSortable.options.ghostClass, false);
+          toggleClass(dragEl, options.ghostClass, true);
+        }
+        if (putSortable !== _this && _this !== Sortable.active) {
+          putSortable = _this;
+        } else if (_this === Sortable.active && putSortable) {
+          putSortable = null;
+        }
+        if (fromSortable === _this) {
+          _this._ignoreWhileAnimating = target;
+        }
+        _this.animateAll(function() {
+          dragOverEvent("dragOverAnimationComplete");
+          _this._ignoreWhileAnimating = null;
+        });
+        if (_this !== fromSortable) {
+          fromSortable.animateAll();
+          fromSortable._ignoreWhileAnimating = null;
+        }
+      }
+      if (target === dragEl && !dragEl.animated || target === el && !target.animated) {
+        lastTarget = null;
+      }
+      if (!options.dragoverBubble && !evt.rootEl && target !== document) {
+        dragEl.parentNode[expando]._isOutsideThisEl(evt.target);
+        !insertion && nearestEmptyInsertDetectEvent(evt);
+      }
+      !options.dragoverBubble && evt.stopPropagation && evt.stopPropagation();
+      return completedFired = true;
+    }
+    function changed() {
+      newIndex = index(dragEl);
+      newDraggableIndex = index(dragEl, options.draggable);
+      _dispatchEvent({
+        sortable: _this,
+        name: "change",
+        toEl: el,
+        newIndex,
+        newDraggableIndex,
+        originalEvent: evt
+      });
+    }
+    if (evt.preventDefault !== void 0) {
+      evt.cancelable && evt.preventDefault();
+    }
+    target = closest(target, options.draggable, el, true);
+    dragOverEvent("dragOver");
+    if (Sortable.eventCanceled) return completedFired;
+    if (dragEl.contains(evt.target) || target.animated && target.animatingX && target.animatingY || _this._ignoreWhileAnimating === target) {
+      return completed(false);
+    }
+    ignoreNextClick = false;
+    if (activeSortable && !options.disabled && (isOwner ? canSort || (revert = parentEl !== rootEl) : putSortable === this || (this.lastPutMode = activeGroup.checkPull(this, activeSortable, dragEl, evt)) && group.checkPut(this, activeSortable, dragEl, evt))) {
+      vertical = this._getDirection(evt, target) === "vertical";
+      dragRect = getRect(dragEl);
+      dragOverEvent("dragOverValid");
+      if (Sortable.eventCanceled) return completedFired;
+      if (revert) {
+        parentEl = rootEl;
+        capture();
+        this._hideClone();
+        dragOverEvent("revert");
+        if (!Sortable.eventCanceled) {
+          if (nextEl) {
+            rootEl.insertBefore(dragEl, nextEl);
+          } else {
+            rootEl.appendChild(dragEl);
+          }
+        }
+        return completed(true);
+      }
+      var elLastChild = lastChild(el, options.draggable);
+      if (!elLastChild || _ghostIsLast(evt, vertical, this) && !elLastChild.animated) {
+        if (elLastChild === dragEl) {
+          return completed(false);
+        }
+        if (elLastChild && el === evt.target) {
+          target = elLastChild;
+        }
+        if (target) {
+          targetRect = getRect(target);
+        }
+        if (_onMove(rootEl, el, dragEl, dragRect, target, targetRect, evt, !!target) !== false) {
+          capture();
+          if (elLastChild && elLastChild.nextSibling) {
+            el.insertBefore(dragEl, elLastChild.nextSibling);
+          } else {
+            el.appendChild(dragEl);
+          }
+          parentEl = el;
+          changed();
+          return completed(true);
+        }
+      } else if (elLastChild && _ghostIsFirst(evt, vertical, this)) {
+        var firstChild = getChild(el, 0, options, true);
+        if (firstChild === dragEl) {
+          return completed(false);
+        }
+        target = firstChild;
+        targetRect = getRect(target);
+        if (_onMove(rootEl, el, dragEl, dragRect, target, targetRect, evt, false) !== false) {
+          capture();
+          el.insertBefore(dragEl, firstChild);
+          parentEl = el;
+          changed();
+          return completed(true);
+        }
+      } else if (target.parentNode === el) {
+        targetRect = getRect(target);
+        var direction = 0, targetBeforeFirstSwap, differentLevel = dragEl.parentNode !== el, differentRowCol = !_dragElInRowColumn(dragEl.animated && dragEl.toRect || dragRect, target.animated && target.toRect || targetRect, vertical), side1 = vertical ? "top" : "left", scrolledPastTop = isScrolledPast(target, "top", "top") || isScrolledPast(dragEl, "top", "top"), scrollBefore = scrolledPastTop ? scrolledPastTop.scrollTop : void 0;
+        if (lastTarget !== target) {
+          targetBeforeFirstSwap = targetRect[side1];
+          pastFirstInvertThresh = false;
+          isCircumstantialInvert = !differentRowCol && options.invertSwap || differentLevel;
+        }
+        direction = _getSwapDirection(evt, target, targetRect, vertical, differentRowCol ? 1 : options.swapThreshold, options.invertedSwapThreshold == null ? options.swapThreshold : options.invertedSwapThreshold, isCircumstantialInvert, lastTarget === target);
+        var sibling;
+        if (direction !== 0) {
+          var dragIndex = index(dragEl);
+          do {
+            dragIndex -= direction;
+            sibling = parentEl.children[dragIndex];
+          } while (sibling && (css(sibling, "display") === "none" || sibling === ghostEl));
+        }
+        if (direction === 0 || sibling === target) {
+          return completed(false);
+        }
+        lastTarget = target;
+        lastDirection = direction;
+        var nextSibling = target.nextElementSibling, after = false;
+        after = direction === 1;
+        var moveVector = _onMove(rootEl, el, dragEl, dragRect, target, targetRect, evt, after);
+        if (moveVector !== false) {
+          if (moveVector === 1 || moveVector === -1) {
+            after = moveVector === 1;
+          }
+          _silent = true;
+          setTimeout(_unsilent, 30);
+          capture();
+          if (after && !nextSibling) {
+            el.appendChild(dragEl);
+          } else {
+            target.parentNode.insertBefore(dragEl, after ? nextSibling : target);
+          }
+          if (scrolledPastTop) {
+            scrollBy(scrolledPastTop, 0, scrollBefore - scrolledPastTop.scrollTop);
+          }
+          parentEl = dragEl.parentNode;
+          if (targetBeforeFirstSwap !== void 0 && !isCircumstantialInvert) {
+            targetMoveDistance = Math.abs(targetBeforeFirstSwap - getRect(target)[side1]);
+          }
+          changed();
+          return completed(true);
+        }
+      }
+      if (el.contains(dragEl)) {
+        return completed(false);
+      }
+    }
+    return false;
+  },
+  _ignoreWhileAnimating: null,
+  _offMoveEvents: function _offMoveEvents() {
+    off(document, "mousemove", this._onTouchMove);
+    off(document, "touchmove", this._onTouchMove);
+    off(document, "pointermove", this._onTouchMove);
+    off(document, "dragover", nearestEmptyInsertDetectEvent);
+    off(document, "mousemove", nearestEmptyInsertDetectEvent);
+    off(document, "touchmove", nearestEmptyInsertDetectEvent);
+  },
+  _offUpEvents: function _offUpEvents() {
+    var ownerDocument = this.el.ownerDocument;
+    off(ownerDocument, "mouseup", this._onDrop);
+    off(ownerDocument, "touchend", this._onDrop);
+    off(ownerDocument, "pointerup", this._onDrop);
+    off(ownerDocument, "pointercancel", this._onDrop);
+    off(ownerDocument, "touchcancel", this._onDrop);
+    off(document, "selectstart", this);
+  },
+  _onDrop: function _onDrop(evt) {
+    var el = this.el, options = this.options;
+    newIndex = index(dragEl);
+    newDraggableIndex = index(dragEl, options.draggable);
+    pluginEvent2("drop", this, {
+      evt
+    });
+    parentEl = dragEl && dragEl.parentNode;
+    newIndex = index(dragEl);
+    newDraggableIndex = index(dragEl, options.draggable);
+    if (Sortable.eventCanceled) {
+      this._nulling();
+      return;
+    }
+    awaitingDragStarted = false;
+    isCircumstantialInvert = false;
+    pastFirstInvertThresh = false;
+    clearInterval(this._loopId);
+    clearTimeout(this._dragStartTimer);
+    _cancelNextTick(this.cloneId);
+    _cancelNextTick(this._dragStartId);
+    if (this.nativeDraggable) {
+      off(document, "drop", this);
+      off(el, "dragstart", this._onDragStart);
+    }
+    this._offMoveEvents();
+    this._offUpEvents();
+    if (Safari) {
+      css(document.body, "user-select", "");
+    }
+    css(dragEl, "transform", "");
+    if (evt) {
+      if (moved) {
+        evt.cancelable && evt.preventDefault();
+        !options.dropBubble && evt.stopPropagation();
+      }
+      ghostEl && ghostEl.parentNode && ghostEl.parentNode.removeChild(ghostEl);
+      if (rootEl === parentEl || putSortable && putSortable.lastPutMode !== "clone") {
+        cloneEl && cloneEl.parentNode && cloneEl.parentNode.removeChild(cloneEl);
+      }
+      if (dragEl) {
+        if (this.nativeDraggable) {
+          off(dragEl, "dragend", this);
+        }
+        _disableDraggable(dragEl);
+        dragEl.style["will-change"] = "";
+        if (moved && !awaitingDragStarted) {
+          toggleClass(dragEl, putSortable ? putSortable.options.ghostClass : this.options.ghostClass, false);
+        }
+        toggleClass(dragEl, this.options.chosenClass, false);
+        _dispatchEvent({
+          sortable: this,
+          name: "unchoose",
+          toEl: parentEl,
+          newIndex: null,
+          newDraggableIndex: null,
+          originalEvent: evt
+        });
+        if (rootEl !== parentEl) {
+          if (newIndex >= 0) {
+            _dispatchEvent({
+              rootEl: parentEl,
+              name: "add",
+              toEl: parentEl,
+              fromEl: rootEl,
+              originalEvent: evt
+            });
+            _dispatchEvent({
+              sortable: this,
+              name: "remove",
+              toEl: parentEl,
+              originalEvent: evt
+            });
+            _dispatchEvent({
+              rootEl: parentEl,
+              name: "sort",
+              toEl: parentEl,
+              fromEl: rootEl,
+              originalEvent: evt
+            });
+            _dispatchEvent({
+              sortable: this,
+              name: "sort",
+              toEl: parentEl,
+              originalEvent: evt
+            });
+          }
+          putSortable && putSortable.save();
+        } else {
+          if (newIndex !== oldIndex) {
+            if (newIndex >= 0) {
+              _dispatchEvent({
+                sortable: this,
+                name: "update",
+                toEl: parentEl,
+                originalEvent: evt
+              });
+              _dispatchEvent({
+                sortable: this,
+                name: "sort",
+                toEl: parentEl,
+                originalEvent: evt
+              });
+            }
+          }
+        }
+        if (Sortable.active) {
+          if (newIndex == null || newIndex === -1) {
+            newIndex = oldIndex;
+            newDraggableIndex = oldDraggableIndex;
+          }
+          _dispatchEvent({
+            sortable: this,
+            name: "end",
+            toEl: parentEl,
+            originalEvent: evt
+          });
+          this.save();
+        }
+      }
+    }
+    this._nulling();
+  },
+  _nulling: function _nulling() {
+    pluginEvent2("nulling", this);
+    rootEl = dragEl = parentEl = ghostEl = nextEl = cloneEl = lastDownEl = cloneHidden = tapEvt = touchEvt = moved = newIndex = newDraggableIndex = oldIndex = oldDraggableIndex = lastTarget = lastDirection = putSortable = activeGroup = Sortable.dragged = Sortable.ghost = Sortable.clone = Sortable.active = null;
+    var el = this.el;
+    savedInputChecked.forEach(function(checkEl) {
+      if (el.contains(checkEl)) {
+        checkEl.checked = true;
+      }
+    });
+    savedInputChecked.length = lastDx = lastDy = 0;
+  },
+  handleEvent: function handleEvent(evt) {
+    switch (evt.type) {
+      case "drop":
+      case "dragend":
+        this._onDrop(evt);
+        break;
+      case "dragenter":
+      case "dragover":
+        if (dragEl) {
+          this._onDragOver(evt);
+          _globalDragOver(evt);
+        }
+        break;
+      case "selectstart":
+        evt.preventDefault();
+        break;
+    }
+  },
+  /**
+   * Serializes the item into an array of string.
+   * @returns {String[]}
+   */
+  toArray: function toArray() {
+    var order = [], el, children = this.el.children, i = 0, n = children.length, options = this.options;
+    for (; i < n; i++) {
+      el = children[i];
+      if (closest(el, options.draggable, this.el, false)) {
+        order.push(el.getAttribute(options.dataIdAttr) || _generateId(el));
+      }
+    }
+    return order;
+  },
+  /**
+   * Sorts the elements according to the array.
+   * @param  {String[]}  order  order of the items
+   */
+  sort: function sort(order, useAnimation) {
+    var items = {}, rootEl2 = this.el;
+    this.toArray().forEach(function(id, i) {
+      var el = rootEl2.children[i];
+      if (closest(el, this.options.draggable, rootEl2, false)) {
+        items[id] = el;
+      }
+    }, this);
+    useAnimation && this.captureAnimationState();
+    order.forEach(function(id) {
+      if (items[id]) {
+        rootEl2.removeChild(items[id]);
+        rootEl2.appendChild(items[id]);
+      }
+    });
+    useAnimation && this.animateAll();
+  },
+  /**
+   * Save the current sorting
+   */
+  save: function save() {
+    var store = this.options.store;
+    store && store.set && store.set(this);
+  },
+  /**
+   * For each element in the set, get the first element that matches the selector by testing the element itself and traversing up through its ancestors in the DOM tree.
+   * @param   {HTMLElement}  el
+   * @param   {String}       [selector]  default: `options.draggable`
+   * @returns {HTMLElement|null}
+   */
+  closest: function closest$1(el, selector) {
+    return closest(el, selector || this.options.draggable, this.el, false);
+  },
+  /**
+   * Set/get option
+   * @param   {string} name
+   * @param   {*}      [value]
+   * @returns {*}
+   */
+  option: function option(name, value) {
+    var options = this.options;
+    if (value === void 0) {
+      return options[name];
+    } else {
+      var modifiedValue = PluginManager.modifyOption(this, name, value);
+      if (typeof modifiedValue !== "undefined") {
+        options[name] = modifiedValue;
+      } else {
+        options[name] = value;
+      }
+      if (name === "group") {
+        _prepareGroup(options);
+      }
+    }
+  },
+  /**
+   * Destroy
+   */
+  destroy: function destroy() {
+    pluginEvent2("destroy", this);
+    var el = this.el;
+    el[expando] = null;
+    off(el, "mousedown", this._onTapStart);
+    off(el, "touchstart", this._onTapStart);
+    off(el, "pointerdown", this._onTapStart);
+    if (this.nativeDraggable) {
+      off(el, "dragover", this);
+      off(el, "dragenter", this);
+    }
+    Array.prototype.forEach.call(el.querySelectorAll("[draggable]"), function(el2) {
+      el2.removeAttribute("draggable");
+    });
+    this._onDrop();
+    this._disableDelayedDragEvents();
+    sortables.splice(sortables.indexOf(this.el), 1);
+    this.el = el = null;
+  },
+  _hideClone: function _hideClone() {
+    if (!cloneHidden) {
+      pluginEvent2("hideClone", this);
+      if (Sortable.eventCanceled) return;
+      css(cloneEl, "display", "none");
+      if (this.options.removeCloneOnHide && cloneEl.parentNode) {
+        cloneEl.parentNode.removeChild(cloneEl);
+      }
+      cloneHidden = true;
+    }
+  },
+  _showClone: function _showClone(putSortable2) {
+    if (putSortable2.lastPutMode !== "clone") {
+      this._hideClone();
+      return;
+    }
+    if (cloneHidden) {
+      pluginEvent2("showClone", this);
+      if (Sortable.eventCanceled) return;
+      if (dragEl.parentNode == rootEl && !this.options.group.revertClone) {
+        rootEl.insertBefore(cloneEl, dragEl);
+      } else if (nextEl) {
+        rootEl.insertBefore(cloneEl, nextEl);
+      } else {
+        rootEl.appendChild(cloneEl);
+      }
+      if (this.options.group.revertClone) {
+        this.animate(dragEl, cloneEl);
+      }
+      css(cloneEl, "display", "");
+      cloneHidden = false;
+    }
+  }
+};
+function _globalDragOver(evt) {
+  if (evt.dataTransfer) {
+    evt.dataTransfer.dropEffect = "move";
+  }
+  evt.cancelable && evt.preventDefault();
+}
+function _onMove(fromEl, toEl, dragEl2, dragRect, targetEl, targetRect, originalEvent, willInsertAfter) {
+  var evt, sortable = fromEl[expando], onMoveFn = sortable.options.onMove, retVal;
+  if (window.CustomEvent && !IE11OrLess && !Edge) {
+    evt = new CustomEvent("move", {
+      bubbles: true,
+      cancelable: true
+    });
+  } else {
+    evt = document.createEvent("Event");
+    evt.initEvent("move", true, true);
+  }
+  evt.to = toEl;
+  evt.from = fromEl;
+  evt.dragged = dragEl2;
+  evt.draggedRect = dragRect;
+  evt.related = targetEl || toEl;
+  evt.relatedRect = targetRect || getRect(toEl);
+  evt.willInsertAfter = willInsertAfter;
+  evt.originalEvent = originalEvent;
+  fromEl.dispatchEvent(evt);
+  if (onMoveFn) {
+    retVal = onMoveFn.call(sortable, evt, originalEvent);
+  }
+  return retVal;
+}
+function _disableDraggable(el) {
+  el.draggable = false;
+}
+function _unsilent() {
+  _silent = false;
+}
+function _ghostIsFirst(evt, vertical, sortable) {
+  var firstElRect = getRect(getChild(sortable.el, 0, sortable.options, true));
+  var childContainingRect = getChildContainingRectFromElement(sortable.el, sortable.options, ghostEl);
+  var spacer = 10;
+  return vertical ? evt.clientX < childContainingRect.left - spacer || evt.clientY < firstElRect.top && evt.clientX < firstElRect.right : evt.clientY < childContainingRect.top - spacer || evt.clientY < firstElRect.bottom && evt.clientX < firstElRect.left;
+}
+function _ghostIsLast(evt, vertical, sortable) {
+  var lastElRect = getRect(lastChild(sortable.el, sortable.options.draggable));
+  var childContainingRect = getChildContainingRectFromElement(sortable.el, sortable.options, ghostEl);
+  var spacer = 10;
+  return vertical ? evt.clientX > childContainingRect.right + spacer || evt.clientY > lastElRect.bottom && evt.clientX > lastElRect.left : evt.clientY > childContainingRect.bottom + spacer || evt.clientX > lastElRect.right && evt.clientY > lastElRect.top;
+}
+function _getSwapDirection(evt, target, targetRect, vertical, swapThreshold, invertedSwapThreshold, invertSwap, isLastTarget) {
+  var mouseOnAxis = vertical ? evt.clientY : evt.clientX, targetLength = vertical ? targetRect.height : targetRect.width, targetS1 = vertical ? targetRect.top : targetRect.left, targetS2 = vertical ? targetRect.bottom : targetRect.right, invert = false;
+  if (!invertSwap) {
+    if (isLastTarget && targetMoveDistance < targetLength * swapThreshold) {
+      if (!pastFirstInvertThresh && (lastDirection === 1 ? mouseOnAxis > targetS1 + targetLength * invertedSwapThreshold / 2 : mouseOnAxis < targetS2 - targetLength * invertedSwapThreshold / 2)) {
+        pastFirstInvertThresh = true;
+      }
+      if (!pastFirstInvertThresh) {
+        if (lastDirection === 1 ? mouseOnAxis < targetS1 + targetMoveDistance : mouseOnAxis > targetS2 - targetMoveDistance) {
+          return -lastDirection;
+        }
+      } else {
+        invert = true;
+      }
+    } else {
+      if (mouseOnAxis > targetS1 + targetLength * (1 - swapThreshold) / 2 && mouseOnAxis < targetS2 - targetLength * (1 - swapThreshold) / 2) {
+        return _getInsertDirection(target);
+      }
+    }
+  }
+  invert = invert || invertSwap;
+  if (invert) {
+    if (mouseOnAxis < targetS1 + targetLength * invertedSwapThreshold / 2 || mouseOnAxis > targetS2 - targetLength * invertedSwapThreshold / 2) {
+      return mouseOnAxis > targetS1 + targetLength / 2 ? 1 : -1;
+    }
+  }
+  return 0;
+}
+function _getInsertDirection(target) {
+  if (index(dragEl) < index(target)) {
+    return 1;
+  } else {
+    return -1;
+  }
+}
+function _generateId(el) {
+  var str = el.tagName + el.className + el.src + el.href + el.textContent, i = str.length, sum = 0;
+  while (i--) {
+    sum += str.charCodeAt(i);
+  }
+  return sum.toString(36);
+}
+function _saveInputCheckedState(root) {
+  savedInputChecked.length = 0;
+  var inputs = root.getElementsByTagName("input");
+  var idx = inputs.length;
+  while (idx--) {
+    var el = inputs[idx];
+    el.checked && savedInputChecked.push(el);
+  }
+}
+function _nextTick(fn) {
+  return setTimeout(fn, 0);
+}
+function _cancelNextTick(id) {
+  return clearTimeout(id);
+}
+if (documentExists) {
+  on(document, "touchmove", function(evt) {
+    if ((Sortable.active || awaitingDragStarted) && evt.cancelable) {
+      evt.preventDefault();
+    }
+  });
+}
+Sortable.utils = {
+  on,
+  off,
+  css,
+  find,
+  is: function is(el, selector) {
+    return !!closest(el, selector, el, false);
+  },
+  extend,
+  throttle,
+  closest,
+  toggleClass,
+  clone,
+  index,
+  nextTick: _nextTick,
+  cancelNextTick: _cancelNextTick,
+  detectDirection: _detectDirection,
+  getChild,
+  expando
+};
+Sortable.get = function(element) {
+  return element[expando];
+};
+Sortable.mount = function() {
+  for (var _len = arguments.length, plugins2 = new Array(_len), _key = 0; _key < _len; _key++) {
+    plugins2[_key] = arguments[_key];
+  }
+  if (plugins2[0].constructor === Array) plugins2 = plugins2[0];
+  plugins2.forEach(function(plugin) {
+    if (!plugin.prototype || !plugin.prototype.constructor) {
+      throw "Sortable: Mounted plugin must be a constructor function, not ".concat({}.toString.call(plugin));
+    }
+    if (plugin.utils) Sortable.utils = _objectSpread2(_objectSpread2({}, Sortable.utils), plugin.utils);
+    PluginManager.mount(plugin);
+  });
+};
+Sortable.create = function(el, options) {
+  return new Sortable(el, options);
+};
+Sortable.version = version;
+var autoScrolls = [];
+var scrollEl;
+var scrollRootEl;
+var scrolling = false;
+var lastAutoScrollX;
+var lastAutoScrollY;
+var touchEvt$1;
+var pointerElemChangedInterval;
+function AutoScrollPlugin() {
+  function AutoScroll() {
+    this.defaults = {
+      scroll: true,
+      forceAutoScrollFallback: false,
+      scrollSensitivity: 30,
+      scrollSpeed: 10,
+      bubbleScroll: true
+    };
+    for (var fn in this) {
+      if (fn.charAt(0) === "_" && typeof this[fn] === "function") {
+        this[fn] = this[fn].bind(this);
+      }
+    }
+  }
+  AutoScroll.prototype = {
+    dragStarted: function dragStarted(_ref) {
+      var originalEvent = _ref.originalEvent;
+      if (this.sortable.nativeDraggable) {
+        on(document, "dragover", this._handleAutoScroll);
+      } else {
+        if (this.options.supportPointer) {
+          on(document, "pointermove", this._handleFallbackAutoScroll);
+        } else if (originalEvent.touches) {
+          on(document, "touchmove", this._handleFallbackAutoScroll);
+        } else {
+          on(document, "mousemove", this._handleFallbackAutoScroll);
+        }
+      }
+    },
+    dragOverCompleted: function dragOverCompleted(_ref2) {
+      var originalEvent = _ref2.originalEvent;
+      if (!this.options.dragOverBubble && !originalEvent.rootEl) {
+        this._handleAutoScroll(originalEvent);
+      }
+    },
+    drop: function drop3() {
+      if (this.sortable.nativeDraggable) {
+        off(document, "dragover", this._handleAutoScroll);
+      } else {
+        off(document, "pointermove", this._handleFallbackAutoScroll);
+        off(document, "touchmove", this._handleFallbackAutoScroll);
+        off(document, "mousemove", this._handleFallbackAutoScroll);
+      }
+      clearPointerElemChangedInterval();
+      clearAutoScrolls();
+      cancelThrottle();
+    },
+    nulling: function nulling() {
+      touchEvt$1 = scrollRootEl = scrollEl = scrolling = pointerElemChangedInterval = lastAutoScrollX = lastAutoScrollY = null;
+      autoScrolls.length = 0;
+    },
+    _handleFallbackAutoScroll: function _handleFallbackAutoScroll(evt) {
+      this._handleAutoScroll(evt, true);
+    },
+    _handleAutoScroll: function _handleAutoScroll(evt, fallback) {
+      var _this = this;
+      var x = (evt.touches ? evt.touches[0] : evt).clientX, y = (evt.touches ? evt.touches[0] : evt).clientY, elem = document.elementFromPoint(x, y);
+      touchEvt$1 = evt;
+      if (fallback || this.options.forceAutoScrollFallback || Edge || IE11OrLess || Safari) {
+        autoScroll(evt, this.options, elem, fallback);
+        var ogElemScroller = getParentAutoScrollElement(elem, true);
+        if (scrolling && (!pointerElemChangedInterval || x !== lastAutoScrollX || y !== lastAutoScrollY)) {
+          pointerElemChangedInterval && clearPointerElemChangedInterval();
+          pointerElemChangedInterval = setInterval(function() {
+            var newElem = getParentAutoScrollElement(document.elementFromPoint(x, y), true);
+            if (newElem !== ogElemScroller) {
+              ogElemScroller = newElem;
+              clearAutoScrolls();
+            }
+            autoScroll(evt, _this.options, newElem, fallback);
+          }, 10);
+          lastAutoScrollX = x;
+          lastAutoScrollY = y;
+        }
+      } else {
+        if (!this.options.bubbleScroll || getParentAutoScrollElement(elem, true) === getWindowScrollingElement()) {
+          clearAutoScrolls();
+          return;
+        }
+        autoScroll(evt, this.options, getParentAutoScrollElement(elem, false), false);
+      }
+    }
+  };
+  return _extends(AutoScroll, {
+    pluginName: "scroll",
+    initializeByDefault: true
+  });
+}
+function clearAutoScrolls() {
+  autoScrolls.forEach(function(autoScroll2) {
+    clearInterval(autoScroll2.pid);
+  });
+  autoScrolls = [];
+}
+function clearPointerElemChangedInterval() {
+  clearInterval(pointerElemChangedInterval);
+}
+var autoScroll = throttle(function(evt, options, rootEl2, isFallback) {
+  if (!options.scroll) return;
+  var x = (evt.touches ? evt.touches[0] : evt).clientX, y = (evt.touches ? evt.touches[0] : evt).clientY, sens = options.scrollSensitivity, speed = options.scrollSpeed, winScroller = getWindowScrollingElement();
+  var scrollThisInstance = false, scrollCustomFn;
+  if (scrollRootEl !== rootEl2) {
+    scrollRootEl = rootEl2;
+    clearAutoScrolls();
+    scrollEl = options.scroll;
+    scrollCustomFn = options.scrollFn;
+    if (scrollEl === true) {
+      scrollEl = getParentAutoScrollElement(rootEl2, true);
+    }
+  }
+  var layersOut = 0;
+  var currentParent = scrollEl;
+  do {
+    var el = currentParent, rect = getRect(el), top = rect.top, bottom = rect.bottom, left = rect.left, right = rect.right, width = rect.width, height = rect.height, canScrollX = void 0, canScrollY = void 0, scrollWidth = el.scrollWidth, scrollHeight = el.scrollHeight, elCSS = css(el), scrollPosX = el.scrollLeft, scrollPosY = el.scrollTop;
+    if (el === winScroller) {
+      canScrollX = width < scrollWidth && (elCSS.overflowX === "auto" || elCSS.overflowX === "scroll" || elCSS.overflowX === "visible");
+      canScrollY = height < scrollHeight && (elCSS.overflowY === "auto" || elCSS.overflowY === "scroll" || elCSS.overflowY === "visible");
+    } else {
+      canScrollX = width < scrollWidth && (elCSS.overflowX === "auto" || elCSS.overflowX === "scroll");
+      canScrollY = height < scrollHeight && (elCSS.overflowY === "auto" || elCSS.overflowY === "scroll");
+    }
+    var vx = canScrollX && (Math.abs(right - x) <= sens && scrollPosX + width < scrollWidth) - (Math.abs(left - x) <= sens && !!scrollPosX);
+    var vy = canScrollY && (Math.abs(bottom - y) <= sens && scrollPosY + height < scrollHeight) - (Math.abs(top - y) <= sens && !!scrollPosY);
+    if (!autoScrolls[layersOut]) {
+      for (var i = 0; i <= layersOut; i++) {
+        if (!autoScrolls[i]) {
+          autoScrolls[i] = {};
+        }
+      }
+    }
+    if (autoScrolls[layersOut].vx != vx || autoScrolls[layersOut].vy != vy || autoScrolls[layersOut].el !== el) {
+      autoScrolls[layersOut].el = el;
+      autoScrolls[layersOut].vx = vx;
+      autoScrolls[layersOut].vy = vy;
+      clearInterval(autoScrolls[layersOut].pid);
+      if (vx != 0 || vy != 0) {
+        scrollThisInstance = true;
+        autoScrolls[layersOut].pid = setInterval(function() {
+          if (isFallback && this.layer === 0) {
+            Sortable.active._onTouchMove(touchEvt$1);
+          }
+          var scrollOffsetY = autoScrolls[this.layer].vy ? autoScrolls[this.layer].vy * speed : 0;
+          var scrollOffsetX = autoScrolls[this.layer].vx ? autoScrolls[this.layer].vx * speed : 0;
+          if (typeof scrollCustomFn === "function") {
+            if (scrollCustomFn.call(Sortable.dragged.parentNode[expando], scrollOffsetX, scrollOffsetY, evt, touchEvt$1, autoScrolls[this.layer].el) !== "continue") {
+              return;
+            }
+          }
+          scrollBy(autoScrolls[this.layer].el, scrollOffsetX, scrollOffsetY);
+        }.bind({
+          layer: layersOut
+        }), 24);
+      }
+    }
+    layersOut++;
+  } while (options.bubbleScroll && currentParent !== winScroller && (currentParent = getParentAutoScrollElement(currentParent, false)));
+  scrolling = scrollThisInstance;
+}, 30);
+var drop = function drop2(_ref) {
+  var originalEvent = _ref.originalEvent, putSortable2 = _ref.putSortable, dragEl2 = _ref.dragEl, activeSortable = _ref.activeSortable, dispatchSortableEvent = _ref.dispatchSortableEvent, hideGhostForTarget = _ref.hideGhostForTarget, unhideGhostForTarget = _ref.unhideGhostForTarget;
+  if (!originalEvent) return;
+  var toSortable = putSortable2 || activeSortable;
+  hideGhostForTarget();
+  var touch = originalEvent.changedTouches && originalEvent.changedTouches.length ? originalEvent.changedTouches[0] : originalEvent;
+  var target = document.elementFromPoint(touch.clientX, touch.clientY);
+  unhideGhostForTarget();
+  if (toSortable && !toSortable.el.contains(target)) {
+    dispatchSortableEvent("spill");
+    this.onSpill({
+      dragEl: dragEl2,
+      putSortable: putSortable2
+    });
+  }
+};
+function Revert() {
+}
+Revert.prototype = {
+  startIndex: null,
+  dragStart: function dragStart(_ref2) {
+    var oldDraggableIndex2 = _ref2.oldDraggableIndex;
+    this.startIndex = oldDraggableIndex2;
+  },
+  onSpill: function onSpill(_ref3) {
+    var dragEl2 = _ref3.dragEl, putSortable2 = _ref3.putSortable;
+    this.sortable.captureAnimationState();
+    if (putSortable2) {
+      putSortable2.captureAnimationState();
+    }
+    var nextSibling = getChild(this.sortable.el, this.startIndex, this.options);
+    if (nextSibling) {
+      this.sortable.el.insertBefore(dragEl2, nextSibling);
+    } else {
+      this.sortable.el.appendChild(dragEl2);
+    }
+    this.sortable.animateAll();
+    if (putSortable2) {
+      putSortable2.animateAll();
+    }
+  },
+  drop
+};
+_extends(Revert, {
+  pluginName: "revertOnSpill"
+});
+function Remove() {
+}
+Remove.prototype = {
+  onSpill: function onSpill2(_ref4) {
+    var dragEl2 = _ref4.dragEl, putSortable2 = _ref4.putSortable;
+    var parentSortable = putSortable2 || this.sortable;
+    parentSortable.captureAnimationState();
+    dragEl2.parentNode && dragEl2.parentNode.removeChild(dragEl2);
+    parentSortable.animateAll();
+  },
+  drop
+};
+_extends(Remove, {
+  pluginName: "removeOnSpill"
+});
+Sortable.mount(new AutoScrollPlugin());
+Sortable.mount(Remove, Revert);
+var sortable_esm_default = Sortable;
+
+// src/sortable/session.ts
+var _session = null;
+function setDragSession(s) {
+  _session = s;
+}
+function getDragSession() {
+  return _session;
+}
+function clearDragSession() {
+  _session = null;
+}
+
+// src/sortable/guard.ts
+var _silent2 = 0;
+function isSortableSilent() {
+  return _silent2 > 0;
+}
+function destroySortable(instance) {
+  if (!instance) return;
+  _silent2++;
+  try {
+    try {
+      instance.option?.("disabled", true);
+    } catch {
+    }
+    instance.destroy();
+  } catch {
+  } finally {
+    _silent2 = Math.max(0, _silent2 - 1);
+  }
+}
+
+// src/sortable/chips.ts
+var FILTER = ".pb-chip-del, .pb-icon-btn, button, input, a, .pb-word-del";
+function finishDrag() {
+  queueRenderAfterDrag();
+  endDrag();
+  clearDragSession();
+}
+function commitPresetDrop(boxId, index2, item) {
+  const session = getDragSession();
+  let text = "";
+  let cnText = "";
+  let color;
+  if (session?.kind === "preset") {
+    if (session.consumed) {
+      item.remove();
+      return true;
+    }
+    text = session.text;
+    cnText = session.cnText;
+    color = session.color;
+  } else {
+    text = item.getAttribute("data-clone-text") || item.getAttribute("data-preset-text") || item.querySelector(".pb-word-main")?.textContent?.trim() || "";
+    cnText = item.getAttribute("data-clone-cn") || item.getAttribute("data-preset-cn") || item.querySelector(".pb-word-sub")?.textContent?.trim() || "";
+    color = item.getAttribute("data-clone-color") || item.getAttribute("data-preset-color") || item.style.getPropertyValue("--pb-card-color").trim() || void 0;
+  }
+  item.remove();
+  if (!text) return false;
+  if (session?.kind === "preset") session.consumed = true;
+  if (!isDragging()) beginDrag();
+  dispatch({
+    type: "chip/addFromPreset",
+    boxId,
+    text,
+    cnText,
+    categoryColor: color || void 0,
+    index: index2
+  });
+  queueRenderAfterDrag();
+  return true;
+}
+function bindChipArea(el, box) {
+  const boxId = box.id;
+  el._pbBoxId = boxId;
+  return new sortable_esm_default(el, {
+    group: {
+      name: "chips",
+      pull: true,
+      put: (_to, from) => {
+        const g = from?.options?.group;
+        const name = !g ? "" : typeof g === "string" ? g : g.name || "";
+        return name === "chips";
+      }
+    },
+    animation: 220,
+    easing: "cubic-bezier(0.25, 0.8, 0.25, 1)",
+    ghostClass: "sortable-ghost",
+    chosenClass: "sortable-chosen",
+    draggable: ".pb-chip",
+    filter: FILTER,
+    preventOnFilter: false,
+    forceFallback: true,
+    fallbackOnBody: true,
+    fallbackTolerance: 3,
+    emptyInsertThreshold: 24,
+    onMove(evt) {
+      if (isSortableSilent()) return false;
+      const toEl = evt.to;
+      if (!toEl.classList.contains("pb-chip-area") && !toEl.classList.contains("pb-word-list")) {
+        return false;
+      }
+      return true;
+    },
+    onStart(evt) {
+      if (isSortableSilent()) return;
+      beginDrag();
+      const item = evt.item;
+      const chipId = item.getAttribute("data-chip-id") || "";
+      if (!chipId) return;
+      let multiIds;
+      if (isSelected(chipId)) {
+        multiIds = getSelectedIdsInWorkspaceOrder();
+        if (multiIds.length <= 1) multiIds = void 0;
+      } else {
+        selectOnly(chipId);
+      }
+      setDragSession({
+        kind: "chip",
+        chipId,
+        fromBoxId: boxId,
+        multiIds,
+        text: item.getAttribute("data-chip-text") || item.querySelector(".pb-chip-main")?.textContent?.trim() || "",
+        cnText: item.getAttribute("data-chip-cn") || item.querySelector(".pb-chip-sub")?.textContent?.trim() || ""
+      });
+      if (multiIds && multiIds.length > 1) {
+        for (const id of multiIds) {
+          if (id === chipId) continue;
+          document.querySelector(`.pb-chip[data-chip-id="${id}"]`)?.classList.add("pb-chip-multi-ghost");
+        }
+        item.classList.add("pb-chip-multi-leader");
+      }
+    },
+    onAdd(evt) {
+      if (isSortableSilent()) return;
+      const item = evt.item;
+      const index2 = typeof evt.newIndex === "number" ? evt.newIndex : 0;
+      const isPresetDom = item.classList.contains("pb-word-card") || item.hasAttribute("data-clone-text") || item.hasAttribute("data-preset-text") || getDragSession()?.kind === "preset";
+      if (isPresetDom) {
+        commitPresetDrop(boxId, index2, item);
+        return;
+      }
+    },
+    onEnd(evt) {
+      if (isSortableSilent()) return;
+      const item = evt.item;
+      const session = getDragSession();
+      document.querySelectorAll(".pb-chip-multi-ghost").forEach((n) => n.classList.remove("pb-chip-multi-ghost"));
+      item.classList.remove("pb-chip-multi-leader");
+      if (session?.kind === "preset" && !session.consumed) {
+        const toId2 = evt.to?._pbBoxId;
+        if (toId2) {
+          const index2 = typeof evt.newIndex === "number" ? evt.newIndex : 0;
+          commitPresetDrop(toId2, index2, item);
+        } else {
+          try {
+            item.remove();
+          } catch {
+          }
+        }
+        finishDrag();
+        return;
+      }
+      if (session?.kind === "preset" && session.consumed) {
+        finishDrag();
+        return;
+      }
+      const fromId = (session?.kind === "chip" ? session.fromBoxId : void 0) || evt.from._pbBoxId;
+      const toId = evt.to._pbBoxId;
+      const chipId = (session?.kind === "chip" ? session.chipId : void 0) || item.getAttribute("data-chip-id") || "";
+      if (!fromId || !chipId) {
+        finishDrag();
+        return;
+      }
+      if (!toId) {
+        queueRenderAfterDrag();
+        finishDrag();
+        return;
+      }
+      const toIndex = typeof evt.newIndex === "number" ? evt.newIndex : 0;
+      const multiIds = session?.kind === "chip" ? session.multiIds : void 0;
+      if (!isDragging()) beginDrag();
+      if (multiIds && multiIds.length > 1) {
+        const multiSet = new Set(multiIds);
+        const toEl = evt.to;
+        const children = Array.from(toEl.children).filter(
+          (n) => n instanceof HTMLElement && n.classList.contains("pb-chip")
+        );
+        let insertAt = 0;
+        for (const child of children) {
+          const id = child.getAttribute("data-chip-id") || "";
+          if (id === chipId) break;
+          if (id && !multiSet.has(id)) insertAt++;
+        }
+        dispatch({
+          type: "chip/batchMove",
+          chipIds: multiIds,
+          toBoxId: toId,
+          toIndex: insertAt
+        });
+        queueRenderAfterDrag();
+      } else if (fromId === toId) {
+        if (evt.oldIndex != null && evt.newIndex != null && evt.oldIndex !== evt.newIndex) {
+          dispatch({
+            type: "chip/reorder",
+            boxId: fromId,
+            fromIndex: evt.oldIndex,
+            toIndex: evt.newIndex
+          });
+        }
+      } else {
+        dispatch({
+          type: "chip/move",
+          fromBoxId: fromId,
+          toBoxId: toId,
+          chipId,
+          toIndex
+        });
+        queueRenderAfterDrag();
+      }
+      finishDrag();
+    }
+  });
+}
+
+// src/sortable/lists.ts
+var FILTER2 = "button, input, textarea, a, .pb-icon-btn, .pb-chip-input, .pb-chip, .pb-chip-area";
+function groupNameOf(sortable) {
+  const g = sortable?.options?.group;
+  if (!g) return "";
+  return typeof g === "string" ? g : g.name || "";
+}
+function bindGroupList(el) {
+  return new sortable_esm_default(el, {
+    animation: 200,
+    handle: ".pb-grip",
+    draggable: ".pb-group",
+    filter: FILTER2,
+    preventOnFilter: false,
+    forceFallback: true,
+    fallbackOnBody: true,
+    swapThreshold: 0.65,
+    group: {
+      name: "pb-groups",
+      pull: true,
+      put: (to) => groupNameOf(to) === "pb-groups"
+    },
+    onMove(evt) {
+      if (isSortableSilent()) return false;
+      if (evt.to !== el) return false;
+      const related = evt.related;
+      if (related && !related.classList.contains("pb-group")) {
+        if (related.closest(".pb-chip-area")) return false;
+      }
+      return true;
+    },
+    onStart: () => {
+      if (isSortableSilent()) return;
+      beginDrag();
+    },
+    onEnd(evt) {
+      if (isSortableSilent()) return;
+      if (evt.oldIndex != null && evt.newIndex != null && evt.oldIndex !== evt.newIndex) {
+        dispatch({ type: "group/reorder", fromIndex: evt.oldIndex, toIndex: evt.newIndex });
+      }
+      queueRenderAfterDrag();
+      endDrag();
+      clearDragSession();
+    }
+  });
+}
+function bindBoxList(el, groupId) {
+  const groupName = `pb-boxes-${groupId}`;
+  return new sortable_esm_default(el, {
+    animation: 200,
+    handle: ".pb-box-grip",
+    draggable: ".pb-inputbox",
+    filter: FILTER2,
+    preventOnFilter: false,
+    forceFallback: true,
+    fallbackOnBody: true,
+    swapThreshold: 0.65,
+    group: {
+      name: groupName,
+      pull: true,
+      put: (to) => groupNameOf(to) === groupName
+    },
+    onMove(evt) {
+      if (isSortableSilent()) return false;
+      if (evt.to !== el) return false;
+      const related = evt.related;
+      if (related?.closest?.(".pb-chip-area") && !related.classList.contains("pb-inputbox")) {
+        return false;
+      }
+      return true;
+    },
+    onStart: () => {
+      if (isSortableSilent()) return;
+      beginDrag();
+    },
+    onEnd(evt) {
+      if (isSortableSilent()) return;
+      if (evt.oldIndex != null && evt.newIndex != null && evt.oldIndex !== evt.newIndex) {
+        dispatch({
+          type: "box/reorder",
+          groupId,
+          fromIndex: evt.oldIndex,
+          toIndex: evt.newIndex
+        });
+      }
+      queueRenderAfterDrag();
+      endDrag();
+      clearDragSession();
+    }
+  });
+}
+
+// src/ui/workspace.ts
+init_toast();
+
+// src/ui/autocomplete.ts
+init_pipe();
+init_dom();
+init_state();
+
+// src/services/danbooru.ts
+var TAG_FILE = "tags_sqlite_2026-05-18.json";
+var _index = [];
+var _loading = false;
+var _loaded = false;
+var _loadPromise = null;
+function getDanbooruIndex() {
+  if (!_loaded && !_loading) void load();
+  return _index;
+}
+function preloadTagIndex() {
+  return load();
+}
+function resolveScriptBase() {
+  let base = ".";
+  for (const s of document.querySelectorAll("script[src]")) {
+    const src = s.src;
+    if (src?.includes("promptbuilder")) {
+      base = src.substring(0, src.lastIndexOf("/"));
+      break;
+    }
+  }
+  if (base === "." && import.meta.url) {
+    const mu = import.meta.url;
+    base = mu.substring(0, mu.lastIndexOf("/"));
+  }
+  return base;
+}
+function normalizeTags(data) {
+  if (!Array.isArray(data) || data.length === 0) return [];
+  const out = [];
+  for (const row of data) {
+    if (!row || typeof row !== "object") continue;
+    const text = String(row.name ?? "").trim();
+    if (!text) continue;
+    const cnText = row.cn_name != null ? String(row.cn_name) : "";
+    let postCount = 0;
+    if (typeof row.post_count === "number") postCount = row.post_count;
+    else if (typeof row.post_count === "string") postCount = Number(row.post_count) || 0;
+    out.push({ text, cnText, postCount });
+  }
+  out.sort((a, b) => b.postCount - a.postCount);
+  return out;
+}
+async function load() {
+  if (_loaded) return;
+  if (_loadPromise) return _loadPromise;
+  _loading = true;
+  _loadPromise = (async () => {
+    try {
+      const base = resolveScriptBase();
+      const url = `${base}/${TAG_FILE}`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      _index = normalizeTags(data);
+      console.log(`[PromptBuilder] danbooru tags loaded: ${_index.length} from ${TAG_FILE}`);
+      _loaded = true;
+    } catch (e) {
+      console.warn("[PromptBuilder] danbooru tags load failed", e);
+      _index = [];
+      _loaded = true;
+    } finally {
+      _loading = false;
+    }
+  })();
+  return _loadPromise;
+}
+
+// src/ui/autocomplete.ts
+init_factory();
+var CSS3 = (
+  /*css*/
+  `
+.pb-ac-layer {
+  position: fixed; z-index: 10006; max-height: 240px; overflow-y: auto;
+  background: var(--pb-panel); border: 1px solid var(--pb-border); border-radius: var(--pb-radius);
+  box-shadow: var(--pb-shadow-lg); min-width: 160px;
+}
+.pb-ac-item { padding: 4px 8px; cursor: pointer; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+.pb-ac-item:hover, .pb-ac-item.pb-active { background: var(--pb-border); }
+.pb-ac-main { font-weight: 500; color: var(--pb-text); }
+.pb-ac-sub { color: var(--pb-text-dim); font-size: 10px; }
+.pb-ac-source { color: var(--pb-text-dim); font-size: 10px; margin-left: auto; }
+`
+);
+var MAX_RESULTS = 30;
+var MAX_PRESET = 15;
+var MAX_DANBOORU = 20;
+var _css3 = false;
+var _layer = null;
+var _items = [];
+var _active2 = -1;
+var _input = null;
+var _box2 = null;
+function layer() {
+  if (!_layer) {
+    if (!_css3) {
+      injectCSS("autocomplete", CSS3);
+      _css3 = true;
+    }
+    _layer = div("pb-ac-layer");
+    document.body.appendChild(_layer);
+    document.addEventListener("pointerdown", (e) => {
+      if (_layer && _layer.style.display !== "none" && !_layer.contains(e.target)) hideAc();
+    });
+  }
+  return _layer;
+}
+function hideAc() {
+  const l = layer();
+  l.style.display = "none";
+  _items = [];
+  _active2 = -1;
+  _input = null;
+  _box2 = null;
+}
+function foldSep(s) {
+  return s.toLowerCase().replace(/[_\s]+/g, " ");
+}
+function matchTerm(text, cnText, termFold, termRaw) {
+  if (foldSep(text).includes(termFold)) return true;
+  if (!cnText) return false;
+  return cnText.includes(termRaw) || foldSep(cnText).includes(termFold);
+}
+function isPrefix(text, cnText, termFold, termRaw) {
+  if (foldSep(text).startsWith(termFold)) return true;
+  if (!cnText) return false;
+  return cnText.startsWith(termRaw) || foldSep(cnText).startsWith(termFold);
+}
+function showAc(input, box) {
+  _input = input;
+  _box2 = box;
+  const val = input.value;
+  const term = val.slice(val.lastIndexOf(",") + 1).trim();
+  if (!term) {
+    hideAc();
+    return;
+  }
+  const termFold = foldSep(term);
+  const presets = [];
+  for (const p of getPresetIndex()) {
+    if (!matchTerm(p.text, p.cnText, termFold, term)) continue;
+    presets.push({
+      text: p.text,
+      cnText: p.cnText,
+      categoryColor: p.categoryColor,
+      source: "preset"
+    });
+  }
+  presets.sort((a, b) => {
+    const ap = isPrefix(a.text, a.cnText, termFold, term) ? 0 : 1;
+    const bp = isPrefix(b.text, b.cnText, termFold, term) ? 0 : 1;
+    return ap - bp || a.text.length - b.text.length;
+  });
+  const seen = new Set(presets.map((r) => r.text));
+  const danbooru = [];
+  const starts = [];
+  const includes = [];
+  for (const d of getDanbooruIndex()) {
+    if (starts.length >= MAX_DANBOORU && starts.length + includes.length >= MAX_DANBOORU * 2) break;
+    if (seen.has(d.text)) continue;
+    if (!matchTerm(d.text, d.cnText, termFold, term)) continue;
+    const hit = {
+      text: d.text,
+      cnText: d.cnText,
+      source: "danbooru",
+      postCount: d.postCount
+    };
+    if (isPrefix(d.text, d.cnText, termFold, term)) starts.push(hit);
+    else includes.push(hit);
+  }
+  for (const h2 of [...starts, ...includes]) {
+    if (danbooru.length >= MAX_DANBOORU) break;
+    if (seen.has(h2.text)) continue;
+    danbooru.push(h2);
+    seen.add(h2.text);
+  }
+  danbooru.sort((a, b) => {
+    const ap = isPrefix(a.text, a.cnText, termFold, term) ? 0 : 1;
+    const bp = isPrefix(b.text, b.cnText, termFold, term) ? 0 : 1;
+    if (ap !== bp) return ap - bp;
+    return (b.postCount || 0) - (a.postCount || 0);
+  });
+  const results = [
+    ...presets.slice(0, MAX_PRESET),
+    ...danbooru
+  ].slice(0, MAX_RESULTS);
+  if (!results.length) {
+    hideAc();
+    return;
+  }
+  _items = results;
+  _active2 = 0;
+  const l = layer();
+  l.innerHTML = "";
+  _items.forEach((item, i) => {
+    const el = div("pb-ac-item");
+    if (i === _active2) el.classList.add("pb-active");
+    const srcLabel = item.source === "preset" ? "\u8BCD\u5E93" : "danbooru";
+    el.innerHTML = `
+      <span class="pb-ac-main">${escapeHtml(item.text)}</span>
+      ${item.cnText ? `<span class="pb-ac-sub">${escapeHtml(item.cnText)}</span>` : ""}
+      <span class="pb-ac-source">${srcLabel}</span>
+    `;
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      pick(i);
+    });
+    l.appendChild(el);
+  });
+  const rect = input.getBoundingClientRect();
+  l.style.left = rect.left + "px";
+  l.style.top = rect.bottom + 4 + "px";
+  l.style.width = Math.max(rect.width, 160) + "px";
+  l.style.display = "";
+  l.scrollTop = 0;
+}
+function navigateAc(delta) {
+  if (!_items.length) return;
+  _active2 = (_active2 + delta + _items.length) % _items.length;
+  layer().querySelectorAll(".pb-ac-item").forEach((el, i) => {
+    el.classList.toggle("pb-active", i === _active2);
+  });
+}
+function selectAc(_input2, _box3) {
+  if (!_items.length || _active2 < 0) return false;
+  pick(_active2);
+  return true;
+}
+function pick(index2) {
+  if (!_input || !_box2) return;
+  const item = _items[index2];
+  if (!item) return;
+  const val = _input.value;
+  const last = val.lastIndexOf(",");
+  _input.value = last >= 0 ? val.slice(0, last + 1) + " " : "";
+  dispatch({
+    type: "chip/add",
+    boxId: _box2.id,
+    chip: mkChip(item.text, item.cnText, 1, item.categoryColor)
+  });
+  hideAc();
+}
+
+// src/ui/workspace.ts
+var CSS4 = (
+  /*css*/
+  `
+.pb-group {
+  margin: 8px 12px; border-radius: var(--pb-radius);
+  border: 1px solid var(--pb-group-color, var(--pb-border));
+  background: var(--pb-panel-2); overflow: hidden;
+}
+.pb-group.pb-bypass { opacity: 0.45; }
+.pb-group-header {
+  display: flex; align-items: center; gap: 4px; padding: 6px 8px;
+}
+.pb-group-header .pb-grip { font-size: 14px; color: var(--pb-text-dim); cursor: grab; }
+.pb-group-name { font-weight: 600; font-size: 14px; flex-shrink: 0; }
+.pb-header-spacer { flex: 1; min-width: 0; align-self: stretch; cursor: pointer; }
+.pb-inputbox {
+  margin: 4px 8px 8px; padding: 6px 8px; background: var(--pb-bg);
+  border-radius: 6px; cursor: text; border: 1px solid transparent;
+}
+.pb-inputbox.pb-focused { border-color: var(--pb-accent); }
+.pb-inputbox.pb-bypass { opacity: 0.45; }
+.pb-inputbox-header { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.pb-chip-area {
+  display: flex; flex-wrap: wrap; align-items: flex-start; min-height: 44px;
+  position: relative;
+}
+.pb-chip-area-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  pointer-events: none; font-size: 11px; color: var(--pb-text-dim); font-style: italic;
+  opacity: 0.7;
+}
+.pb-chip-input {
+  flex: 1; min-width: 80px; height: 24px; border: none; border-radius: 4px;
+  background: transparent; color: var(--pb-text); padding: 2px 6px;
+  font-size: 12px; outline: none;
+}
+.pb-chip-input:focus { background: var(--pb-bg); }
+.pb-add-btn {
+  padding: 4px 10px; border: 1px dashed var(--pb-border); border-radius: 6px;
+  background: transparent; color: var(--pb-text-dim); cursor: pointer;
+  font-size: 12px; margin: 4px 8px 8px; width: calc(100% - 16px); box-sizing: border-box;
+}
+.pb-add-btn:hover { border-color: var(--pb-accent); color: var(--pb-text); }
+.pb-icon-btn {
+  width: 26px; height: 26px; border: none; border-radius: 4px;
+  background: transparent; color: var(--pb-text-dim); cursor: pointer;
+  font-size: 14px; display: inline-flex; align-items: center; justify-content: center;
+}
+.pb-icon-btn:hover { background: var(--pb-border); color: var(--pb-text); }
+.pb-icon-btn.pb-active {
+  color: var(--pb-accent);
+  background: color-mix(in srgb, var(--pb-accent) 22%, transparent);
+  font-weight: 700;
+}
+.pb-color-picker {
+  position: fixed; z-index: 10000; display: grid; grid-template-columns: repeat(6, 24px);
+  gap: 4px; padding: 6px; background: var(--pb-panel); border: 1px solid var(--pb-border);
+  border-radius: 8px; box-shadow: var(--pb-shadow-lg);
+}
+.pb-color-swatch { width: 24px; height: 24px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; }
+.pb-color-swatch:hover, .pb-color-swatch.pb-current { border-color: var(--pb-accent); }
+.pb-groups-container, .pb-boxes-container { min-height: 4px; }
+`
+);
+var _css4 = false;
+var _colorPicker = null;
+function renderWorkspace() {
+  if (!_css4) {
+    injectCSS("workspace", CSS4);
+    _css4 = true;
+  }
+  const el = $("pbWorkspaceArea");
+  if (!el) return;
+  const scrollTop = el.scrollTop;
+  const panel = $("pbMainPanel");
+  const panelScroll = panel?.scrollTop ?? 0;
+  el.querySelectorAll("[data-sortable]").forEach((node) => {
+    destroySortable(node._sortable);
+    node._sortable = null;
+  });
+  el.innerHTML = "";
+  const groupsContainer = div("pb-groups-container");
+  groupsContainer.id = "pbGroupsContainer";
+  groupsContainer.setAttribute("data-sortable", "1");
+  for (const g of cur.workspace) {
+    groupsContainer.appendChild(renderGroup(g, false));
+  }
+  el.appendChild(groupsContainer);
+  groupsContainer._sortable = bindGroupList(groupsContainer);
+  const addGroup = document.createElement("button");
+  addGroup.className = "pb-add-btn";
+  addGroup.textContent = "+ \u6DFB\u52A0\u8F93\u5165\u5206\u7EC4";
+  addGroup.addEventListener("click", () => dispatch({ type: "group/add" }));
+  el.appendChild(addGroup);
+  const sep = div();
+  sep.style.cssText = "margin:12px 8px 4px;border-top:2px solid var(--pb-border);";
+  el.appendChild(sep);
+  el.appendChild(renderGroup(cur.negativeGroup, true));
+  el.scrollTop = scrollTop;
+  if (panel) panel.scrollTop = panelScroll;
+  if (cur.focusedBox) {
+    const input = el.querySelector(
+      `.pb-inputbox[data-box-id="${cur.focusedBox}"] .pb-chip-input`
+    );
+    if (input) {
+      input.focus({ preventScroll: true });
+      el.scrollTop = scrollTop;
+      if (panel) panel.scrollTop = panelScroll;
+    }
+  }
+  paintSelectionClasses();
+}
+function renderGroup(g, isNeg) {
+  const groupEl = div("pb-group");
+  groupEl.setAttribute("data-group-id", g.id);
+  groupEl.style.setProperty("--pb-group-color", g.color);
+  if (!g.enabled) groupEl.classList.add("pb-bypass");
+  const header = div("pb-group-header");
+  header.innerHTML = `
+    <span class="pb-grip">\u22EE\u22EE</span>
+    <span class="pb-group-name">${escapeHtml(g.name)}</span>
+    <span class="pb-header-spacer"></span>
+  `;
+  const colorDot = document.createElement("span");
+  colorDot.style.cssText = `width:12px;height:12px;border-radius:50%;background:${g.color};cursor:pointer;flex-shrink:0;`;
+  colorDot.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openColorPicker(colorDot, g);
+  });
+  const nameSpan = header.querySelector(".pb-group-name");
+  header.insertBefore(colorDot, nameSpan);
+  nameSpan.addEventListener("dblclick", (e) => {
+    e.stopPropagation();
+    startRename(nameSpan, g);
+  });
+  header.addEventListener("dblclick", (e) => {
+    const t = e.target;
+    if (!t.closest(".pb-group-name") && !t.closest("button")) {
+      dispatch({ type: "group/patch", groupId: g.id, patch: { collapsed: !g.collapsed } });
+    }
+  });
+  header.appendChild(iconBtn(g.enabled ? "\u{1F441}" : "\u{1F6AB}", () => {
+    dispatch({ type: "group/patch", groupId: g.id, patch: { enabled: !g.enabled } });
+  }));
+  const br = iconBtn("//", () => {
+    dispatch({ type: "group/patch", groupId: g.id, patch: { break: !g.break } });
+  });
+  br.style.fontSize = "10px";
+  br.title = "BREAK \u9694\u79BB";
+  if (g.break) br.classList.add("pb-active");
+  header.appendChild(br);
+  if (!isNeg) {
+    header.appendChild(iconBtn("\xD7", () => {
+      if (cur.workspace.length <= 1) {
+        toast("\u81F3\u5C11\u4FDD\u7559\u4E00\u4E2A\u5206\u7EC4", "warn");
+        return;
+      }
+      dispatch({ type: "group/remove", groupId: g.id });
+    }));
+  }
+  groupEl.appendChild(header);
+  const body = div();
+  body.style.display = g.collapsed ? "none" : "";
+  const boxes = div("pb-boxes-container");
+  boxes.setAttribute("data-sortable", "1");
+  for (const box of g.inputboxes) {
+    boxes.appendChild(renderBox(g, box, isNeg));
+  }
+  body.appendChild(boxes);
+  if (!isNeg && g.inputboxes.length > 1) {
+    boxes._sortable = bindBoxList(boxes, g.id);
+  }
+  if (!isNeg) {
+    const addBox = document.createElement("button");
+    addBox.className = "pb-add-btn";
+    addBox.textContent = "+ \u6DFB\u52A0\u8F93\u5165\u6846";
+    addBox.addEventListener("click", () => dispatch({ type: "box/add", groupId: g.id }));
+    body.appendChild(addBox);
+  }
+  groupEl.appendChild(body);
+  return groupEl;
+}
+function renderBox(group, box, isNeg) {
+  const boxEl = div("pb-inputbox");
+  boxEl.setAttribute("data-box-id", box.id);
+  if (cur.focusedBox === box.id) boxEl.classList.add("pb-focused");
+  if (!box.enabled) boxEl.classList.add("pb-bypass");
+  const header = div("pb-inputbox-header");
+  if (!isNeg) {
+    const grip = span("pb-box-grip");
+    grip.textContent = "\u22EE\u22EE";
+    grip.style.cssText = "cursor:grab;color:var(--pb-text-dim);font-size:14px;letter-spacing:2px;";
+    header.appendChild(grip);
+  }
+  const input = document.createElement("input");
+  input.className = "pb-chip-input";
+  input.placeholder = "\u8F93\u5165\u8BCD\u8BED\uFF0C\u9017\u53F7\u5206\u9694\u2026";
+  input.addEventListener("focus", () => {
+    if (cur.focusedBox !== box.id) dispatch({ type: "focus/box", boxId: box.id });
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (selectAc(input, box)) return;
+      const text = input.value.trim();
+      if (text) {
+        dispatch({ type: "chip/addText", boxId: box.id, text });
+        input.value = "";
+      }
+      hideAc();
+    } else if (e.key === ",") {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (text) {
+        dispatch({ type: "chip/addText", boxId: box.id, text });
+        input.value = "";
+      }
+      hideAc();
+    } else if (e.key === "Tab") {
+      if (selectAc(input, box)) e.preventDefault();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      navigateAc(e.key === "ArrowDown" ? 1 : -1);
+      e.preventDefault();
+    } else if (e.key === "Escape") hideAc();
+  });
+  input.addEventListener("blur", () => {
     setTimeout(() => {
-      node.widgets.forEach(w => {
+      if (document.activeElement !== input) hideAc();
+    }, 120);
+  });
+  input.addEventListener("input", () => showAc(input, box));
+  header.appendChild(input);
+  header.appendChild(iconBtn(box.enabled ? "\u{1F441}" : "\u{1F6AB}", () => {
+    dispatch({ type: "box/toggle", boxId: box.id, field: "enabled" });
+  }));
+  const bbr = iconBtn("//", () => {
+    dispatch({ type: "box/toggle", boxId: box.id, field: "break" });
+  });
+  bbr.style.fontSize = "10px";
+  bbr.title = "BREAK \u9694\u79BB";
+  if (box.break) bbr.classList.add("pb-active");
+  header.appendChild(bbr);
+  if (!isNeg && group.inputboxes.length > 1) {
+    header.appendChild(iconBtn("\xD7", () => {
+      dispatch({ type: "box/remove", groupId: group.id, boxId: box.id });
+    }));
+  }
+  boxEl.appendChild(header);
+  const markFocused = () => {
+    dispatch({ type: "focus/box", boxId: box.id });
+    document.querySelectorAll("#pbWorkspaceArea .pb-inputbox.pb-focused").forEach((n) => n.classList.remove("pb-focused"));
+    boxEl.classList.add("pb-focused");
+  };
+  boxEl.addEventListener("pointerdown", (e) => {
+    const t = e.target;
+    if (t.closest("input, textarea, button, .pb-box-grip, .pb-chip-del, .pb-chip-edit, .pb-chip-edit-panel")) {
+      if (t.closest("input, textarea")) markFocused();
+      return;
+    }
+    if (t.closest(".pb-chip")) {
+      markFocused();
+      return;
+    }
+    markFocused();
+    input.focus({ preventScroll: true });
+  });
+  const area = div("pb-chip-area");
+  area.setAttribute("data-box-id", box.id);
+  area.setAttribute("data-sortable", "1");
+  if (box.chips.length === 0) {
+    const empty = div("pb-chip-area-empty");
+    empty.textContent = "\u62D6\u5165\u8BCD\u8BED\u6216\u5728\u4E0A\u65B9\u8F93\u5165";
+    area.appendChild(empty);
+  }
+  for (const chip of box.chips) {
+    area.appendChild(renderChip(chip, box));
+  }
+  area._sortable = bindChipArea(area, box);
+  boxEl.appendChild(area);
+  return boxEl;
+}
+function iconBtn(text, onClick) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "pb-icon-btn";
+  b.textContent = text;
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return b;
+}
+function startRename(nameSpan, g) {
+  const input = document.createElement("input");
+  input.value = g.name;
+  input.style.cssText = "background:var(--pb-bg);border:1px solid var(--pb-accent);color:var(--pb-text);padding:2px 6px;border-radius:3px;font-size:13px;outline:none;width:120px;";
+  nameSpan.replaceWith(input);
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    const v = input.value.trim();
+    if (v) dispatch({ type: "group/patch", groupId: g.id, patch: { name: v } });
+    else renderWorkspace();
+  };
+  input.addEventListener("blur", finish);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      finish();
+    }
+    if (e.key === "Escape") {
+      input.value = g.name;
+      finish();
+    }
+  });
+}
+function openColorPicker(anchor, g) {
+  closeColorPicker();
+  const picker = div("pb-color-picker");
+  for (const c of getGroupColors()) {
+    const sw = div("pb-color-swatch");
+    sw.style.background = c;
+    if (c === g.color) sw.classList.add("pb-current");
+    sw.addEventListener("click", () => {
+      dispatch({ type: "group/patch", groupId: g.id, patch: { color: c } });
+      closeColorPicker();
+    });
+    picker.appendChild(sw);
+  }
+  document.body.appendChild(picker);
+  const rect = anchor.getBoundingClientRect();
+  picker.style.left = rect.left + "px";
+  picker.style.top = rect.bottom + 4 + "px";
+  _colorPicker = picker;
+  setTimeout(() => {
+    document.addEventListener("pointerdown", (e) => {
+      if (_colorPicker && !_colorPicker.contains(e.target)) closeColorPicker();
+    }, { once: true });
+  }, 0);
+}
+function closeColorPicker() {
+  _colorPicker?.remove();
+  _colorPicker = null;
+}
+
+// src/ui/presets.ts
+init_state();
+init_pipe();
+init_dom();
+
+// src/sortable/presets.ts
+init_state();
+init_toast();
+var FILTER3 = ".pb-word-del, .pb-icon-btn, button, input, a, .pb-chip-del, .pb-word-toolbar, .pb-word-edit, [data-empty]";
+function finishDrag2() {
+  queueRenderAfterDrag();
+  endDrag();
+  clearDragSession();
+}
+function bindPresetList(el) {
+  return new sortable_esm_default(el, {
+    group: { name: "chips", pull: "clone", put: true },
+    animation: 220,
+    draggable: ".pb-word-card",
+    filter: FILTER3,
+    preventOnFilter: true,
+    forceFallback: true,
+    fallbackOnBody: true,
+    fallbackTolerance: 3,
+    emptyInsertThreshold: 24,
+    // 仅允许：词库内排序 / 投放到工作区 chip 输入区（禁止拖到输入框外触发动画）
+    onMove(evt) {
+      if (isSortableSilent()) return false;
+      const toEl = evt.to;
+      if (toEl.classList.contains("pb-word-list")) return true;
+      if (toEl.classList.contains("pb-chip-area")) return true;
+      return false;
+    },
+    onStart(evt) {
+      if (isSortableSilent()) return;
+      beginDrag();
+      const card = evt.item;
+      const text = card.getAttribute("data-preset-text") || card.querySelector(".pb-word-main")?.textContent?.trim() || "";
+      const cnText = card.getAttribute("data-preset-cn") || card.querySelector(".pb-word-sub")?.textContent?.trim() || "";
+      const color = card.getAttribute("data-preset-color") || card.style.getPropertyValue("--pb-card-color").trim() || void 0;
+      if (text) {
+        setDragSession({ kind: "preset", text, cnText, color: color || void 0 });
+      }
+    },
+    onClone(evt) {
+      const card = evt.clone;
+      const session = getDragSession();
+      if (session?.kind === "preset") {
+        card.setAttribute("data-clone-text", session.text);
+        if (session.cnText) card.setAttribute("data-clone-cn", session.cnText);
+        if (session.color) card.setAttribute("data-clone-color", session.color);
+      } else {
+        const text = card.getAttribute("data-preset-text") || card.querySelector(".pb-word-main")?.textContent?.trim() || "";
+        const cn = card.getAttribute("data-preset-cn") || card.querySelector(".pb-word-sub")?.textContent?.trim() || "";
+        if (text) card.setAttribute("data-clone-text", text);
+        if (cn) card.setAttribute("data-clone-cn", cn);
+      }
+      card.querySelectorAll(".pb-word-del, button").forEach((n) => n.remove());
+      card.setAttribute("data-pb-clone", "1");
+      card.style.pointerEvents = "none";
+    },
+    onAdd(evt) {
+      if (isSortableSilent()) return;
+      const item = evt.item;
+      const session = getDragSession();
+      item.remove();
+      evt.to?.querySelectorAll("[data-empty]").forEach((n) => n.remove());
+      if (session?.kind === "chip") {
+        session.copiedToPreset = true;
+        if (!isDragging()) beginDrag();
+        const multiIds = session.multiIds;
+        if (multiIds && multiIds.length > 1) {
+          const payload = [];
+          const seen = /* @__PURE__ */ new Set();
+          for (const id of multiIds) {
+            const hit = findChip(id);
+            const t = hit?.chip.text?.trim() || "";
+            if (!t || seen.has(t)) continue;
+            seen.add(t);
+            payload.push({ text: t, cnText: hit.chip.cnText || "" });
+          }
+          if (!payload.length && session.text) {
+            payload.push({ text: session.text, cnText: session.cnText || "" });
+          }
+          const existing = new Set((getCurrentPresetItems() || []).map((i) => i.text));
+          const willAdd = payload.filter((p) => !existing.has(p.text)).length;
+          const ok = dispatch({ type: "preset/tryAddManyFromChips", items: payload });
+          if (ok) {
+            const skipped = payload.length - willAdd;
+            toast(
+              skipped > 0 ? `\u5DF2\u6279\u91CF\u52A0\u5165 ${willAdd} \u9879\uFF0C\u8DF3\u8FC7 ${skipped} \u9879\u91CD\u590D` : `\u5DF2\u6279\u91CF\u52A0\u5165\u8BCD\u5E93 ${willAdd} \u9879`,
+              "ok"
+            );
+          } else {
+            toast("\u672A\u80FD\u52A0\u5165\uFF08\u53EF\u80FD\u5747\u5DF2\u5B58\u5728\u6216\u672A\u9009\u5206\u7C7B\uFF09", "warn");
+          }
+        } else {
+          const text = session.text || item.getAttribute("data-chip-text") || item.querySelector(".pb-chip-main")?.textContent?.trim() || "";
+          const cnText = session.cnText || item.getAttribute("data-chip-cn") || item.querySelector(".pb-chip-sub")?.textContent?.trim() || "";
+          if (text) {
+            const ok = dispatch({ type: "preset/tryAddFromChip", text, cnText });
+            if (ok) toast(`\u5DF2\u52A0\u5165\u8BCD\u5E93\uFF1A${text}`, "ok");
+            else toast("\u672A\u80FD\u52A0\u5165\uFF08\u53EF\u80FD\u5DF2\u5B58\u5728\u6216\u672A\u9009\u5206\u7C7B\uFF09", "warn");
+          }
+        }
+      } else {
+        const text = item.getAttribute("data-chip-text") || item.querySelector(".pb-chip-main")?.textContent?.trim() || "";
+        const cnText = item.getAttribute("data-chip-cn") || item.querySelector(".pb-chip-sub")?.textContent?.trim() || "";
+        if (text) {
+          if (!isDragging()) beginDrag();
+          const ok = dispatch({ type: "preset/tryAddFromChip", text, cnText });
+          if (ok) toast(`\u5DF2\u52A0\u5165\u8BCD\u5E93\uFF1A${text}`, "ok");
+          else toast("\u672A\u80FD\u52A0\u5165\uFF08\u53EF\u80FD\u5DF2\u5B58\u5728\u6216\u672A\u9009\u5206\u7C7B\uFF09", "warn");
+        }
+      }
+      queueRenderAfterDrag();
+    },
+    onEnd(evt) {
+      if (isSortableSilent()) return;
+      const session = getDragSession();
+      const item = evt.item;
+      if (session?.kind === "preset") {
+        if (item?.getAttribute("data-pb-clone") === "1") {
+          try {
+            item.remove();
+          } catch {
+          }
+        }
+        finishDrag2();
+        return;
+      }
+      if (session?.kind !== "chip" && evt.from === evt.to && evt.oldIndex != null && evt.newIndex != null && evt.oldIndex !== evt.newIndex) {
+        if (!isDragging()) beginDrag();
+        dispatch({
+          type: "preset/reorderItems",
+          fromIndex: evt.oldIndex,
+          toIndex: evt.newIndex
+        });
+      }
+      if (session?.kind === "chip") {
+        queueRenderAfterDrag();
+      }
+      finishDrag2();
+    }
+  });
+}
+
+// src/ui/presets.ts
+init_factory();
+init_toast();
+var CSS5 = (
+  /*css*/
+  `
+.pb-presets {
+  display: flex; flex-direction: column; height: 100%;
+  min-width: 0; min-height: 0; width: 100%; max-width: 100%;
+  box-sizing: border-box;
+}
+.pb-preset-header {
+  flex-shrink: 0; position: sticky; top: 0; z-index: 5;
+  background: var(--pb-panel); padding: 6px 12px 2px; border-bottom: 1px solid var(--pb-border);
+  min-width: 0; width: 100%; max-width: 100%; box-sizing: border-box;
+}
+.pb-preset-top-row {
+  display: flex; align-items: center; gap: 6px;
+  min-width: 0; width: 100%; max-width: 100%;
+  box-sizing: border-box;
+}
+/* \u641C\u7D22\u6846\u6682\u65F6\u9690\u85CF\uFF08\u529F\u80FD\u4FDD\u7559\u5728\u6587\u4EF6\u5E95\u90E8\u6CE8\u91CA\u533A\uFF09
+.pb-preset-search {
+  width: 120px; padding: 4px 8px; background: var(--pb-bg); border: 1px solid var(--pb-border);
+  border-radius: 6px; color: var(--pb-text); font-size: 12px; outline: none; margin-left: auto;
+}
+*/
+/* \u6A2A\u5411\u53EF\u6EDA\uFF1B\u53EA\u9690\u85CF\u6EDA\u52A8\u6761\u5916\u89C2\uFF0C\u4E0D\u5173\u529F\u80FD */
+.pb-cat-row {
+  display: flex; gap: 6px; flex-wrap: nowrap; margin-bottom: 8px;
+  overflow-x: auto; overflow-y: hidden;
+  min-width: 0; max-width: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  overscroll-behavior-x: contain;
+  /* \u9690\u85CF\u6EDA\u52A8\u6761\uFF0C\u4FDD\u7559 scrollLeft / \u6EDA\u8F6E / \u89E6\u63A7\u677F */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.pb-cat-row::-webkit-scrollbar { display: none; }
+/* L1\uFF1A\u5728 flex \u884C\u5185\u7528 width:0 + flex:1 \u5F3A\u5236\u5403\u6389\u5269\u4F59\u5BBD\uFF0C\u624D\u80FD overflow \u6EDA\u52A8 */
+.pb-preset-top-row > .pb-cat-row {
+  flex: 1 1 auto;
+  width: 0;
+}
+/* L2\uFF1A\u5757\u7EA7\u5360\u6EE1\u7236\u5BBD */
+.pb-preset-header > .pb-cat-row {
+  flex: none;
+  width: 100%;
+}
+/* \u5206\u7C7B\u6309\u94AE\uFF1A\u5706\u89D2\u77E9\u5F62\uFF0C\u6BD4 chip \u7565\u77EE */
+.pb-cat-tag {
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: border-box;
+  min-height: 28px; height: 28px; padding: 0 12px;
+  border-radius: 6px; border: 1px solid transparent;
+  background: var(--pb-panel-2); color: var(--pb-text); font-size: 12px; font-weight: 500;
+  line-height: 1.2; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+/* L1 \u9AD8\u4EAE\uFF1A\u5F3A\u8C03\u8272\u5E95\uFF0C\u65E0\u8FB9\u6846 */
+.pb-cat-tag.pb-cat-active:not(.pb-l2-tag) {
+  background: var(--pb-accent); border-color: transparent; color: #fff; font-weight: 600;
+}
+/* L2\uFF1A\u534A\u900F\u660E\u8272\u5757\u6309\u94AE\uFF0C\u65E0\u63CF\u8FB9\uFF1B\u5E95\u8272/\u6587\u5B57\u8272\u7531 JS \u6309\u5206\u7C7B\u8272\u8BBE\u7F6E */
+.pb-cat-tag.pb-l2-tag {
+  border: none !important;
+  border-width: 0 !important;
+  font-weight: 500;
+}
+.pb-cat-tag.pb-l2-tag.pb-cat-active {
+  font-weight: 600;
+}
+.pb-preset-body { flex: 1; overflow-y: auto; padding: 4px 12px; }
+.pb-word-list {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  /* \u4FDD\u8BC1\u7A7A\u5217\u8868\u4E5F\u6709\u53EF\u6295\u653E\u533A\u57DF */
+  min-height: 48px;
+}
+.pb-word-empty {
+  width: 100%; padding: 16px 8px; text-align: center; font-size: 12px;
+  color: var(--pb-text-dim); font-style: italic;
+  pointer-events: none; /* \u4E0D\u6321 Sortable \u6295\u653E */
+}
+/* \u8BCD\u5E93 chip \u4E0E\u5DE5\u4F5C\u533A .pb-chip \u540C\u5C3A\u5BF8/\u5B57\u53F7 */
+.pb-word-card {
+  position: relative; display: inline-flex; flex-direction: column; justify-content: center;
+  min-width: 40px; max-width: 280px; height: 36px;
+  padding: 3px 20px 3px 16px; margin: 3px;
+  border-radius: 6px; background: var(--pb-chip-bg); cursor: pointer;
+  user-select: none; box-sizing: border-box; overflow: hidden;
+}
+.pb-word-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+  border-radius: 5px 0 0 5px; background: var(--pb-card-color, var(--pb-text-dim));
+}
+.pb-word-card:hover { background: var(--pb-chip-bg-focus); }
+.pb-word-main {
+  font-size: 12px; font-weight: 500; line-height: 1.25; color: var(--pb-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.pb-word-sub {
+  font-size: 10px; line-height: 1.2; color: var(--pb-text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.pb-word-del {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 16px; display: none;
+  align-items: center; justify-content: center; border: none; background: transparent;
+  color: var(--pb-text-dim); font-size: 10px; cursor: pointer; border-radius: 0 6px 6px 0;
+}
+.pb-word-card:hover .pb-word-del { display: flex; }
+.pb-word-del:hover { color: var(--pb-danger); }
+.pb-search-results { display: none; }
+
+/* \u8BCD\u5E93 chip \u60AC\u6D6E\u5DE5\u5177\u680F */
+.pb-word-toolbar {
+  position: fixed; z-index: 10008; display: flex; gap: 2px; padding: 2px;
+  background: var(--pb-panel); border: 1px solid var(--pb-border); border-radius: 6px;
+  box-shadow: var(--pb-shadow-md); opacity: 0; pointer-events: none; transition: opacity 120ms;
+}
+.pb-word-toolbar.pb-visible { opacity: 1; pointer-events: auto; }
+.pb-word-toolbar button {
+  width: 28px; height: 24px; border: none; border-radius: 4px;
+  background: transparent; color: var(--pb-text); cursor: pointer; font-size: 13px;
+}
+.pb-word-toolbar button:hover { background: var(--pb-border); }
+
+/* \u4E2D\u82F1\u7F16\u8F91\u6D6E\u5C42 */
+.pb-word-edit {
+  position: fixed; z-index: 10009; min-width: 220px; padding: 10px;
+  background: var(--pb-panel); border: 1px solid var(--pb-border); border-radius: 8px;
+  box-shadow: var(--pb-shadow-lg); display: flex; flex-direction: column; gap: 6px;
+}
+.pb-word-edit label {
+  font-size: 10px; color: var(--pb-text-dim); display: flex; flex-direction: column; gap: 2px;
+}
+.pb-word-edit input {
+  width: 100%; box-sizing: border-box; padding: 4px 6px; font-size: 12px;
+  border: 1px solid var(--pb-border); border-radius: 4px;
+  background: var(--pb-bg); color: var(--pb-text); outline: none;
+}
+.pb-word-edit input:focus { border-color: var(--pb-accent); }
+.pb-word-edit-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+.pb-word-edit-actions button {
+  font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--pb-border); background: var(--pb-panel-2); color: var(--pb-text);
+}
+.pb-word-edit-actions button.primary {
+  background: var(--pb-accent); border-color: var(--pb-accent); color: #0b1020; font-weight: 600;
+}
+
+/* \u5206\u7C7B\u7F16\u8F91\u5F39\u7A97 */
+.pb-cat-edit {
+  position: fixed; z-index: 10009; min-width: 220px; padding: 10px;
+  background: var(--pb-panel); border: 1px solid var(--pb-border); border-radius: 8px;
+  box-shadow: var(--pb-shadow-lg); display: flex; flex-direction: column; gap: 8px;
+}
+.pb-cat-edit label {
+  font-size: 10px; color: var(--pb-text-dim); display: flex; flex-direction: column; gap: 2px;
+}
+.pb-cat-edit input {
+  width: 100%; box-sizing: border-box; padding: 4px 6px; font-size: 12px;
+  border: 1px solid var(--pb-border); border-radius: 4px;
+  background: var(--pb-bg); color: var(--pb-text); outline: none;
+}
+.pb-cat-edit input:focus { border-color: var(--pb-accent); }
+.pb-cat-edit-swatches {
+  display: grid; grid-template-columns: repeat(6, 22px); gap: 4px;
+}
+.pb-cat-edit-swatch {
+  width: 22px; height: 22px; border-radius: 4px; border: 2px solid transparent; cursor: pointer;
+}
+.pb-cat-edit-swatch:hover, .pb-cat-edit-swatch.pb-current { border-color: var(--pb-text); }
+.pb-cat-edit-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.pb-cat-edit-actions button {
+  font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--pb-border); background: var(--pb-panel-2); color: var(--pb-text);
+}
+.pb-cat-edit-actions button.primary {
+  background: var(--pb-accent); border-color: var(--pb-accent); color: #0b1020; font-weight: 600;
+}
+`
+);
+var _css5 = false;
+function renderPresets() {
+  if (!_css5) {
+    injectCSS("presets", CSS5);
+    _css5 = true;
+  }
+  const el = $("pbPresetsArea");
+  if (!el) return;
+  hideWordToolbar();
+  closeWordEdit();
+  closeCatEdit();
+  el.querySelectorAll("[data-sortable]").forEach((node) => {
+    destroySortable(node._sortable);
+    node._sortable = null;
+  });
+  el.innerHTML = `
+    <div class="pb-presets">
+      <div class="pb-preset-header">
+        <div class="pb-preset-top-row">
+          <div class="pb-cat-row" id="pbPresetCats"></div>
+          <!-- \u641C\u7D22\u6846\u6682\u65F6\u5173\u95ED
+          <input type="text" class="pb-preset-search" id="pbPresetSearch" placeholder="\u641C\u7D22...">
+          -->
+        </div>
+        <div class="pb-cat-row" id="pbPresetCatsL2"></div>
+      </div>
+      <div class="pb-preset-body" id="pbPresetBody">
+        <div class="pb-word-list" id="pbPresetList" data-sortable="1"></div>
+        <!-- <div class="pb-search-results" id="pbPresetSearchResults"></div> -->
+      </div>
+    </div>
+  `;
+  renderCats();
+  renderWords();
+}
+function renderCats() {
+  const l1Row = $("pbPresetCats");
+  const l2Row = $("pbPresetCatsL2");
+  if (!l1Row) return;
+  l1Row.innerHTML = "";
+  for (const name of Object.keys(state.presets.children)) {
+    const tag = span("pb-cat-tag");
+    if (name === state.l1Cat) tag.classList.add("pb-cat-active");
+    tag.textContent = name;
+    tag.addEventListener("click", () => {
+      const l2s = Object.keys(state.presets.children[name].children);
+      dispatch({ type: "preset/setCats", l1: name, l2: l2s[0] || "" });
+    });
+    attachL1Popup(tag, name);
+    l1Row.appendChild(tag);
+  }
+  const addL1 = span("pb-cat-tag");
+  addL1.textContent = "+";
+  addL1.style.opacity = "0.5";
+  addL1.addEventListener("click", () => {
+    const inp = document.createElement("input");
+    inp.style.cssText = "width:60px;font-size:12px;padding:1px 4px;";
+    addL1.replaceWith(inp);
+    inp.focus();
+    const done = () => {
+      const v = inp.value.trim();
+      if (v) dispatch({ type: "preset/addL1", name: v });
+      else renderPresets();
+    };
+    inp.addEventListener("blur", done);
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") done();
+    });
+  });
+  l1Row.appendChild(addL1);
+  if (!l2Row) return;
+  l2Row.innerHTML = "";
+  const l1 = state.presets.children[state.l1Cat];
+  if (!l1) return;
+  for (const name of Object.keys(l1.children)) {
+    const tag = span("pb-cat-tag pb-l2-tag");
+    tag.textContent = name;
+    const l2 = l1.children[name];
+    const active = name === state.l2Cat;
+    if (active) tag.classList.add("pb-cat-active");
+    if (l2?.color) {
+      const alpha = active ? 0.55 : 0.28;
+      tag.style.background = `color-mix(in srgb, ${l2.color} ${Math.round(alpha * 100)}%, transparent)`;
+      tag.style.color = l2.color;
+      tag.style.border = "none";
+      tag.style.boxShadow = "none";
+    }
+    tag.addEventListener("click", () => dispatch({ type: "preset/setCats", l2: name }));
+    attachL2Popup(tag, name, l2?.color || "");
+    l2Row.appendChild(tag);
+  }
+  const addL2 = span("pb-cat-tag");
+  addL2.textContent = "+";
+  addL2.style.opacity = "0.5";
+  addL2.addEventListener("click", () => {
+    const palette = getGroupColors();
+    let color = palette[Object.keys(l1.children).length % palette.length];
+    const wrap = div();
+    wrap.style.cssText = "display:flex;gap:4px;align-items:center;";
+    const ni = document.createElement("input");
+    ni.placeholder = "\u5206\u7C7B\u540D";
+    ni.style.cssText = "width:60px;font-size:12px;padding:1px 4px;border:1px solid var(--pb-accent);border-radius:4px;background:var(--pb-bg);color:var(--pb-text);";
+    const colors = div();
+    colors.style.cssText = "display:flex;gap:3px;";
+    for (const c of palette) {
+      const d = div();
+      d.style.cssText = `width:16px;height:16px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${c === color ? "var(--pb-text)" : "transparent"};`;
+      d.addEventListener("click", () => {
+        color = c;
+        colors.querySelectorAll("div").forEach((x) => x.style.borderColor = "transparent");
+        d.style.borderColor = "var(--pb-text)";
+      });
+      colors.appendChild(d);
+    }
+    wrap.appendChild(ni);
+    wrap.appendChild(colors);
+    addL2.replaceWith(wrap);
+    ni.focus();
+    const done = () => {
+      const n = ni.value.trim();
+      if (n) dispatch({ type: "preset/addL2", name: n, color });
+      else renderPresets();
+    };
+    ni.addEventListener("blur", () => setTimeout(done, 150));
+    ni.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") done();
+    });
+  });
+  l2Row.appendChild(addL2);
+  bindCatRowHScroll(l1Row);
+  bindCatRowHScroll(l2Row);
+}
+function bindCatRowHScroll(row) {
+  row.addEventListener(
+    "wheel",
+    (e) => {
+      if (row.scrollWidth <= row.clientWidth + 1) return;
+      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (!dx) return;
+      const max = row.scrollWidth - row.clientWidth;
+      const next = Math.min(max, Math.max(0, row.scrollLeft + dx));
+      if (next === row.scrollLeft) return;
+      e.preventDefault();
+      row.scrollLeft = next;
+    },
+    { passive: false }
+  );
+  let dragging = false;
+  let moved2 = false;
+  let startX = 0;
+  let startLeft = 0;
+  row.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest("input, textarea, button")) return;
+    dragging = true;
+    moved2 = false;
+    startX = e.clientX;
+    startLeft = row.scrollLeft;
+    row.style.cursor = "grabbing";
+  });
+  row.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const d = e.clientX - startX;
+    if (!moved2 && Math.abs(d) < 5) return;
+    if (!moved2) {
+      moved2 = true;
+      try {
+        row.setPointerCapture(e.pointerId);
+      } catch {
+      }
+    }
+    row.scrollLeft = startLeft - d;
+    e.preventDefault();
+  });
+  const endDrag2 = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    row.style.cursor = "";
+    if (moved2) {
+      const block = (ce) => {
+        ce.stopPropagation();
+        ce.preventDefault();
+        row.removeEventListener("click", block, true);
+      };
+      row.addEventListener("click", block, true);
+      setTimeout(() => row.removeEventListener("click", block, true), 0);
+    }
+    try {
+      row.releasePointerCapture(e.pointerId);
+    } catch {
+    }
+  };
+  row.addEventListener("pointerup", endDrag2);
+  row.addEventListener("pointercancel", endDrag2);
+}
+function renderWords() {
+  const list = $("pbPresetList");
+  if (!list) return;
+  list.innerHTML = "";
+  const items = getCurrentPresetItems();
+  const l2 = getCurrentL2Category();
+  if (!items) {
+    const empty = div("pb-word-empty");
+    empty.textContent = "\u8BF7\u9009\u62E9\u6216\u521B\u5EFA\u4E00\u4E2A\u4E8C\u7EA7\u5206\u7C7B";
+    list.appendChild(empty);
+    return;
+  }
+  if (items.length === 0) {
+    const empty = div("pb-word-empty");
+    empty.textContent = "\u6682\u65E0\u8BCD\u8BED\uFF0C\u53EF\u4ECE\u5DE5\u4F5C\u533A\u62D6\u5165\u6216\u70B9\u51FB\u6DFB\u52A0";
+    empty.setAttribute("data-empty", "1");
+    list.appendChild(empty);
+    list._sortable = bindPresetList(list);
+    return;
+  }
+  for (const item of items) {
+    if (!item?.text) continue;
+    list.appendChild(wordCard(item, l2?.color, state.l1Cat, state.l2Cat));
+  }
+  list._sortable = bindPresetList(list);
+}
+function wordCard(item, color, l1 = state.l1Cat, l2 = state.l2Cat) {
+  const card = div("pb-word-card");
+  card.setAttribute("data-preset-text", item.text);
+  if (item.cnText) card.setAttribute("data-preset-cn", item.cnText);
+  if (color) {
+    card.style.setProperty("--pb-card-color", color);
+    card.setAttribute("data-preset-color", color);
+  }
+  const main = span("pb-word-main");
+  main.textContent = item.text;
+  card.appendChild(main);
+  if (item.cnText) {
+    const sub = span("pb-word-sub");
+    sub.textContent = item.cnText;
+    card.appendChild(sub);
+  }
+  card.addEventListener("click", (e) => {
+    if (e.target.closest(".pb-word-del, .pb-word-toolbar, .pb-word-edit")) return;
+    const fb = getFocusedBox();
+    if (!fb) return;
+    dispatch({
+      type: "chip/add",
+      boxId: fb.box.id,
+      chip: mkChip(item.text, item.cnText, 1, color)
+    });
+  });
+  const del = document.createElement("button");
+  del.type = "button";
+  del.className = "pb-word-del";
+  del.textContent = "\xD7";
+  del.addEventListener("pointerdown", (e) => e.stopPropagation());
+  del.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch({ type: "preset/removeItem", text: item.text, l1, l2 });
+  });
+  card.appendChild(del);
+  card.addEventListener("pointerenter", () => {
+    if (window.__pb_dragging) return;
+    showWordToolbar(card, item, l1, l2);
+  });
+  card.addEventListener("pointerleave", () => hideWordToolbar());
+  return card;
+}
+var _wordTb = null;
+var _wordTbTimer = null;
+var _wordTbCtx = null;
+var _wordEdit = null;
+function ensureWordToolbar() {
+  if (_wordTb) return _wordTb;
+  _wordTb = div("pb-word-toolbar");
+  _wordTb.innerHTML = `
+    <button type="button" data-act="edit" title="\u7F16\u8F91\u4E2D\u82F1\u6587">\u270F\uFE0F</button>
+  `;
+  document.body.appendChild(_wordTb);
+  _wordTb.addEventListener("pointerenter", () => {
+    if (_wordTbTimer) clearTimeout(_wordTbTimer);
+  });
+  _wordTb.addEventListener("pointerleave", () => hideWordToolbar());
+  _wordTb.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const act = e.target.closest("button")?.getAttribute("data-act");
+    if (!_wordTbCtx || act !== "edit") return;
+    const { item, l1, l2, card } = _wordTbCtx;
+    hideWordToolbar(true);
+    openWordEdit(card, item, l1, l2);
+  });
+  return _wordTb;
+}
+function showWordToolbar(card, item, l1, l2) {
+  if (_wordTbTimer) clearTimeout(_wordTbTimer);
+  _wordTbCtx = { item, l1, l2, card };
+  const tb = ensureWordToolbar();
+  const rect = card.getBoundingClientRect();
+  const tw = 36;
+  let left = rect.left + rect.width / 2 - tw / 2;
+  let top = rect.top - 30;
+  if (top < 0) top = rect.bottom + 4;
+  if (left < 0) left = 4;
+  if (left + tw > window.innerWidth) left = window.innerWidth - tw - 4;
+  tb.style.left = left + "px";
+  tb.style.top = top + "px";
+  tb.classList.add("pb-visible");
+}
+function hideWordToolbar(immediate = false) {
+  const run = () => {
+    _wordTb?.classList.remove("pb-visible");
+    _wordTbCtx = null;
+  };
+  if (immediate) {
+    if (_wordTbTimer) clearTimeout(_wordTbTimer);
+    run();
+    return;
+  }
+  _wordTbTimer = setTimeout(run, 160);
+}
+function openWordEdit(card, item, l1, l2) {
+  closeWordEdit();
+  const panel = div("pb-word-edit");
+  panel.innerHTML = `
+    <label>\u82F1\u6587 / \u4E3B\u6587\u672C
+      <input type="text" class="pb-we-en" value="${escapeHtml(item.text)}">
+    </label>
+    <label>\u4E2D\u6587
+      <input type="text" class="pb-we-cn" value="${escapeHtml(item.cnText || "")}">
+    </label>
+    <div class="pb-word-edit-actions">
+      <button type="button" data-act="cancel">\u53D6\u6D88</button>
+      <button type="button" class="primary" data-act="save">\u4FDD\u5B58</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  _wordEdit = panel;
+  const rect = card.getBoundingClientRect();
+  let left = rect.left;
+  let top = rect.bottom + 6;
+  if (left + 240 > window.innerWidth) left = window.innerWidth - 248;
+  if (top + 140 > window.innerHeight) top = Math.max(8, rect.top - 140);
+  panel.style.left = Math.max(8, left) + "px";
+  panel.style.top = top + "px";
+  const en = panel.querySelector(".pb-we-en");
+  const cn = panel.querySelector(".pb-we-cn");
+  en.focus();
+  en.select();
+  const save2 = () => {
+    const text = en.value.trim();
+    const cnText = cn.value.trim();
+    if (!text) {
+      toast("\u82F1\u6587\u4E0D\u80FD\u4E3A\u7A7A", "warn");
+      return;
+    }
+    const ok = dispatch({
+      type: "preset/updateItem",
+      oldText: item.text,
+      text,
+      cnText,
+      l1,
+      l2
+    });
+    if (!ok && text !== item.text) {
+      toast("\u82F1\u6587\u4E0E\u73B0\u6709\u8BCD\u91CD\u590D", "warn");
+      return;
+    }
+    closeWordEdit();
+  };
+  panel.querySelector('[data-act="save"]')?.addEventListener("click", save2);
+  panel.querySelector('[data-act="cancel"]')?.addEventListener("click", () => closeWordEdit());
+  panel.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      save2();
+    }
+    if (e.key === "Escape") closeWordEdit();
+  });
+  setTimeout(() => {
+    document.addEventListener("pointerdown", onWordEditOutside, true);
+  }, 0);
+}
+function onWordEditOutside(e) {
+  if (_wordEdit && !_wordEdit.contains(e.target)) {
+    closeWordEdit();
+  }
+}
+function closeWordEdit() {
+  document.removeEventListener("pointerdown", onWordEditOutside, true);
+  _wordEdit?.remove();
+  _wordEdit = null;
+}
+var _popup = null;
+var _popupTimer = null;
+var _catEdit = null;
+function attachL1Popup(tag, name) {
+  tag.addEventListener("pointerenter", () => {
+    if (_popupTimer) clearTimeout(_popupTimer);
+    showCatPopup(tag, [
+      { label: "\u270F\uFE0F", title: "\u4FEE\u6539", onClick: () => openL1Edit(tag, name) },
+      {
+        label: "\u{1F5D1}",
+        title: "\u5220\u9664",
+        onClick: () => {
+          if (!confirm(`\u786E\u5B9A\u5220\u9664\u4E00\u7EA7\u5206\u7C7B\u300C${name}\u300D\uFF1F
+\u5176\u4E0B\u6240\u6709\u4E8C\u7EA7\u5206\u7C7B\u4E0E\u8BCD\u8BED\u5C06\u4E00\u5E76\u5220\u9664\uFF08\u53EF\u64A4\u9500\uFF09\u3002`)) return;
+          dispatch({ type: "preset/deleteL1", name });
+        }
+      }
+    ]);
+  });
+  tag.addEventListener("pointerleave", () => {
+    _popupTimer = setTimeout(hideCatPopup, 200);
+  });
+}
+function attachL2Popup(tag, name, currentColor) {
+  tag.addEventListener("pointerenter", () => {
+    if (_popupTimer) clearTimeout(_popupTimer);
+    showCatPopup(tag, [
+      { label: "\u270F\uFE0F", title: "\u4FEE\u6539", onClick: () => openL2Edit(tag, name, currentColor) },
+      {
+        label: "\u{1F5D1}",
+        title: "\u5220\u9664",
+        onClick: () => {
+          if (!confirm(`\u786E\u5B9A\u5220\u9664\u4E8C\u7EA7\u5206\u7C7B\u300C${name}\u300D\uFF1F
+\u5176\u4E2D\u8BCD\u8BED\u5C06\u4E00\u5E76\u5220\u9664\uFF08\u53EF\u64A4\u9500\uFF09\u3002`)) return;
+          dispatch({ type: "preset/deleteL2", name });
+        }
+      }
+    ]);
+  });
+  tag.addEventListener("pointerleave", () => {
+    _popupTimer = setTimeout(hideCatPopup, 200);
+  });
+}
+function showCatPopup(anchor, actions) {
+  hideCatPopup();
+  const popup = div();
+  popup.style.cssText = "position:fixed;z-index:10007;display:flex;gap:2px;padding:3px;background:var(--pb-panel);border:1px solid var(--pb-border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4);";
+  for (const a of actions) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.title = a.title;
+    btn.textContent = a.label;
+    btn.style.cssText = "font-size:11px;padding:2px 8px;border:none;background:transparent;color:var(--pb-text);cursor:pointer;border-radius:3px;";
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      hideCatPopup();
+      a.onClick();
+    });
+    popup.appendChild(btn);
+  }
+  popup.addEventListener("pointerenter", () => {
+    if (_popupTimer) clearTimeout(_popupTimer);
+  });
+  popup.addEventListener("pointerleave", () => {
+    _popupTimer = setTimeout(hideCatPopup, 200);
+  });
+  document.body.appendChild(popup);
+  const rect = anchor.getBoundingClientRect();
+  popup.style.left = Math.min(rect.left, window.innerWidth - 140) + "px";
+  popup.style.top = rect.bottom + 4 + "px";
+  _popup = popup;
+}
+function hideCatPopup() {
+  _popup?.remove();
+  _popup = null;
+}
+function placeNear(el, anchor, minW = 240) {
+  const rect = anchor.getBoundingClientRect();
+  let left = rect.left;
+  let top = rect.bottom + 6;
+  if (left + minW > window.innerWidth) left = window.innerWidth - minW - 8;
+  if (top + 160 > window.innerHeight) top = Math.max(8, rect.top - 160);
+  el.style.left = Math.max(8, left) + "px";
+  el.style.top = top + "px";
+}
+function openL1Edit(anchor, oldName) {
+  closeCatEdit();
+  const panel = div("pb-cat-edit");
+  panel.innerHTML = `
+    <label>\u4E00\u7EA7\u5206\u7C7B\u540D\u79F0
+      <input type="text" class="pb-ce-name" value="${escapeHtml(oldName)}">
+    </label>
+    <div class="pb-cat-edit-actions">
+      <button type="button" data-act="cancel">\u53D6\u6D88</button>
+      <button type="button" class="primary" data-act="save">\u4FDD\u5B58</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  _catEdit = panel;
+  placeNear(panel, anchor);
+  const nameInp = panel.querySelector(".pb-ce-name");
+  nameInp.focus();
+  nameInp.select();
+  const save2 = () => {
+    const v = nameInp.value.trim();
+    if (!v) {
+      toast("\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A", "warn");
+      return;
+    }
+    if (v !== oldName) {
+      const ok = dispatch({ type: "preset/renameL1", oldName, newName: v });
+      if (!ok) {
+        toast("\u540D\u79F0\u65E0\u6548\u6216\u5DF2\u5B58\u5728", "warn");
+        return;
+      }
+    }
+    closeCatEdit();
+    if (v === oldName) renderPresets();
+  };
+  panel.querySelector('[data-act="save"]')?.addEventListener("click", save2);
+  panel.querySelector('[data-act="cancel"]')?.addEventListener("click", () => closeCatEdit());
+  panel.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      save2();
+    }
+    if (e.key === "Escape") closeCatEdit();
+  });
+  setTimeout(() => document.addEventListener("pointerdown", onCatEditOutside, true), 0);
+}
+function openL2Edit(anchor, oldName, currentColor) {
+  closeCatEdit();
+  let picked = currentColor || getGroupColors()[0];
+  const panel = div("pb-cat-edit");
+  panel.innerHTML = `
+    <label>\u4E8C\u7EA7\u5206\u7C7B\u540D\u79F0
+      <input type="text" class="pb-ce-name" value="${escapeHtml(oldName)}">
+    </label>
+    <div>
+      <div style="font-size:10px;color:var(--pb-text-dim);margin-bottom:4px;">\u989C\u8272</div>
+      <div class="pb-cat-edit-swatches"></div>
+    </div>
+    <div class="pb-cat-edit-actions">
+      <button type="button" data-act="cancel">\u53D6\u6D88</button>
+      <button type="button" class="primary" data-act="save">\u4FDD\u5B58</button>
+    </div>
+  `;
+  const swatches = panel.querySelector(".pb-cat-edit-swatches");
+  for (const c of getGroupColors()) {
+    const sw = div("pb-cat-edit-swatch");
+    sw.style.background = c;
+    if (c === picked) sw.classList.add("pb-current");
+    sw.addEventListener("click", () => {
+      picked = c;
+      swatches.querySelectorAll(".pb-cat-edit-swatch").forEach((el) => el.classList.remove("pb-current"));
+      sw.classList.add("pb-current");
+    });
+    swatches.appendChild(sw);
+  }
+  document.body.appendChild(panel);
+  _catEdit = panel;
+  placeNear(panel, anchor, 260);
+  const nameInp = panel.querySelector(".pb-ce-name");
+  nameInp.focus();
+  nameInp.select();
+  const save2 = () => {
+    const v = nameInp.value.trim();
+    if (!v) {
+      toast("\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A", "warn");
+      return;
+    }
+    let changed = false;
+    if (v !== oldName) {
+      const ok = dispatch({ type: "preset/renameL2", oldName, newName: v });
+      if (!ok) {
+        toast("\u540D\u79F0\u65E0\u6548\u6216\u5DF2\u5B58\u5728", "warn");
+        return;
+      }
+      changed = true;
+    }
+    const catName = v !== oldName ? v : oldName;
+    if (picked && picked !== currentColor) {
+      dispatch({ type: "preset/setL2Color", name: catName, color: picked });
+      changed = true;
+    }
+    closeCatEdit();
+    if (!changed) renderPresets();
+  };
+  panel.querySelector('[data-act="save"]')?.addEventListener("click", save2);
+  panel.querySelector('[data-act="cancel"]')?.addEventListener("click", () => closeCatEdit());
+  panel.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      save2();
+    }
+    if (e.key === "Escape") closeCatEdit();
+  });
+  setTimeout(() => document.addEventListener("pointerdown", onCatEditOutside, true), 0);
+}
+function onCatEditOutside(e) {
+  if (_catEdit && !_catEdit.contains(e.target)) closeCatEdit();
+}
+function closeCatEdit() {
+  document.removeEventListener("pointerdown", onCatEditOutside, true);
+  _catEdit?.remove();
+  _catEdit = null;
+}
+
+// src/ui/output.ts
+init_pipe();
+init_dom();
+init_state();
+var CSS6 = (
+  /*css*/
+  `
+.pb-output-section {
+  padding: 8px; border-bottom: 1px solid var(--pb-border);
+  display: flex; flex-direction: column; flex: 1; min-height: 0;
+}
+.pb-output-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;
+}
+.pb-output-header span { font-size: 12px; font-weight: 600; color: var(--pb-text-dim); }
+.pb-output-stats { font-size: 10px; color: var(--pb-text-dim); }
+.pb-output-copy {
+  font-size: 10px; padding: 2px 8px; border: 1px solid var(--pb-border);
+  border-radius: 4px; background: transparent; color: var(--pb-text-dim); cursor: pointer;
+}
+.pb-output-copy:hover { border-color: var(--pb-accent); color: var(--pb-accent); }
+.pb-output-text {
+  flex: 1; overflow-y: auto; padding: 6px 8px; background: var(--pb-bg); border-radius: 4px;
+  font-size: 12px; line-height: 1.55; word-break: break-all; color: var(--pb-text);
+  white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; min-height: 40px;
+  /* \u5F7B\u5E95\u53BB\u6389\u5916\u6846\uFF08border / outline / box-shadow\uFF09 */
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.pb-output-empty { color: var(--pb-text-dim); font-size: 12px; font-style: italic; text-align: center; padding: 12px; display: block; }
+/* \u63D0\u793A\u8BCD\u5F69\u8272\u5206\u6BB5\uFF08\u52FF\u4E0E settings \u7684 .pb-segctrl \u6DF7\u6DC6\uFF09 */
+.pb-seg {
+  color: var(--pb-text); font-weight: 500;
+  border: none !important; outline: none; box-shadow: none;
+  display: inline; /* \u8986\u76D6\u4EFB\u4F55\u8BEF\u5957\u7528\u7684 flex \u5E03\u5C40 */
+  padding: 0; margin: 0; border-radius: 0; overflow: visible;
+}
+.pb-seg-break {
+  display: inline; color: var(--pb-danger); font-weight: 700;
+  background: color-mix(in srgb, var(--pb-danger) 15%, transparent);
+  padding: 0 3px; border-radius: 3px;
+}
+/* \u6D45\u8272\uFF1A\u8F93\u51FA\u533A\u7565\u52A0\u6DF1\u5E95\uFF0C\u5F69\u8272\u5206\u6BB5\u52A0\u7C97 + \u8F7B\u63CF\u8FB9\u4EE5\u4FDD\u8BC1\u53EF\u8BFB\u6027 */
+#pbMainPanel.pb-light .pb-output-text {
+  background: #d8c9a8;
+  color: #1f1a12;
+}
+#pbMainPanel.pb-light .pb-seg {
+  font-weight: 600;
+  text-shadow:
+    0 0 0.4px rgba(30, 24, 12, 0.35),
+    0 0 0.4px rgba(30, 24, 12, 0.35);
+}
+#pbMainPanel.pb-light .pb-seg-break {
+  background: color-mix(in srgb, var(--pb-danger) 22%, #f2e6ce);
+  text-shadow: none;
+}
+`
+);
+var _css6 = false;
+function parseHex(color) {
+  const s = color.trim();
+  const m = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return null;
+  let h2 = m[1];
+  if (h2.length === 3) h2 = h2.split("").map((c) => c + c).join("");
+  return {
+    r: parseInt(h2.slice(0, 2), 16),
+    g: parseInt(h2.slice(2, 4), 16),
+    b: parseInt(h2.slice(4, 6), 16)
+  };
+}
+function luminance(r, g, b) {
+  const lin = (c) => {
+    const x = c / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+function adaptSegColor(color) {
+  if (state.settings.theme !== "light") return color;
+  const rgb = parseHex(color);
+  if (!rgb) return color;
+  let { r, g, b } = rgb;
+  let L = luminance(r, g, b);
+  const maxL = 0.42;
+  if (L <= maxL) return color;
+  let t = 0;
+  while (L > maxL && t < 12) {
+    r = Math.round(r * 0.82);
+    g = Math.round(g * 0.82);
+    b = Math.round(b * 0.82);
+    L = luminance(r, g, b);
+    t++;
+  }
+  const hex = (n) => n.toString(16).padStart(2, "0");
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+function renderSegments(segs) {
+  if (!segs.length) return "";
+  return segs.map((s) => {
+    if (s.isBreak) return `<span class="pb-seg-break">${escapeHtml(s.text)}</span>`;
+    if (s.color) {
+      const c = adaptSegColor(s.color);
+      return `<span class="pb-seg" style="color:${escapeHtml(c)}">${escapeHtml(s.text)}</span>`;
+    }
+    return `<span class="pb-seg">${escapeHtml(s.text)}</span>`;
+  }).join("");
+}
+function renderOutput() {
+  injectCSS("output", CSS6);
+  _css6 = true;
+  const slot = $("pbOutputSlot");
+  if (!slot) return;
+  const pos = buildPositiveText();
+  const neg = buildNegativeText();
+  const ps = countWordsAndChars(pos);
+  const ns = countWordsAndChars(neg);
+  const posHtml = pos ? renderSegments(buildPositiveSegments()) : '<span class="pb-output-empty">\u5728\u8BCD\u5E93\u4E2D\u70B9\u51FB\u6216\u5728\u8F93\u5165\u6846\u4E2D\u8F93\u5165</span>';
+  const negHtml = neg ? renderSegments(buildNegativeSegments()) : '<span class="pb-output-empty">\u6682\u65E0\u8D1F\u9762\u63D0\u793A\u8BCD</span>';
+  slot.innerHTML = `
+    <div class="pb-output-section">
+      <div class="pb-output-header">
+        <span>Positive</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="pb-output-stats">${ps.words}\u8BCD \xB7 ${ps.chars}\u5B57</span>
+          <button type="button" class="pb-output-copy" data-copy="${escapeHtml(pos)}">\u590D\u5236</button>
+        </div>
+      </div>
+      <div class="pb-output-text">${posHtml}</div>
+    </div>
+    <div class="pb-output-section">
+      <div class="pb-output-header">
+        <span>Negative</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="pb-output-stats">${ns.words}\u8BCD \xB7 ${ns.chars}\u5B57</span>
+          <button type="button" class="pb-output-copy" data-copy="${escapeHtml(neg)}">\u590D\u5236</button>
+        </div>
+      </div>
+      <div class="pb-output-text">${negHtml}</div>
+    </div>
+  `;
+  slot.querySelectorAll(".pb-output-copy").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const text = btn.dataset.copy || "";
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      btn.textContent = "\u5DF2\u590D\u5236";
+      setTimeout(() => {
+        btn.textContent = "\u590D\u5236";
+      }, 1200);
+    });
+  });
+}
+
+// src/ui/settings.ts
+init_state();
+init_pipe();
+init_dom();
+var CSS7 = (
+  /*css*/
+  `
+.pb-settings { padding: 8px; }
+.pb-setting-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+.pb-setting-label { font-size: 12px; color: var(--pb-text-dim); }
+/* \u8BBE\u7F6E\u5206\u6BB5\u63A7\u4EF6\uFF08\u52FF\u4E0E output \u7684 .pb-seg \u63D0\u793A\u8BCD\u5206\u6BB5\u540C\u540D\uFF09 */
+.pb-segctrl { display: inline-flex; border: 1px solid var(--pb-border); border-radius: 4px; overflow: hidden; }
+.pb-segctrl button {
+  padding: 2px 8px; border: none; background: transparent; color: var(--pb-text-dim);
+  font-size: 10px; cursor: pointer; border-right: 1px solid var(--pb-border);
+}
+.pb-segctrl button:last-child { border-right: none; }
+.pb-segctrl button.pb-segctrl-active { background: var(--pb-accent); color: #fff; }
+.pb-sel {
+  background: var(--pb-bg); border: 1px solid var(--pb-border); border-radius: 4px;
+  color: var(--pb-text); font-size: 10px; padding: 2px 4px;
+}
+.pb-custom-api-row { padding: 4px 0; display: flex; flex-direction: column; gap: 4px; }
+.pb-custom-api-row input, .pb-custom-api-row textarea {
+  width: 100%; background: var(--pb-bg); border: 1px solid var(--pb-border); border-radius: 3px;
+  color: var(--pb-text); font-size: 10px; padding: 3px 6px; box-sizing: border-box;
+}
+.pb-custom-api-row textarea { height: 40px; resize: vertical; }
+`
+);
+var _css7 = false;
+function renderSettings() {
+  if (!_css7) {
+    injectCSS("settings", CSS7);
+    _css7 = true;
+  }
+  const area = $("pbSettingsSlot");
+  if (!area) return;
+  area.innerHTML = `
+    <div class="pb-settings">
+      <div class="pb-setting-row">
+        <span class="pb-setting-label">\u754C\u9762\u7F29\u653E</span>
+        <div class="pb-segctrl" id="pbSegScale">
+          <button type="button" data-val="sm">\u5C0F</button>
+          <button type="button" data-val="mid">\u4E2D</button>
+          <button type="button" data-val="lg">\u5927</button>
+        </div>
+      </div>
+      <div class="pb-setting-row">
+        <span class="pb-setting-label">\u7FFB\u8BD1\u5F15\u64CE</span>
+        <select class="pb-sel" id="pbSelTranslator">
+          <option value="mymemory">MyMemory</option>
+          <option value="google">Google</option>
+          <option value="custom">\u81EA\u5B9A\u4E49</option>
+        </select>
+      </div>
+      <div class="pb-custom-api-row" id="pbCustomApiRow" style="display:none;">
+        <input type="text" id="pbApiUrl" placeholder="API URL ({text} {src} {tgt})">
+        <select id="pbApiMethod" class="pb-sel" style="width:100%;">
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+        </select>
+        <textarea id="pbApiBody" placeholder="\u8BF7\u6C42\u4F53 JSON \u6A21\u677F"></textarea>
+        <input type="text" id="pbApiField" placeholder="\u54CD\u5E94\u5B57\u6BB5\u8DEF\u5F84">
+      </div>
+      <div class="pb-setting-row">
+        <span class="pb-setting-label">\u4E3B\u9898</span>
+        <div class="pb-segctrl" id="pbSegTheme">
+          <button type="button" data-val="dark">\u6697\u8272</button>
+          <button type="button" data-val="light">\u4EAE\u8272</button>
+        </div>
+      </div>
+    </div>
+  `;
+  bindSeg("pbSegScale", "scale");
+  bindSeg("pbSegTheme", "theme");
+  const sel = $("pbSelTranslator");
+  if (sel) {
+    sel.value = state.settings.translator;
+    sel.addEventListener("change", () => {
+      dispatch({ type: "settings/patch", patch: { translator: sel.value } });
+    });
+  }
+  const persistApi = () => {
+    dispatch({
+      type: "settings/customApi",
+      patch: {
+        url: $("pbApiUrl")?.value.trim() || "",
+        method: $("pbApiMethod")?.value || "POST",
+        body: $("pbApiBody")?.value || "",
+        responseField: $("pbApiField")?.value.trim() || ""
+      }
+    });
+  };
+  ["pbApiUrl", "pbApiMethod", "pbApiBody", "pbApiField"].forEach((id) => {
+    $(id)?.addEventListener("change", persistApi);
+    $(id)?.addEventListener("blur", persistApi);
+  });
+  applySettings();
+}
+function bindSeg(id, key) {
+  const seg = $(id);
+  if (!seg) return;
+  seg.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      dispatch({ type: "settings/patch", patch: { [key]: btn.dataset.val } });
+    });
+  });
+}
+function applySettings() {
+  const panel = $("pbMainPanel");
+  if (!panel) return;
+  const s = state.settings;
+  const scales = { sm: "0.85", mid: "1", lg: "1.15" };
+  panel.style.zoom = scales[s.scale];
+  panel.classList.toggle("pb-light", s.theme === "light");
+  const root = document.documentElement;
+  if (s.theme === "light") {
+    root.style.setProperty("--pb-bg", "#e4d5b8");
+    root.style.setProperty("--pb-panel", "#f2e6ce");
+    root.style.setProperty("--pb-panel-2", "#d6c4a0");
+    root.style.setProperty("--pb-border", "#c4b08a");
+    root.style.setProperty("--pb-text", "#2a2416");
+    root.style.setProperty("--pb-text-dim", "#6e6350");
+    root.style.setProperty("--pb-accent", "#6aa9ff");
+    root.style.setProperty("--pb-danger", "#ff6b6b");
+    root.style.setProperty("--pb-chip-bg", "#e0d2b0");
+    root.style.setProperty("--pb-chip-bg-focus", "#d4c49a");
+  } else {
+    root.style.setProperty("--pb-bg", "#0f1115");
+    root.style.setProperty("--pb-panel", "#161a22");
+    root.style.setProperty("--pb-panel-2", "#1c2230");
+    root.style.setProperty("--pb-border", "#262d3b");
+    root.style.setProperty("--pb-text", "#e6e9ef");
+    root.style.setProperty("--pb-text-dim", "#8a93a6");
+    root.style.setProperty("--pb-accent", "#6aa9ff");
+    root.style.setProperty("--pb-danger", "#ff6b6b");
+    root.style.setProperty("--pb-chip-bg", "#2a3142");
+    root.style.setProperty("--pb-chip-bg-focus", "#324063");
+  }
+  syncSeg("pbSegScale", s.scale);
+  syncSeg("pbSegTheme", s.theme);
+  const sel = $("pbSelTranslator");
+  if (sel) sel.value = s.translator;
+  const row = $("pbCustomApiRow");
+  if (row) row.style.display = s.translator === "custom" ? "" : "none";
+  if (s.translator === "custom") {
+    const url = $("pbApiUrl");
+    const method = $("pbApiMethod");
+    const body = $("pbApiBody");
+    const field = $("pbApiField");
+    if (url && document.activeElement !== url) url.value = s.customApi.url;
+    if (method && document.activeElement !== method) method.value = s.customApi.method;
+    if (body && document.activeElement !== body) body.value = s.customApi.body;
+    if (field && document.activeElement !== field) field.value = s.customApi.responseField;
+  }
+}
+function syncSeg(id, value) {
+  $(id)?.querySelectorAll("button").forEach((btn) => {
+    btn.classList.toggle("pb-segctrl-active", btn.dataset.val === value);
+  });
+}
+
+// src/index.ts
+init_toast();
+window.__comfyApp = app;
+initFromStorage();
+void preloadTagIndex();
+setRenderer((scopes) => {
+  const all = scopes.has("all");
+  if (all || scopes.has("workspace")) renderWorkspace();
+  if (all || scopes.has("presets")) renderPresets();
+  if (all || scopes.has("output")) renderOutput();
+  if (all || scopes.has("settings")) {
+    renderSettings();
+  }
+  applySettings();
+  if (all || scopes.has("workspace")) paintSelectionClasses();
+  updateUndoButtons();
+});
+setUndoRestoreHandler(() => {
+  refreshAll();
+  updateUndoButtons();
+});
+function renderAll() {
+  renderPresets();
+  renderWorkspace();
+  renderOutput();
+  renderSettings();
+  applySettings();
+  updateUndoButtons();
+}
+function openNode(node) {
+  setActiveNode(node);
+  const panel = getPanel();
+  if (node.id != null) panel.dataset.activeNode = String(node.id);
+  clearUndo();
+  clearSelection();
+  loadNodeIntoCur(node);
+  renderAll();
+  showPanel();
+}
+function softReloadActiveNode(node) {
+  const panel = getPanel();
+  if (panel.classList.contains("pb-hidden")) return;
+  const activeId = panel.dataset.activeNode;
+  if (activeId == null || String(node.id) !== activeId) return;
+  setActiveNode(node);
+  loadNodeIntoCur(node);
+  renderAll();
+}
+function doUndo() {
+  undo();
+  updateUndoButtons();
+}
+function doRedo() {
+  redo();
+  updateUndoButtons();
+}
+function exportPresetsOnly() {
+  const data = {
+    type: "promptbuildernext_presets",
+    presets: state.presets,
+    l1Cat: state.l1Cat,
+    l2Cat: state.l2Cat
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `promptbuildernext_presets_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("\u8BCD\u5E93\u5DF2\u5BFC\u51FA", "ok");
+}
+function importPresetsOnly() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (data.presets) {
+        dispatch({
+          type: "preset/replace",
+          presets: data.presets,
+          l1Cat: data.l1Cat,
+          l2Cat: data.l2Cat
+        });
+        toast("\u8BCD\u5E93\u5DF2\u5BFC\u5165", "ok");
+      } else {
+        toast("\u6587\u4EF6\u4E2D\u6CA1\u6709\u8BCD\u5E93\u6570\u636E", "warn");
+      }
+    } catch {
+      toast("\u5BFC\u5165\u5931\u8D25", "error");
+    }
+  });
+  input.click();
+}
+function bindStatusLink(id, fn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (el.classList.contains("pb-disabled")) return;
+    fn();
+  });
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (el.classList.contains("pb-disabled")) return;
+      fn();
+    }
+  });
+}
+function bindButtons() {
+  bindStatusLink("pbUndoBtn", () => doUndo());
+  bindStatusLink("pbRedoBtn", () => doRedo());
+  bindStatusLink("pbExportBtn", exportPresetsOnly);
+  bindStatusLink("pbImportBtn", importPresetsOnly);
+  document.getElementById("pbTranslateBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("pbTranslateBtn");
+    const chips = [
+      ...cur.workspace.flatMap((g) => g.inputboxes.flatMap((b) => b.chips)),
+      ...cur.negativeGroup.inputboxes.flatMap((b) => b.chips)
+    ].filter((c) => !c.cnText && c.text.trim());
+    if (!chips.length) {
+      toast("\u6CA1\u6709\u9700\u8981\u7FFB\u8BD1\u7684\u8BCD\u8BED", "warn");
+      return;
+    }
+    if (btn) btn.disabled = true;
+    const before = cloneUndoSnapshot();
+    chips.forEach((c) => {
+      c.translating = true;
+    });
+    renderWorkspace();
+    try {
+      const { translateChips: translateChips2 } = await Promise.resolve().then(() => (init_translation(), translation_exports));
+      const { ok } = await translateChips2(chips);
+      if (ok > 0) {
+        recordUndoSnapshot(before);
+        updateUndoButtons();
+      }
+      dispatch(
+        {
+          type: "workspace/replace",
+          workspace: cur.workspace,
+          negativeGroup: cur.negativeGroup,
+          focusedBox: cur.focusedBox
+        },
+        { noUndo: true }
+      );
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+  document.getElementById("pbClearBtn")?.addEventListener("click", () => {
+    dispatch({ type: "workspace/clear" });
+  });
+  document.getElementById("pbGenerateBtn")?.addEventListener("click", () => {
+    try {
+      app.queuePrompt(0, 1);
+    } catch {
+    }
+  });
+}
+function bindKeys() {
+  document.addEventListener("keydown", (e) => {
+    if (!isPanelVisible()) return;
+    const t = e.target;
+    const inField = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.shiftKey && (e.key === "X" || e.key === "x")) {
+      e.preventDefault();
+      toggleMinimized();
+      return;
+    }
+    if (inField) return;
+    if (e.key === "Escape") {
+      clearSelection();
+      return;
+    }
+    if (mod && e.key === "z" && !e.shiftKey) {
+      e.preventDefault();
+      doUndo();
+    }
+    if (mod && (e.key === "y" || e.key === "z" && e.shiftKey)) {
+      e.preventDefault();
+      doRedo();
+    }
+    if (mod && (e.key === "a" || e.key === "A")) {
+      e.preventDefault();
+      const boxId = cur.focusedBox;
+      if (boxId && findBox(boxId)) selectAllInBox(boxId);
+      return;
+    }
+    if (e.key === "Delete" || e.key === "Backspace") {
+      if (getSelectedCount() > 0) {
+        e.preventDefault();
+        dispatch({ type: "chip/batchRemove", chipIds: getSelectedIds() });
+        clearSelection();
+      }
+    }
+  });
+}
+function bindClearSelectionOnOutsideClick() {
+  document.addEventListener("pointerdown", (e) => {
+    if (!isPanelVisible()) return;
+    if (getSelectedCount() === 0) return;
+    const t = e.target;
+    if (!t) return;
+    if (t.closest(".pb-chip, .pb-chip-toolbar, .pb-chip-edit-panel")) return;
+    clearSelection();
+  }, true);
+}
+getPanel();
+bindButtons();
+bindKeys();
+bindClearSelectionOnOutsideClick();
+updateUndoButtons();
+app.registerExtension({
+  name: "promptbuilder.promptbuildernext",
+  nodeCreated(node) {
+    if (!NODE_TYPES.includes(node.comfyClass)) return;
+    node.addWidget("button", "\u270F\uFE0F Edit in PromptBuilder", null, () => {
+      openNode(node);
+      const p = getPanel();
+      p.classList.remove("pb-hidden", "pb-minimized");
+    });
+    setTimeout(() => {
+      for (const w of node.widgets || []) {
         if ((w.name === "positive" || w.name === "negative") && w.element) {
           const ta = w.element.querySelector?.("textarea") || w.element;
           ta.disabled = true;
         }
-      });
+      }
     }, 200);
   },
-
   getNodeMenuItems(node) {
-    if (node.comfyClass !== "PromptBuilderCLIPEncode" && node.comfyClass !== "PromptBuilderText") return [];
-    const panel = document.querySelector(".pb-panel");
+    if (!NODE_TYPES.includes(node.comfyClass)) return [];
     return [{
-      content: "✏️ 在 PromptBuilder 中编辑",
-      callback: () => { if (panel && panel._loadNodeIntoPanel) { panel._loadNodeIntoPanel(node); panel.classList.remove("minimized"); panel.classList.add("visible"); const mb = panel.querySelector(".pb-minimize"); if (mb) { mb.textContent = "−"; mb.title = "收起面板"; } } }
+      content: "\u270F\uFE0F Edit in PromptBuilder",
+      callback: () => openNode(node)
     }];
   },
-
-  // 工作流加载 / 拖图后：若面板已打开且绑定节点已失效，自动刷新
-  beforeRegisterNodeDef(nodeType, nodeData, app) {
-    if (nodeData.name !== "PromptBuilderCLIPEncode" && nodeData.name !== "PromptBuilderText") return;
-    const origOnConfigure = nodeType.prototype.onConfigure;
-    nodeType.prototype.onConfigure = function(o) {
-      const r = origOnConfigure?.apply(this, arguments);
+  beforeRegisterNodeDef(nodeType, nodeData, _appRef) {
+    if (!NODE_TYPES.includes(nodeData.name)) return;
+    const orig = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function(...args) {
+      const r = orig?.apply(this, args);
       try {
-        const panel = document.querySelector(".pb-panel");
-        if (!panel?.classList.contains("visible") || !panel._loadNodeIntoPanel) return r;
-        const activeId = panel.dataset.activeNode;
-        // 若当前绑定节点已不在图中（工作流重载 / 拖图），或本节点就是绑定节点，则重载面板
-        const activeStillExists = activeId != null && app.graph?._nodes?.some(n =>
-          String(n.id) === activeId && (n.comfyClass === "PromptBuilderCLIPEncode" || n.comfyClass === "PromptBuilderText")
-        );
-        if (!activeStillExists || activeId === String(this.id)) {
-          panel._loadNodeIntoPanel(this);
-        }
-      } catch (e) {}
+        softReloadActiveNode(this);
+      } catch {
+      }
       return r;
     };
   }
 });
+console.log("[PromptBuilder] ready (dispatch + Sortable gate)");
+/*! Bundled license information:
+
+sortablejs/modular/sortable.esm.js:
+  (**!
+   * Sortable 1.15.7
+   * @author	RubaXa   <trash@rubaxa.org>
+   * @author	owenm    <owen23355@gmail.com>
+   * @license MIT
+   *)
+*/
+//# sourceMappingURL=promptbuilder.js.map
