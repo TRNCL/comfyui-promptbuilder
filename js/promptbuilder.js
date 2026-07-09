@@ -2003,21 +2003,36 @@ var CSS2 = (
 }
 
 .pb-chip-edit-panel {
-  position: fixed; z-index: 10009; min-width: 220px; padding: 10px;
+  position: fixed; z-index: 10009;
+  /* \u56FA\u5B9A\u5BBD\u5EA6\uFF0C\u907F\u514D\u8D85\u957F\u65E0\u7A7A\u683C\u6587\u672C\u628A\u5F39\u7A97\u6491\u5BBD */
+  width: min(240px, 92vw); max-width: min(240px, 92vw);
+  box-sizing: border-box; padding: 10px;
   background: var(--pb-panel); border: 1px solid var(--pb-border); border-radius: 8px;
   box-shadow: var(--pb-shadow-lg); display: flex; flex-direction: column; gap: 6px;
+  min-width: 0;
 }
 .pb-chip-edit-panel label {
   font-size: 10px; color: var(--pb-text-dim); display: flex; flex-direction: column; gap: 2px;
+  min-width: 0; max-width: 100%;
 }
-.pb-chip-edit-panel input {
-  width: 100%; box-sizing: border-box; padding: 4px 6px; font-size: 12px;
+.pb-chip-edit-panel input,
+.pb-chip-edit-panel textarea {
+  width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+  padding: 4px 6px; font-size: 12px;
   border: 1px solid var(--pb-border); border-radius: 4px;
   background: var(--pb-bg); color: var(--pb-text); outline: none;
+  font-family: inherit; line-height: 1.4;
 }
-.pb-chip-edit-panel input:focus { border-color: var(--pb-accent); }
-.pb-chip-edit-panel input.pb-ce-weight {
-  width: 100%; box-sizing: border-box;
+.pb-chip-edit-panel input:focus,
+.pb-chip-edit-panel textarea:focus { border-color: var(--pb-accent); }
+.pb-chip-edit-panel textarea {
+  min-height: 36px; max-height: 160px;
+  resize: vertical; /* \u9AD8\u5EA6\u7531 JS \u6309\u56FA\u5B9A\u5BBD\u5EA6\u4E0B\u7684 scrollHeight \u8BA1\u7B97 */
+  white-space: pre-wrap;
+  word-break: break-word; overflow-wrap: anywhere;
+  /* \u65E0\u7A7A\u683C\u957F\u4E32\u4E5F\u5F3A\u5236\u65AD\u884C\uFF0C\u9632\u6B62\u6491\u5BBD */
+  overflow-wrap: anywhere;
+  overflow-x: hidden; overflow-y: auto;
 }
 .pb-chip-edit-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
 .pb-chip-edit-actions button {
@@ -2034,6 +2049,7 @@ var _toolbar = null;
 var _hideTimer = null;
 var _active = null;
 var _editPanel = null;
+var _editCommit = null;
 function ensureCss() {
   if (!_css2) {
     injectCSS("chip", CSS2);
@@ -2224,10 +2240,10 @@ function openChipEdit(anchor, chip) {
   const panel = div("pb-chip-edit-panel");
   panel.innerHTML = `
     <label>\u82F1\u6587 / \u4E3B\u6587\u672C
-      <input type="text" class="pb-ce-en" value="${escapeHtml(chip.text)}">
+      <textarea class="pb-ce-en" rows="2">${escapeHtml(chip.text)}</textarea>
     </label>
     <label>\u4E2D\u6587
-      <input type="text" class="pb-ce-cn" value="${escapeHtml(chip.cnText || "")}">
+      <textarea class="pb-ce-cn" rows="2">${escapeHtml(chip.cnText || "")}</textarea>
     </label>
     <label>\u6743\u91CD
       <input type="number" class="pb-ce-weight" min="0.1" max="5" step="0.1" value="${w0}" placeholder="1.0">
@@ -2239,16 +2255,34 @@ function openChipEdit(anchor, chip) {
   `;
   document.body.appendChild(panel);
   _editPanel = panel;
+  const panelW = Math.min(240, Math.floor(window.innerWidth * 0.92));
+  panel.style.width = panelW + "px";
   const rect = anchor.getBoundingClientRect();
   let left = rect.left;
   let top = rect.bottom + 6;
-  if (left + 240 > window.innerWidth) left = window.innerWidth - 248;
-  if (top + 180 > window.innerHeight) top = Math.max(8, rect.top - 180);
+  if (left + panelW > window.innerWidth) left = window.innerWidth - panelW - 8;
+  if (top + 220 > window.innerHeight) top = Math.max(8, rect.top - 220);
   panel.style.left = Math.max(8, left) + "px";
   panel.style.top = top + "px";
   const en = panel.querySelector(".pb-ce-en");
   const cn = panel.querySelector(".pb-ce-cn");
   const weightInp = panel.querySelector(".pb-ce-weight");
+  const autosize = (ta) => {
+    ta.style.width = "100%";
+    ta.style.height = "0";
+    ta.style.overflowY = "hidden";
+    void ta.offsetWidth;
+    const sh = ta.scrollHeight;
+    const next = Math.min(160, Math.max(36, sh));
+    ta.style.height = next + "px";
+    ta.style.overflowY = sh > 160 ? "auto" : "hidden";
+  };
+  requestAnimationFrame(() => {
+    autosize(en);
+    autosize(cn);
+  });
+  en.addEventListener("input", () => autosize(en));
+  cn.addEventListener("input", () => autosize(cn));
   en.focus();
   en.select();
   const readWeight = () => {
@@ -2258,18 +2292,39 @@ function openChipEdit(anchor, chip) {
     if (!Number.isFinite(n)) return null;
     return clamp(Math.round(n * 10) / 10, 0.1, 5);
   };
-  const save2 = () => {
-    const text = en.value.trim();
-    const cnText = cn.value.trim();
-    const weight = readWeight();
+  const setWeight = (v) => {
+    weightInp.value = String(clamp(Math.round(v * 10) / 10, 0.1, 5));
+  };
+  const weightLabel = weightInp.closest("label");
+  const onWeightWheel = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const cur2 = readWeight() ?? 1;
+    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+    setWeight(cur2 + delta);
+  };
+  weightLabel?.addEventListener("wheel", onWeightWheel, { passive: false });
+  weightInp.addEventListener("wheel", onWeightWheel, { passive: false });
+  const save2 = (mode = "explicit") => {
+    let text = en.value.replace(/^\s+|\s+$/g, "");
+    const cnText = cn.value.replace(/^\s+|\s+$/g, "");
+    let weight = readWeight();
     if (!text) {
-      toast("\u82F1\u6587\u4E0D\u80FD\u4E3A\u7A7A", "warn");
-      return;
+      if (mode === "blur") {
+        text = chip.text;
+      } else {
+        toast("\u82F1\u6587\u4E0D\u80FD\u4E3A\u7A7A", "warn");
+        return;
+      }
     }
     if (weight == null) {
-      toast("\u8BF7\u8F93\u5165\u6709\u6548\u6743\u91CD\uFF080.1\u20135\uFF09", "warn");
-      weightInp.focus();
-      return;
+      if (mode === "blur") {
+        weight = Number.isFinite(chip.weight) ? chip.weight : 1;
+      } else {
+        toast("\u8BF7\u8F93\u5165\u6709\u6548\u6743\u91CD\uFF080.1\u20135\uFF09", "warn");
+        weightInp.focus();
+        return;
+      }
     }
     weightInp.value = String(weight);
     const patch = {};
@@ -2281,24 +2336,35 @@ function openChipEdit(anchor, chip) {
     }
     closeChipEdit();
   };
-  panel.querySelector('[data-act="save"]')?.addEventListener("click", save2);
+  _editCommit = save2;
+  panel.querySelector('[data-act="save"]')?.addEventListener("click", () => save2("explicit"));
   panel.querySelector('[data-act="cancel"]')?.addEventListener("click", () => closeChipEdit());
   panel.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      save2();
+    if (e.key === "Escape") {
+      closeChipEdit();
+      return;
     }
-    if (e.key === "Escape") closeChipEdit();
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      save2("explicit");
+      return;
+    }
+    if (e.key === "Enter" && !e.shiftKey && e.target === weightInp) {
+      e.preventDefault();
+      save2("explicit");
+    }
   });
   setTimeout(() => {
     document.addEventListener("pointerdown", onChipEditOutside, true);
   }, 0);
 }
 function onChipEditOutside(e) {
-  if (_editPanel && !_editPanel.contains(e.target)) closeChipEdit();
+  if (!_editPanel || _editPanel.contains(e.target)) return;
+  _editCommit?.("blur");
 }
 function closeChipEdit() {
   document.removeEventListener("pointerdown", onChipEditOutside, true);
+  _editCommit = null;
   _editPanel?.remove();
   _editPanel = null;
 }
