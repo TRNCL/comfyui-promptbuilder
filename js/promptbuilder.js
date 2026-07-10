@@ -2111,6 +2111,35 @@ var CSS3 = (
 .pb-chip-toolbar .pb-tb-count {
   font-size: 10px; color: var(--pb-text-dim); padding: 0 4px; white-space: nowrap;
 }
+/* \u6743\u91CD\u6570\u5B57\uFF1A\u66FF\u4EE3 \u2212/+\uFF0C\u53EF\u70B9\u7F16\u8F91 / \u6EDA\u8F6E\u8C03\u8282 */
+.pb-chip-toolbar .pb-tb-weight {
+  min-width: 36px; height: 24px; padding: 0 6px; margin: 0;
+  border: 1px solid var(--pb-border); border-radius: 4px; box-sizing: border-box;
+  background: var(--pb-bg); color: var(--pb-text); cursor: text;
+  font-size: 12px; font-weight: 400; line-height: 22px; font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: center; justify-content: center;
+  white-space: nowrap; user-select: none;
+  vertical-align: middle;
+}
+/* \u65E0\u60AC\u505C\u53D8\u8272\uFF0C\u9760\u8FB9\u6846\u4E0E toolbar \u533A\u5206 */
+.pb-chip-toolbar .pb-tb-weight:hover {
+  background: var(--pb-bg);
+}
+.pb-chip-toolbar .pb-tb-weight-input {
+  width: 40px; height: 24px; padding: 0 4px; margin: 0; box-sizing: border-box;
+  border: 1px solid var(--pb-border); border-radius: 4px;
+  background: var(--pb-bg); color: var(--pb-text);
+  font-size: 12px; font-weight: 400; line-height: 22px;
+  font-variant-numeric: tabular-nums; text-align: center; outline: none;
+  /* \u9690\u85CF number \u53F3\u4FA7\u6B65\u8FDB\u7BAD\u5934 */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.pb-chip-toolbar .pb-tb-weight-input::-webkit-outer-spin-button,
+.pb-chip-toolbar .pb-tb-weight-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 
 .pb-chip-edit-panel {
   position: fixed; z-index: 10009;
@@ -2157,9 +2186,12 @@ var CSS3 = (
 var _css2 = false;
 var _toolbar = null;
 var _hideTimer = null;
+var TOOLBAR_SHOW_DELAY_MS = 200;
+var _showTimer = null;
 var _active = null;
 var _editPanel = null;
 var _editCommit = null;
+var _weightEditing = false;
 function ensureCss() {
   if (!_css2) {
     injectCSS("chip", CSS3);
@@ -2173,11 +2205,136 @@ function getToolbar() {
     document.body.appendChild(_toolbar);
     _toolbar.addEventListener("pointerenter", () => {
       if (_hideTimer) clearTimeout(_hideTimer);
+      if (_showTimer) clearTimeout(_showTimer);
+      _showTimer = null;
     });
-    _toolbar.addEventListener("pointerleave", () => hideToolbar());
+    _toolbar.addEventListener("pointerleave", () => {
+      if (_weightEditing) return;
+      hideToolbar();
+    });
     _toolbar.addEventListener("pointerdown", onToolbarPointerDown);
+    _toolbar.addEventListener("wheel", onToolbarWeightWheel, { passive: false });
+    _toolbar.addEventListener("click", onToolbarWeightClick);
   }
   return _toolbar;
+}
+function fmtWeight(w) {
+  const r = Math.round((Number.isFinite(w) ? w : 1) * 10) / 10;
+  return String(clamp(r, 0.1, 5));
+}
+function toolbarTargetIds() {
+  const multi = getSelectedCount() > 1 && _active && isSelected(_active.chip.id);
+  return multi ? getSelectedIds() : _active ? [_active.chip.id] : [];
+}
+function activeChipWeight() {
+  if (!_active) return 1;
+  const w = findChip(_active.chip.id)?.chip.weight;
+  return Number.isFinite(w) ? w : 1;
+}
+function applyWeightDelta(delta) {
+  const ids = toolbarTargetIds();
+  if (!ids.length) return;
+  if (ids.length > 1) {
+    dispatch({ type: "chip/batchAdjustWeight", chipIds: ids, delta });
+  } else {
+    const chip = findChip(ids[0])?.chip;
+    if (!chip) return;
+    dispatch({
+      type: "chip/update",
+      chipId: chip.id,
+      patch: { weight: clamp(Math.round((chip.weight + delta) * 10) / 10, 0.1, 5) }
+    });
+  }
+  if (_active) rebindActiveAfterRender(_active.chip.id);
+}
+function commitWeightValue(raw) {
+  const ids = toolbarTargetIds();
+  if (!ids.length) return;
+  const n = parseFloat(raw.trim());
+  if (!Number.isFinite(n)) return;
+  const weight = clamp(Math.round(n * 10) / 10, 0.1, 5);
+  if (ids.length > 1) {
+    dispatch({ type: "chip/batchUpdate", chipIds: ids, patch: { weight } });
+  } else {
+    const chip = findChip(ids[0])?.chip;
+    if (!chip || chip.weight === weight) {
+    } else {
+      dispatch({ type: "chip/update", chipId: chip.id, patch: { weight } });
+    }
+  }
+  if (_active) rebindActiveAfterRender(_active.chip.id);
+}
+function onToolbarWeightWheel(e) {
+  const t = e.target;
+  if (!t.closest?.(".pb-tb-weight, .pb-tb-weight-input")) return;
+  if (_weightEditing) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const delta = e.deltaY < 0 ? 0.1 : -0.1;
+  applyWeightDelta(delta);
+}
+function onToolbarWeightClick(e) {
+  const btn = e.target.closest?.(".pb-tb-weight");
+  if (!btn || _weightEditing) return;
+  e.preventDefault();
+  e.stopPropagation();
+  beginWeightEdit(btn);
+}
+function beginWeightEdit(weightEl) {
+  if (!_toolbar || _weightEditing) return;
+  _weightEditing = true;
+  if (_hideTimer) {
+    clearTimeout(_hideTimer);
+    _hideTimer = null;
+  }
+  const cur2 = activeChipWeight();
+  const inp = document.createElement("input");
+  inp.type = "number";
+  inp.className = "pb-tb-weight-input";
+  inp.min = "0.1";
+  inp.max = "5";
+  inp.step = "0.1";
+  inp.value = fmtWeight(cur2);
+  inp.title = "\u6743\u91CD 0.1\u20135";
+  weightEl.replaceWith(inp);
+  inp.focus();
+  inp.select();
+  let done = false;
+  const finish = (commit) => {
+    if (done) return;
+    done = true;
+    _weightEditing = false;
+    if (commit) commitWeightValue(inp.value);
+    if (_active && _toolbar?.classList.contains("pb-visible")) {
+      const el = liveChipAnchor(_active.el, _active.chip.id) || _active.el;
+      placeToolbar(el, findChip(_active.chip.id)?.chip ?? _active.chip);
+    } else if (inp.isConnected) {
+      const span2 = document.createElement("button");
+      span2.type = "button";
+      span2.className = "pb-tb-weight";
+      span2.textContent = fmtWeight(activeChipWeight());
+      span2.title = "\u6743\u91CD \xB7 \u70B9\u51FB\u7F16\u8F91 \xB7 \u6EDA\u8F6E\xB10.1";
+      inp.replaceWith(span2);
+    }
+  };
+  inp.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      finish(true);
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      finish(false);
+    }
+  });
+  inp.addEventListener("blur", () => finish(true));
+  inp.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const v = parseFloat(inp.value);
+    const base = Number.isFinite(v) ? v : activeChipWeight();
+    const delta = ev.deltaY < 0 ? 0.1 : -0.1;
+    inp.value = fmtWeight(base + delta);
+  }, { passive: false });
 }
 function findChipEl(chipId) {
   const esc = typeof CSS3 !== "undefined" && typeof CSS3.escape === "function" ? CSS3.escape(chipId) : chipId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -2193,47 +2350,26 @@ function liveChipAnchor(preferred, chipId) {
 function rebindActiveAfterRender(chipId) {
   queueMicrotask(() => {
     if (!_active || _active.chip.id !== chipId) return;
+    if (_weightEditing) return;
     const el = findChipEl(chipId);
     if (!el) return;
-    _active.el = el;
+    const chip = findChip(chipId)?.chip ?? _active.chip;
+    _active = { chip, box: _active.box, el };
     if (_toolbar?.classList.contains("pb-visible") && !_editPanel) {
-      const rect = el.getBoundingClientRect();
-      const multi = getSelectedCount() > 1 && isSelected(chipId);
-      const tw = multi ? 200 : 150;
-      let left = rect.left + rect.width / 2 - tw / 2;
-      let top = rect.top - 32;
-      if (top < 0) top = rect.bottom + 4;
-      if (left < 0) left = 4;
-      if (left + tw > window.innerWidth) left = window.innerWidth - tw - 4;
-      _toolbar.style.left = left + "px";
-      _toolbar.style.top = top + "px";
+      placeToolbar(el, chip);
     }
   });
 }
 function onToolbarPointerDown(e) {
+  const t = e.target;
+  if (t.closest(".pb-tb-weight, .pb-tb-weight-input")) return;
   e.preventDefault();
   e.stopPropagation();
-  const act = e.target.closest("button")?.getAttribute("data-act");
+  const act = t.closest("button")?.getAttribute("data-act");
   if (!act) return;
   const multi = getSelectedCount() > 1 && _active && isSelected(_active.chip.id);
   const ids = multi ? getSelectedIds() : _active ? [_active.chip.id] : [];
   if (!ids.length) return;
-  if (act === "minus" || act === "plus") {
-    const delta = act === "minus" ? -0.1 : 0.1;
-    if (ids.length > 1) {
-      dispatch({ type: "chip/batchAdjustWeight", chipIds: ids, delta });
-    } else {
-      const chip = findChip(ids[0])?.chip;
-      if (!chip) return;
-      dispatch({
-        type: "chip/update",
-        chipId: chip.id,
-        patch: { weight: clamp(Math.round((chip.weight + delta) * 10) / 10, 0.1, 5) }
-      });
-    }
-    if (_active) rebindActiveAfterRender(_active.chip.id);
-    return;
-  }
   if (act === "bypass") {
     if (ids.length > 1) {
       const anyOn = ids.some((id) => findChip(id)?.chip.enabled);
@@ -2271,21 +2407,22 @@ function onToolbarPointerDown(e) {
     clearSelection();
   }
 }
-function fillToolbar(multi, count) {
+function fillToolbar(multi, count, weight) {
+  if (_weightEditing) return;
   const tb = getToolbar();
+  const w = fmtWeight(weight);
+  const wBtn = `<button type="button" class="pb-tb-weight" title="\u6743\u91CD \xB7 \u70B9\u51FB\u7F16\u8F91 \xB7 \u6EDA\u8F6E\xB10.1">${w}</button>`;
   if (multi) {
     tb.innerHTML = `
       <span class="pb-tb-count">${count} \u9879</span>
-      <button type="button" data-act="minus" title="\u6279\u91CF\u51CF\u6743\u91CD">\u2212</button>
-      <button type="button" data-act="plus" title="\u6279\u91CF\u52A0\u6743\u91CD">+</button>
+      ${wBtn}
       <button type="button" data-act="bypass" title="\u6279\u91CF\u542F\u7528/\u7981\u7528">\u{1F441}</button>
       <button type="button" data-act="translate" title="\u6279\u91CF\u5F3A\u5236\u7FFB\u8BD1">\u{1F310}</button>
       <button type="button" data-act="delete" title="\u6279\u91CF\u5220\u9664">\xD7</button>
     `;
   } else {
     tb.innerHTML = `
-      <button type="button" data-act="minus" title="\u51CF\u6743\u91CD">\u2212</button>
-      <button type="button" data-act="plus" title="\u52A0\u6743\u91CD">+</button>
+      ${wBtn}
       <button type="button" data-act="bypass" title="\u542F\u7528/\u7981\u7528">\u{1F441}</button>
       <button type="button" data-act="edit" title="\u7F16\u8F91\u4E2D\u82F1\u6587">\u270F\uFE0F</button>
       <button type="button" data-act="translate" title="\u7FFB\u8BD1\u6B64\u8BCD\uFF08\u5F3A\u5236\uFF09">\u{1F310}</button>
@@ -2296,12 +2433,34 @@ function showToolbar(chipEl, chip, box) {
   if (window.__pb_dragging) return;
   if (_editPanel) return;
   if (_hideTimer) clearTimeout(_hideTimer);
+  _hideTimer = null;
   _active = { chip, box, el: chipEl };
+  if (_toolbar?.classList.contains("pb-visible")) {
+    if (_showTimer) {
+      clearTimeout(_showTimer);
+      _showTimer = null;
+    }
+    placeToolbar(chipEl, chip);
+    return;
+  }
+  if (_showTimer) clearTimeout(_showTimer);
+  _showTimer = setTimeout(() => {
+    _showTimer = null;
+    if (window.__pb_dragging || _editPanel) return;
+    if (!_active || _active.chip.id !== chip.id) return;
+    const el = liveChipAnchor(_active.el, chip.id) || chipEl;
+    _active = { chip, box, el };
+    placeToolbar(el, chip);
+  }, TOOLBAR_SHOW_DELAY_MS);
+}
+function placeToolbar(chipEl, chip) {
   const multi = getSelectedCount() > 1 && isSelected(chip.id);
-  fillToolbar(multi, getSelectedCount());
+  const liveW = findChip(chip.id)?.chip.weight ?? chip.weight;
+  fillToolbar(multi, getSelectedCount(), liveW);
   const tb = getToolbar();
   const rect = chipEl.getBoundingClientRect();
-  const tw = multi ? 200 : 150;
+  if (rect.width <= 0 && rect.height <= 0) return;
+  const tw = multi ? 180 : 140;
   let left = rect.left + rect.width / 2 - tw / 2;
   let top = rect.top - 32;
   if (top < 0) top = rect.bottom + 4;
@@ -2312,15 +2471,25 @@ function showToolbar(chipEl, chip, box) {
   tb.classList.add("pb-visible");
 }
 function hideToolbar(immediate = false) {
+  if (_weightEditing && !immediate) return;
+  if (_showTimer) {
+    clearTimeout(_showTimer);
+    _showTimer = null;
+  }
   const run = () => {
+    if (_weightEditing) {
+      _weightEditing = false;
+    }
     _toolbar?.classList.remove("pb-visible");
     if (!_editPanel) _active = null;
   };
   if (immediate) {
     if (_hideTimer) clearTimeout(_hideTimer);
+    _hideTimer = null;
     run();
     return;
   }
+  if (_hideTimer) clearTimeout(_hideTimer);
   _hideTimer = setTimeout(run, 160);
 }
 function renderChip(chip, box) {
@@ -2383,7 +2552,6 @@ function openChipEdit(anchor, chip) {
   closeChipEdit();
   ensureCss();
   const live = findChip(chip.id)?.chip ?? chip;
-  const w0 = Number.isFinite(live.weight) ? live.weight : 1;
   const panel = div("pb-chip-edit-panel");
   panel.innerHTML = `
     <label>\u82F1\u6587 / \u4E3B\u6587\u672C
@@ -2391,9 +2559,6 @@ function openChipEdit(anchor, chip) {
     </label>
     <label>\u4E2D\u6587
       <textarea class="pb-ce-cn" rows="2">${escapeHtml(live.cnText || "")}</textarea>
-    </label>
-    <label>\u6743\u91CD
-      <input type="number" class="pb-ce-weight" min="0.1" max="5" step="0.1" value="${w0}" placeholder="1.0">
     </label>
     <div class="pb-chip-edit-actions">
       <button type="button" data-act="cancel">\u53D6\u6D88</button>
@@ -2412,7 +2577,7 @@ function openChipEdit(anchor, chip) {
     left = rect.left;
     top = rect.bottom + 6;
     if (left + panelW > window.innerWidth) left = window.innerWidth - panelW - 8;
-    if (top + 220 > window.innerHeight) top = Math.max(8, rect.top - 220);
+    if (top + 180 > window.innerHeight) top = Math.max(8, rect.top - 180);
     left = Math.max(8, left);
   } else {
     left = Math.max(8, Math.floor((window.innerWidth - panelW) / 2));
@@ -2422,7 +2587,6 @@ function openChipEdit(anchor, chip) {
   panel.style.top = top + "px";
   const en = panel.querySelector(".pb-ce-en");
   const cn = panel.querySelector(".pb-ce-cn");
-  const weightInp = panel.querySelector(".pb-ce-weight");
   const autosize = (ta) => {
     ta.style.width = "100%";
     ta.style.height = "0";
@@ -2441,30 +2605,9 @@ function openChipEdit(anchor, chip) {
   cn.addEventListener("input", () => autosize(cn));
   en.focus();
   en.select();
-  const readWeight = () => {
-    const raw = weightInp.value.trim();
-    if (!raw) return null;
-    const n = parseFloat(raw);
-    if (!Number.isFinite(n)) return null;
-    return clamp(Math.round(n * 10) / 10, 0.1, 5);
-  };
-  const setWeight = (v) => {
-    weightInp.value = String(clamp(Math.round(v * 10) / 10, 0.1, 5));
-  };
-  const weightLabel = weightInp.closest("label");
-  const onWeightWheel = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const cur2 = readWeight() ?? 1;
-    const delta = e.deltaY < 0 ? 0.1 : -0.1;
-    setWeight(cur2 + delta);
-  };
-  weightLabel?.addEventListener("wheel", onWeightWheel, { passive: false });
-  weightInp.addEventListener("wheel", onWeightWheel, { passive: false });
   const save2 = (mode = "explicit") => {
     let text = en.value.replace(/^\s+|\s+$/g, "");
     const cnText = cn.value.replace(/^\s+|\s+$/g, "");
-    let weight = readWeight();
     const base = live;
     if (!text) {
       if (mode === "blur") {
@@ -2474,20 +2617,9 @@ function openChipEdit(anchor, chip) {
         return;
       }
     }
-    if (weight == null) {
-      if (mode === "blur") {
-        weight = Number.isFinite(base.weight) ? base.weight : 1;
-      } else {
-        toast("\u8BF7\u8F93\u5165\u6709\u6548\u6743\u91CD\uFF080.1\u20135\uFF09", "warn");
-        weightInp.focus();
-        return;
-      }
-    }
-    weightInp.value = String(weight);
     const patch = {};
     if (text !== base.text) patch.text = text;
     if (cnText !== (base.cnText || "")) patch.cnText = cnText;
-    if (weight !== base.weight) patch.weight = weight;
     if (Object.keys(patch).length) {
       dispatch({ type: "chip/update", chipId: base.id, patch });
     }
@@ -2502,11 +2634,6 @@ function openChipEdit(anchor, chip) {
       return;
     }
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      save2("explicit");
-      return;
-    }
-    if (e.key === "Enter" && !e.shiftKey && e.target === weightInp) {
       e.preventDefault();
       save2("explicit");
     }
@@ -6534,6 +6661,8 @@ function wordCard(item, color, l1 = state.l1Cat, l2 = state.l2Cat) {
 }
 var _wordTb = null;
 var _wordTbTimer = null;
+var _wordTbShowTimer = null;
+var WORD_TB_SHOW_DELAY_MS = 200;
 var _wordTbCtx = null;
 var _wordEdit = null;
 function ensureWordToolbar() {
@@ -6545,6 +6674,10 @@ function ensureWordToolbar() {
   document.body.appendChild(_wordTb);
   _wordTb.addEventListener("pointerenter", () => {
     if (_wordTbTimer) clearTimeout(_wordTbTimer);
+    if (_wordTbShowTimer) {
+      clearTimeout(_wordTbShowTimer);
+      _wordTbShowTimer = null;
+    }
   });
   _wordTb.addEventListener("pointerleave", () => hideWordToolbar());
   _wordTb.addEventListener("pointerdown", (e) => {
@@ -6560,29 +6693,53 @@ function ensureWordToolbar() {
 }
 function showWordToolbar(card, item, l1, l2) {
   if (_wordTbTimer) clearTimeout(_wordTbTimer);
+  _wordTbTimer = null;
   _wordTbCtx = { item, l1, l2, card };
-  const tb = ensureWordToolbar();
-  const rect = card.getBoundingClientRect();
-  const tw = 36;
-  let left = rect.left + rect.width / 2 - tw / 2;
-  let top = rect.top - 30;
-  if (top < 0) top = rect.bottom + 4;
-  if (left < 0) left = 4;
-  if (left + tw > window.innerWidth) left = window.innerWidth - tw - 4;
-  tb.style.left = left + "px";
-  tb.style.top = top + "px";
-  tb.classList.add("pb-visible");
+  const place = () => {
+    if (!_wordTbCtx || _wordTbCtx.card !== card) return;
+    const tb = ensureWordToolbar();
+    const rect = card.getBoundingClientRect();
+    const tw = 36;
+    let left = rect.left + rect.width / 2 - tw / 2;
+    let top = rect.top - 30;
+    if (top < 0) top = rect.bottom + 4;
+    if (left < 0) left = 4;
+    if (left + tw > window.innerWidth) left = window.innerWidth - tw - 4;
+    tb.style.left = left + "px";
+    tb.style.top = top + "px";
+    tb.classList.add("pb-visible");
+  };
+  if (_wordTb?.classList.contains("pb-visible")) {
+    if (_wordTbShowTimer) {
+      clearTimeout(_wordTbShowTimer);
+      _wordTbShowTimer = null;
+    }
+    place();
+    return;
+  }
+  if (_wordTbShowTimer) clearTimeout(_wordTbShowTimer);
+  _wordTbShowTimer = setTimeout(() => {
+    _wordTbShowTimer = null;
+    if (window.__pb_dragging) return;
+    place();
+  }, WORD_TB_SHOW_DELAY_MS);
 }
 function hideWordToolbar(immediate = false) {
+  if (_wordTbShowTimer) {
+    clearTimeout(_wordTbShowTimer);
+    _wordTbShowTimer = null;
+  }
   const run = () => {
     _wordTb?.classList.remove("pb-visible");
     _wordTbCtx = null;
   };
   if (immediate) {
     if (_wordTbTimer) clearTimeout(_wordTbTimer);
+    _wordTbTimer = null;
     run();
     return;
   }
+  if (_wordTbTimer) clearTimeout(_wordTbTimer);
   _wordTbTimer = setTimeout(run, 160);
 }
 function openWordEdit(card, item, l1, l2) {
@@ -6659,12 +6816,34 @@ function closeWordEdit() {
 }
 var _popup = null;
 var _popupTimer = null;
+var CAT_POPUP_SHOW_DELAY_MS = 200;
+var _popupShowTimer = null;
 var _catEdit = null;
+function scheduleCatPopup(tag, actions) {
+  if (window.__pb_dragging) return;
+  if (_popupTimer) {
+    clearTimeout(_popupTimer);
+    _popupTimer = null;
+  }
+  if (_popup) {
+    if (_popupShowTimer) {
+      clearTimeout(_popupShowTimer);
+      _popupShowTimer = null;
+    }
+    showCatPopup(tag, actions);
+    return;
+  }
+  if (_popupShowTimer) clearTimeout(_popupShowTimer);
+  _popupShowTimer = setTimeout(() => {
+    _popupShowTimer = null;
+    if (window.__pb_dragging) return;
+    if (!tag.isConnected || !tag.matches(":hover")) return;
+    showCatPopup(tag, actions);
+  }, CAT_POPUP_SHOW_DELAY_MS);
+}
 function attachL1Popup(tag, name) {
   tag.addEventListener("pointerenter", () => {
-    if (window.__pb_dragging) return;
-    if (_popupTimer) clearTimeout(_popupTimer);
-    showCatPopup(tag, [
+    scheduleCatPopup(tag, [
       { label: "\u270F\uFE0F", title: "\u4FEE\u6539", onClick: () => openL1Edit(tag, name) },
       {
         label: "\u{1F5D1}",
@@ -6678,14 +6857,16 @@ function attachL1Popup(tag, name) {
     ]);
   });
   tag.addEventListener("pointerleave", () => {
+    if (_popupShowTimer) {
+      clearTimeout(_popupShowTimer);
+      _popupShowTimer = null;
+    }
     _popupTimer = setTimeout(hideCatPopup, 200);
   });
 }
 function attachL2Popup(tag, name, currentColor) {
   tag.addEventListener("pointerenter", () => {
-    if (window.__pb_dragging) return;
-    if (_popupTimer) clearTimeout(_popupTimer);
-    showCatPopup(tag, [
+    scheduleCatPopup(tag, [
       { label: "\u270F\uFE0F", title: "\u4FEE\u6539", onClick: () => openL2Edit(tag, name, currentColor) },
       {
         label: "\u{1F5D1}",
@@ -6699,12 +6880,22 @@ function attachL2Popup(tag, name, currentColor) {
     ]);
   });
   tag.addEventListener("pointerleave", () => {
+    if (_popupShowTimer) {
+      clearTimeout(_popupShowTimer);
+      _popupShowTimer = null;
+    }
     _popupTimer = setTimeout(hideCatPopup, 200);
   });
 }
 function showCatPopup(anchor, actions) {
   if (window.__pb_dragging) return;
-  hideCatPopup();
+  if (_popupTimer) {
+    clearTimeout(_popupTimer);
+    _popupTimer = null;
+  }
+  _popup?.remove();
+  _popup = null;
+  document.querySelectorAll(".pb-cat-popup").forEach((n) => n.remove());
   const popup = div("pb-cat-popup");
   popup.style.cssText = "position:fixed;z-index:10007;display:flex;gap:2px;padding:3px;background:var(--pb-panel);border:1px solid var(--pb-border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4);";
   for (const a of actions) {
@@ -6722,6 +6913,10 @@ function showCatPopup(anchor, actions) {
   }
   popup.addEventListener("pointerenter", () => {
     if (_popupTimer) clearTimeout(_popupTimer);
+    if (_popupShowTimer) {
+      clearTimeout(_popupShowTimer);
+      _popupShowTimer = null;
+    }
   });
   popup.addEventListener("pointerleave", () => {
     _popupTimer = setTimeout(hideCatPopup, 200);
@@ -6733,15 +6928,17 @@ function showCatPopup(anchor, actions) {
   _popup = popup;
 }
 function hideCatPopup() {
+  if (_popupShowTimer) {
+    clearTimeout(_popupShowTimer);
+    _popupShowTimer = null;
+  }
   if (_popupTimer) {
     clearTimeout(_popupTimer);
     _popupTimer = null;
   }
   _popup?.remove();
   _popup = null;
-  document.querySelectorAll(".pb-cat-popup").forEach((n) => {
-    if (n !== _popup) n.remove();
-  });
+  document.querySelectorAll(".pb-cat-popup").forEach((n) => n.remove());
 }
 function placeNear(el, anchor, minW = 240) {
   const rect = anchor.getBoundingClientRect();
