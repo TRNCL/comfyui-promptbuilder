@@ -624,6 +624,84 @@ function buildNegativeSegments() {
   return buildGroupSegments(cur.negativeGroup);
 }
 
+// src/utils/promptParse.ts
+var WEIGHT_MIN = 0.1;
+var WEIGHT_MAX = 5;
+function clampWeight(n) {
+  if (!Number.isFinite(n)) return 1;
+  const r = Math.round(n * 100) / 100;
+  return Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, r));
+}
+function splitPromptParts(text) {
+  const parts = [];
+  let buf = "";
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "(" || ch === "[") {
+      depth++;
+      buf += ch;
+      continue;
+    }
+    if (ch === ")" || ch === "]") {
+      depth = Math.max(0, depth - 1);
+      buf += ch;
+      continue;
+    }
+    if (ch === "," && depth === 0) {
+      const t = buf.trim();
+      if (t) parts.push(t);
+      buf = "";
+      continue;
+    }
+    buf += ch;
+  }
+  const last = buf.trim();
+  if (last) parts.push(last);
+  return parts;
+}
+function parsePromptToken(raw) {
+  const s = raw.trim();
+  if (!s) return { text: "", weight: 1 };
+  const wrapped = s.match(/^([(\[])\s*([\s\S]+?)\s*:\s*([+-]?\d+(?:\.\d+)?)\s*([)\]])$/);
+  if (wrapped && matchingBrackets(wrapped[1], wrapped[4])) {
+    const text = wrapped[2].trim();
+    if (text) return { text, weight: clampWeight(parseFloat(wrapped[3])) };
+  }
+  const bare = s.match(/^(.+?)\s*:\s*([+-]?\d+(?:\.\d+)?)$/);
+  if (bare) {
+    const text = bare[1].trim();
+    const w = parseFloat(bare[2]);
+    if (text && !/^\d+(\.\d+)?$/.test(text) && Number.isFinite(w) && w >= 0.05 && w <= 10) {
+      if (!/^\d+$/.test(text) || bare[2].includes(".")) {
+        if (!isLikelyAspectRatio(text, bare[2])) {
+          return { text, weight: clampWeight(w) };
+        }
+      }
+    }
+  }
+  return { text: s, weight: 1 };
+}
+function matchingBrackets(open, close) {
+  return open === "(" && close === ")" || open === "[" && close === "]";
+}
+function isLikelyAspectRatio(left, right) {
+  if (!/^\d{1,2}$/.test(left) || !/^\d{1,2}$/.test(right)) return false;
+  const a = parseInt(left, 10);
+  const b = parseInt(right, 10);
+  return a >= 1 && a <= 32 && b >= 1 && b <= 32;
+}
+function parseWeightedPrompt(text) {
+  if (!text?.trim()) return [];
+  const out = [];
+  for (const part of splitPromptParts(text)) {
+    const tok = parsePromptToken(part);
+    if (!tok.text) continue;
+    out.push(tok);
+  }
+  return out;
+}
+
 // src/app/persist.ts
 function loadPresetsFromLS() {
   try {
@@ -753,16 +831,7 @@ function deserializeNodeState(json) {
   return false;
 }
 function parseFlat(text) {
-  if (!text?.trim()) return [];
-  const chips = [];
-  for (const part of text.split(/,(?![^()]*\))/)) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    const m = trimmed.match(/^\((.+):([\d.]+)\)$/);
-    if (m) chips.push(mkChip(m[1], "", parseFloat(m[2]) || 1));
-    else chips.push(mkChip(trimmed));
-  }
-  return chips;
+  return parseWeightedPrompt(text).map(({ text: t, weight }) => mkChip(t, "", weight));
 }
 function loadNodeIntoCur(node) {
   const pb = node.properties?.["pb_state_next"];
@@ -960,14 +1029,13 @@ function applyOp(op) {
     case "chip/addText": {
       const hit = findBox(op.boxId);
       if (!hit || !op.text.trim()) return NOOP;
-      const parts = op.text.split(",");
+      const tokens = parseWeightedPrompt(op.text);
+      if (!tokens.length) return NOOP;
       const idx = getPresetIndex();
-      for (const part of parts) {
-        const t = part.trim();
-        if (!t) continue;
+      for (const { text: t, weight } of tokens) {
         const preset = idx.find((p) => p.text === t || p.cnText === t);
         hit.box.chips.push(
-          preset ? mkChip(preset.text, preset.cnText, 1, preset.categoryColor) : mkChip(t)
+          preset ? mkChip(preset.text, preset.cnText, weight, preset.categoryColor) : mkChip(t, "", weight)
         );
       }
       cur.focusedBox = op.boxId;
@@ -2069,6 +2137,37 @@ function getToolbar() {
   }
   return _toolbar;
 }
+function findChipEl(chipId) {
+  const esc = typeof CSS2 !== "undefined" && typeof CSS2.escape === "function" ? CSS2.escape(chipId) : chipId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return document.querySelector(`.pb-chip[data-chip-id="${esc}"]`);
+}
+function liveChipAnchor(preferred, chipId) {
+  if (preferred?.isConnected) {
+    const r = preferred.getBoundingClientRect();
+    if (r.width > 0 || r.height > 0) return preferred;
+  }
+  return findChipEl(chipId);
+}
+function rebindActiveAfterRender(chipId) {
+  queueMicrotask(() => {
+    if (!_active || _active.chip.id !== chipId) return;
+    const el = findChipEl(chipId);
+    if (!el) return;
+    _active.el = el;
+    if (_toolbar?.classList.contains("pb-visible") && !_editPanel) {
+      const rect = el.getBoundingClientRect();
+      const multi = getSelectedCount() > 1 && isSelected(chipId);
+      const tw = multi ? 200 : 150;
+      let left = rect.left + rect.width / 2 - tw / 2;
+      let top = rect.top - 32;
+      if (top < 0) top = rect.bottom + 4;
+      if (left < 0) left = 4;
+      if (left + tw > window.innerWidth) left = window.innerWidth - tw - 4;
+      _toolbar.style.left = left + "px";
+      _toolbar.style.top = top + "px";
+    }
+  });
+}
 function onToolbarPointerDown(e) {
   e.preventDefault();
   e.stopPropagation();
@@ -2090,6 +2189,7 @@ function onToolbarPointerDown(e) {
         patch: { weight: clamp(Math.round((chip.weight + delta) * 10) / 10, 0.1, 5) }
       });
     }
+    if (_active) rebindActiveAfterRender(_active.chip.id);
     return;
   }
   if (act === "bypass") {
@@ -2101,13 +2201,17 @@ function onToolbarPointerDown(e) {
       if (!chip) return;
       dispatch({ type: "chip/update", chipId: chip.id, patch: { enabled: !chip.enabled } });
     }
+    if (_active) rebindActiveAfterRender(_active.chip.id);
     return;
   }
   if (act === "edit") {
     if (ids.length !== 1 || !_active) return;
-    const { el, chip } = _active;
+    const chipId = _active.chip.id;
+    const staleEl = _active.el;
     hideToolbar(true);
-    openChipEdit(el, chip);
+    const hit = findChip(chipId);
+    if (!hit) return;
+    openChipEdit(liveChipAnchor(staleEl, chipId), hit.chip);
     return;
   }
   if (act === "translate") {
@@ -2236,14 +2340,15 @@ function renderChip(chip, box) {
 function openChipEdit(anchor, chip) {
   closeChipEdit();
   ensureCss();
-  const w0 = Number.isFinite(chip.weight) ? chip.weight : 1;
+  const live = findChip(chip.id)?.chip ?? chip;
+  const w0 = Number.isFinite(live.weight) ? live.weight : 1;
   const panel = div("pb-chip-edit-panel");
   panel.innerHTML = `
     <label>\u82F1\u6587 / \u4E3B\u6587\u672C
-      <textarea class="pb-ce-en" rows="2">${escapeHtml(chip.text)}</textarea>
+      <textarea class="pb-ce-en" rows="2">${escapeHtml(live.text)}</textarea>
     </label>
     <label>\u4E2D\u6587
-      <textarea class="pb-ce-cn" rows="2">${escapeHtml(chip.cnText || "")}</textarea>
+      <textarea class="pb-ce-cn" rows="2">${escapeHtml(live.cnText || "")}</textarea>
     </label>
     <label>\u6743\u91CD
       <input type="number" class="pb-ce-weight" min="0.1" max="5" step="0.1" value="${w0}" placeholder="1.0">
@@ -2257,12 +2362,21 @@ function openChipEdit(anchor, chip) {
   _editPanel = panel;
   const panelW = Math.min(240, Math.floor(window.innerWidth * 0.92));
   panel.style.width = panelW + "px";
-  const rect = anchor.getBoundingClientRect();
-  let left = rect.left;
-  let top = rect.bottom + 6;
-  if (left + panelW > window.innerWidth) left = window.innerWidth - panelW - 8;
-  if (top + 220 > window.innerHeight) top = Math.max(8, rect.top - 220);
-  panel.style.left = Math.max(8, left) + "px";
+  const el = liveChipAnchor(anchor, live.id);
+  const rect = el?.getBoundingClientRect();
+  let left;
+  let top;
+  if (rect && (rect.width > 0 || rect.height > 0)) {
+    left = rect.left;
+    top = rect.bottom + 6;
+    if (left + panelW > window.innerWidth) left = window.innerWidth - panelW - 8;
+    if (top + 220 > window.innerHeight) top = Math.max(8, rect.top - 220);
+    left = Math.max(8, left);
+  } else {
+    left = Math.max(8, Math.floor((window.innerWidth - panelW) / 2));
+    top = Math.max(8, Math.floor(window.innerHeight * 0.18));
+  }
+  panel.style.left = left + "px";
   panel.style.top = top + "px";
   const en = panel.querySelector(".pb-ce-en");
   const cn = panel.querySelector(".pb-ce-cn");
@@ -2309,9 +2423,10 @@ function openChipEdit(anchor, chip) {
     let text = en.value.replace(/^\s+|\s+$/g, "");
     const cnText = cn.value.replace(/^\s+|\s+$/g, "");
     let weight = readWeight();
+    const base = live;
     if (!text) {
       if (mode === "blur") {
-        text = chip.text;
+        text = base.text;
       } else {
         toast("\u82F1\u6587\u4E0D\u80FD\u4E3A\u7A7A", "warn");
         return;
@@ -2319,7 +2434,7 @@ function openChipEdit(anchor, chip) {
     }
     if (weight == null) {
       if (mode === "blur") {
-        weight = Number.isFinite(chip.weight) ? chip.weight : 1;
+        weight = Number.isFinite(base.weight) ? base.weight : 1;
       } else {
         toast("\u8BF7\u8F93\u5165\u6709\u6548\u6743\u91CD\uFF080.1\u20135\uFF09", "warn");
         weightInp.focus();
@@ -2328,11 +2443,11 @@ function openChipEdit(anchor, chip) {
     }
     weightInp.value = String(weight);
     const patch = {};
-    if (text !== chip.text) patch.text = text;
-    if (cnText !== (chip.cnText || "")) patch.cnText = cnText;
-    if (weight !== chip.weight) patch.weight = weight;
+    if (text !== base.text) patch.text = text;
+    if (cnText !== (base.cnText || "")) patch.cnText = cnText;
+    if (weight !== base.weight) patch.weight = weight;
     if (Object.keys(patch).length) {
-      dispatch({ type: "chip/update", chipId: chip.id, patch });
+      dispatch({ type: "chip/update", chipId: base.id, patch });
     }
     closeChipEdit();
   };
