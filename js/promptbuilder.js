@@ -366,7 +366,7 @@ var init_pipe = __esm({
 // src/ui/toast.ts
 function toast(msg, type = "", ms = 2500) {
   if (!_css) {
-    injectCSS("toast", CSS);
+    injectCSS("toast", CSS2);
     _css = true;
   }
   if (!_box) {
@@ -382,13 +382,13 @@ function toast(msg, type = "", ms = 2500) {
     setTimeout(() => el.remove(), 200);
   }, ms);
 }
-var CSS, _css, _box;
+var CSS2, _css, _box;
 var init_toast = __esm({
   "src/ui/toast.ts"() {
     "use strict";
     init_pipe();
     init_dom();
-    CSS = /*css*/
+    CSS2 = /*css*/
     `
 .pb-toast-container {
   position: fixed; z-index: 10005; bottom: 24px; left: 50%;
@@ -1007,6 +1007,15 @@ function reorder(arr, from, to) {
   arr.splice(Math.min(to, arr.length), 0, item);
   return true;
 }
+function reorderRecordKeys(rec, from, to) {
+  const keys = Object.keys(rec);
+  if (!reorder(keys, from, to)) return false;
+  const next = {};
+  for (const k of keys) next[k] = rec[k];
+  for (const k of Object.keys(rec)) delete rec[k];
+  for (const k of keys) rec[k] = next[k];
+  return true;
+}
 function applyOp(op) {
   switch (op.type) {
     case "chip/add": {
@@ -1278,6 +1287,39 @@ function applyOp(op) {
       if (!reorder(items, op.fromIndex, op.toIndex)) return NOOP;
       markPresetIndexDirty();
       return { ...pr(), scopes: [] };
+    }
+    case "preset/reorderL1": {
+      if (!reorderRecordKeys(state.presets.children, op.fromIndex, op.toIndex)) return NOOP;
+      return { ...pr(), scopes: [] };
+    }
+    case "preset/reorderL2": {
+      const l1 = state.presets.children[state.l1Cat];
+      if (!l1) return NOOP;
+      if (!reorderRecordKeys(l1.children, op.fromIndex, op.toIndex)) return NOOP;
+      return { ...pr(), scopes: [] };
+    }
+    case "preset/moveL2": {
+      if (!op.l2Name || op.fromL1 === op.toL1) return NOOP;
+      const fromL1 = state.presets.children[op.fromL1];
+      const toL1 = state.presets.children[op.toL1];
+      if (!fromL1 || !toL1) return NOOP;
+      const cat = fromL1.children[op.l2Name];
+      if (!cat) return NOOP;
+      if (toL1.children[op.l2Name]) return NOOP;
+      delete fromL1.children[op.l2Name];
+      const keys = Object.keys(toL1.children);
+      const idx = op.toIndex == null ? keys.length : Math.max(0, Math.min(Math.floor(op.toIndex), keys.length));
+      keys.splice(idx, 0, op.l2Name);
+      const next = {};
+      for (const k of keys) {
+        next[k] = k === op.l2Name ? cat : toL1.children[k];
+      }
+      for (const k of Object.keys(toL1.children)) delete toL1.children[k];
+      for (const k of keys) toL1.children[k] = next[k];
+      state.l1Cat = op.toL1;
+      state.l2Cat = op.l2Name;
+      markPresetIndexDirty();
+      return pr(["presets"]);
     }
     case "preset/setCats": {
       if (op.l1 !== void 0) state.l1Cat = op.l1;
@@ -2005,7 +2047,7 @@ init_pipe();
 init_dom();
 init_toast();
 init_state();
-var CSS2 = (
+var CSS3 = (
   /*css*/
   `
 .pb-chip {
@@ -2120,7 +2162,7 @@ var _editPanel = null;
 var _editCommit = null;
 function ensureCss() {
   if (!_css2) {
-    injectCSS("chip", CSS2);
+    injectCSS("chip", CSS3);
     _css2 = true;
   }
 }
@@ -2138,7 +2180,7 @@ function getToolbar() {
   return _toolbar;
 }
 function findChipEl(chipId) {
-  const esc = typeof CSS2 !== "undefined" && typeof CSS2.escape === "function" ? CSS2.escape(chipId) : chipId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const esc = typeof CSS3 !== "undefined" && typeof CSS3.escape === "function" ? CSS3.escape(chipId) : chipId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   return document.querySelector(`.pb-chip[data-chip-id="${esc}"]`);
 }
 function liveChipAnchor(preferred, chipId) {
@@ -5130,7 +5172,7 @@ async function load() {
 
 // src/ui/autocomplete.ts
 init_factory();
-var CSS3 = (
+var CSS4 = (
   /*css*/
   `
 .pb-ac-layer {
@@ -5157,7 +5199,7 @@ var _box2 = null;
 function layer() {
   if (!_layer) {
     if (!_css3) {
-      injectCSS("autocomplete", CSS3);
+      injectCSS("autocomplete", CSS4);
       _css3 = true;
     }
     _layer = div("pb-ac-layer");
@@ -5305,7 +5347,7 @@ function pick(index2) {
 }
 
 // src/ui/workspace.ts
-var CSS4 = (
+var CSS5 = (
   /*css*/
   `
 .pb-group {
@@ -5373,7 +5415,7 @@ var _css4 = false;
 var _colorPicker = null;
 function renderWorkspace() {
   if (!_css4) {
-    injectCSS("workspace", CSS4);
+    injectCSS("workspace", CSS5);
     _css4 = true;
   }
   const el = $("pbWorkspaceArea");
@@ -5508,7 +5550,6 @@ function renderBox(group, box, isNeg) {
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (selectAc(input, box)) return;
       const text = input.value.trim();
       if (text) {
         dispatch({ type: "chip/addText", boxId: box.id, text });
@@ -5800,10 +5841,222 @@ function bindPresetList(el) {
   });
 }
 
+// src/sortable/cats.ts
+init_state();
+init_dom();
+init_toast();
+function groupNameOf2(sortable) {
+  const g = sortable?.options?.group;
+  if (!g) return "";
+  return typeof g === "string" ? g : g.name || "";
+}
+var _l2Drag = null;
+var _l2PtrMove = null;
+function clearL2DragListeners() {
+  if (_l2PtrMove) {
+    document.removeEventListener("pointermove", _l2PtrMove, true);
+    _l2PtrMove = null;
+  }
+}
+function escapeAttr(s) {
+  return typeof CSS !== "undefined" && typeof CSS.escape === "function" ? CSS.escape(s) : s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+function previewL2Tag(name, color) {
+  const tag = document.createElement("span");
+  tag.className = "pb-cat-tag pb-l2-tag";
+  tag.setAttribute("data-cat-name", name);
+  tag.textContent = name;
+  if (color) {
+    tag.style.background = `color-mix(in srgb, ${color} 28%, transparent)`;
+    tag.style.color = color;
+    tag.style.border = "none";
+    tag.style.boxShadow = "none";
+  }
+  return tag;
+}
+function paintL2RowForDragPreview(previewL1, drag) {
+  const l2Row = $("pbPresetCatsL2");
+  if (!l2Row) return;
+  const esc = escapeAttr(drag.l2Name);
+  let dragEl2 = l2Row.querySelector(`.pb-cat-tag[data-cat-name="${esc}"]`) || document.querySelector(
+    ".pb-cat-tag.pb-l2-tag.sortable-chosen, .pb-cat-tag.pb-l2-tag.sortable-drag"
+  );
+  if (!dragEl2) {
+    dragEl2 = document.querySelector(
+      `.pb-cat-tag.pb-l2-tag[data-cat-name="${esc}"]`
+    );
+  }
+  const addBtn = l2Row.querySelector(".pb-cat-add");
+  [...l2Row.querySelectorAll(".pb-cat-tag[data-cat-name]")].forEach((el) => {
+    if (el === dragEl2) return;
+    el.remove();
+  });
+  const l1 = state.presets.children[previewL1];
+  const names = l1 ? Object.keys(l1.children) : [];
+  const insertBefore = addBtn;
+  for (const name of names) {
+    if (name === drag.l2Name) {
+      if (dragEl2 && insertBefore) l2Row.insertBefore(dragEl2, insertBefore);
+      else if (dragEl2) l2Row.appendChild(dragEl2);
+      continue;
+    }
+    const color = l1.children[name]?.color;
+    const tag = previewL2Tag(name, color);
+    if (insertBefore) l2Row.insertBefore(tag, insertBefore);
+    else l2Row.appendChild(tag);
+  }
+  if (dragEl2 && drag.fromL1 !== previewL1 && !names.includes(drag.l2Name)) {
+    if (insertBefore) l2Row.insertBefore(dragEl2, insertBefore);
+    else l2Row.appendChild(dragEl2);
+  }
+}
+function l1NameFromPoint(x, y) {
+  const stack = document.elementsFromPoint(x, y);
+  for (const node of stack) {
+    const el = node;
+    if (el.classList?.contains("sortable-drag") || el.classList?.contains("sortable-fallback")) {
+      continue;
+    }
+    const tag = el.closest?.("#pbPresetCats .pb-cat-tag[data-cat-name]");
+    if (tag && !tag.classList.contains("pb-cat-add")) {
+      return tag.getAttribute("data-cat-name");
+    }
+  }
+  return null;
+}
+function hitL2Row(x, y) {
+  const stack = document.elementsFromPoint(x, y);
+  for (const node of stack) {
+    const el = node;
+    if (el.classList?.contains("sortable-drag") || el.classList?.contains("sortable-fallback")) {
+      continue;
+    }
+    if (el.closest?.("#pbPresetCatsL2")) return true;
+  }
+  return false;
+}
+function clientPoint(evt) {
+  const oe = evt.originalEvent;
+  if (!oe) return null;
+  if ("clientX" in oe && typeof oe.clientX === "number") {
+    return { x: oe.clientX, y: oe.clientY };
+  }
+  const t = oe.changedTouches?.[0] || oe.touches?.[0];
+  if (t) return { x: t.clientX, y: t.clientY };
+  return null;
+}
+function finishCatDrag() {
+  clearL2DragListeners();
+  _l2Drag = null;
+  queueRenderAfterDrag();
+  endDrag();
+  clearDragSession();
+}
+function bindCatRow(el, level) {
+  const groupName = level === "l1" ? "pb-preset-l1" : "pb-preset-l2";
+  return new sortable_esm_default(el, {
+    animation: 180,
+    draggable: ".pb-cat-tag[data-cat-name]",
+    filter: ".pb-cat-add, input, textarea, button",
+    preventOnFilter: true,
+    forceFallback: true,
+    fallbackOnBody: true,
+    fallbackTolerance: 4,
+    direction: "horizontal",
+    swapThreshold: 0.65,
+    group: {
+      name: groupName,
+      pull: true,
+      // L1/L2 不同 group → 无法把 L2 DOM 放进 L1 行（松在 L1 上不会 insert）
+      put: (to) => groupNameOf2(to) === groupName
+    },
+    onMove(evt) {
+      if (isSortableSilent()) return false;
+      if (evt.to !== el) return false;
+      const related = evt.related;
+      if (related?.classList.contains("pb-cat-add")) return false;
+      return true;
+    },
+    onStart(evt) {
+      if (isSortableSilent()) return;
+      beginDrag();
+      document.querySelectorAll(".pb-cat-popup").forEach((n) => n.remove());
+      if (level !== "l2") return;
+      const item = evt.item;
+      const l2Name = item.getAttribute("data-cat-name") || "";
+      const fromL1 = state.l1Cat;
+      if (!l2Name || !fromL1) return;
+      _l2Drag = { l2Name, fromL1, previewL1: fromL1 };
+      _l2PtrMove = (e) => {
+        if (!_l2Drag) return;
+        const name = l1NameFromPoint(e.clientX, e.clientY);
+        if (!name || name === _l2Drag.previewL1) return;
+        if (!state.presets.children[name]) return;
+        _l2Drag.previewL1 = name;
+        paintL2RowForDragPreview(name, {
+          l2Name: _l2Drag.l2Name,
+          fromL1: _l2Drag.fromL1
+        });
+      };
+      document.addEventListener("pointermove", _l2PtrMove, true);
+    },
+    onEnd(evt) {
+      if (isSortableSilent()) {
+        finishCatDrag();
+        return;
+      }
+      if (level === "l1") {
+        if (evt.from === evt.to && evt.oldIndex != null && evt.newIndex != null && evt.oldIndex !== evt.newIndex) {
+          dispatch({
+            type: "preset/reorderL1",
+            fromIndex: evt.oldIndex,
+            toIndex: evt.newIndex
+          });
+        }
+        finishCatDrag();
+        return;
+      }
+      const session = _l2Drag;
+      const pt = clientPoint(evt);
+      const onL2 = pt ? hitL2Row(pt.x, pt.y) : evt.to === el;
+      if (!session || !onL2) {
+        finishCatDrag();
+        return;
+      }
+      const newIndex2 = evt.newIndex;
+      if (newIndex2 == null) {
+        finishCatDrag();
+        return;
+      }
+      if (session.previewL1 === session.fromL1) {
+        if (evt.oldIndex != null && evt.oldIndex !== newIndex2) {
+          dispatch({
+            type: "preset/reorderL2",
+            fromIndex: evt.oldIndex,
+            toIndex: newIndex2
+          });
+        }
+      } else {
+        const ok = dispatch({
+          type: "preset/moveL2",
+          fromL1: session.fromL1,
+          toL1: session.previewL1,
+          l2Name: session.l2Name,
+          toIndex: newIndex2
+        });
+        if (!ok) {
+          toast("\u65E0\u6CD5\u79FB\u52A8\uFF1A\u76EE\u6807\u4E0B\u5DF2\u6709\u540C\u540D\u4E8C\u7EA7\u5206\u7C7B\uFF0C\u6216\u5206\u7C7B\u4E0D\u5B58\u5728", "warn");
+        }
+      }
+      finishCatDrag();
+    }
+  });
+}
+
 // src/ui/presets.ts
 init_factory();
 init_toast();
-var CSS5 = (
+var CSS6 = (
   /*css*/
   `
 .pb-presets {
@@ -5859,6 +6112,12 @@ var CSS5 = (
   background: var(--pb-panel-2); color: var(--pb-text); font-size: 12px; font-weight: 500;
   line-height: 1.2; cursor: pointer; white-space: nowrap; flex-shrink: 0;
 }
+/* \u53EF\u6392\u5E8F\u7684\u5206\u7C7B\uFF1Agrab\uFF1B\u300C+\u300D\u4FDD\u6301 pointer */
+.pb-cat-tag[data-cat-name] { cursor: grab; }
+.pb-cat-tag[data-cat-name]:active { cursor: grabbing; }
+.pb-cat-tag.pb-cat-add { cursor: pointer; opacity: 0.5; }
+.pb-cat-tag.sortable-ghost { opacity: 0.35; }
+.pb-cat-tag.sortable-drag { opacity: 0.95; box-shadow: var(--pb-shadow-md); }
 /* L1 \u9AD8\u4EAE\uFF1A\u5F3A\u8C03\u8272\u5E95\uFF0C\u65E0\u8FB9\u6846 */
 .pb-cat-tag.pb-cat-active:not(.pb-l2-tag) {
   background: var(--pb-accent); border-color: transparent; color: #fff; font-weight: 600;
@@ -5985,7 +6244,7 @@ var CSS5 = (
 var _css5 = false;
 function renderPresets() {
   if (!_css5) {
-    injectCSS("presets", CSS5);
+    injectCSS("presets", CSS6);
     _css5 = true;
   }
   const el = $("pbPresetsArea");
@@ -6021,21 +6280,30 @@ function renderCats() {
   const l1Row = $("pbPresetCats");
   const l2Row = $("pbPresetCatsL2");
   if (!l1Row) return;
+  destroySortable(l1Row._sortable);
+  l1Row._sortable = null;
+  if (l2Row) {
+    destroySortable(l2Row._sortable);
+    l2Row._sortable = null;
+  }
   l1Row.innerHTML = "";
+  l1Row.setAttribute("data-sortable", "1");
   for (const name of Object.keys(state.presets.children)) {
     const tag = span("pb-cat-tag");
+    tag.setAttribute("data-cat-name", name);
     if (name === state.l1Cat) tag.classList.add("pb-cat-active");
     tag.textContent = name;
     tag.addEventListener("click", () => {
+      if (window.__pb_dragging) return;
       const l2s = Object.keys(state.presets.children[name].children);
       dispatch({ type: "preset/setCats", l1: name, l2: l2s[0] || "" });
     });
     attachL1Popup(tag, name);
     l1Row.appendChild(tag);
   }
-  const addL1 = span("pb-cat-tag");
+  const addL1 = span("pb-cat-tag pb-cat-add");
   addL1.textContent = "+";
-  addL1.style.opacity = "0.5";
+  addL1.title = "\u6DFB\u52A0\u4E00\u7EA7\u5206\u7C7B";
   addL1.addEventListener("click", () => {
     const inp = document.createElement("input");
     inp.style.cssText = "width:60px;font-size:12px;padding:1px 4px;";
@@ -6052,31 +6320,46 @@ function renderCats() {
     });
   });
   l1Row.appendChild(addL1);
+  l1Row._sortable = bindCatRow(l1Row, "l1");
   if (!l2Row) return;
   l2Row.innerHTML = "";
+  l2Row.setAttribute("data-sortable", "1");
   const l1 = state.presets.children[state.l1Cat];
   if (!l1) return;
   for (const name of Object.keys(l1.children)) {
-    const tag = span("pb-cat-tag pb-l2-tag");
-    tag.textContent = name;
-    const l2 = l1.children[name];
-    const active = name === state.l2Cat;
-    if (active) tag.classList.add("pb-cat-active");
-    if (l2?.color) {
-      const alpha = active ? 0.55 : 0.28;
-      tag.style.background = `color-mix(in srgb, ${l2.color} ${Math.round(alpha * 100)}%, transparent)`;
-      tag.style.color = l2.color;
-      tag.style.border = "none";
-      tag.style.boxShadow = "none";
-    }
-    tag.addEventListener("click", () => dispatch({ type: "preset/setCats", l2: name }));
-    attachL2Popup(tag, name, l2?.color || "");
-    l2Row.appendChild(tag);
+    l2Row.appendChild(buildL2TagEl(name, l1.children[name], name === state.l2Cat));
   }
-  const addL2 = span("pb-cat-tag");
+  l2Row.appendChild(createAddL2Button(() => state.presets.children[state.l1Cat]));
+  l2Row._sortable = bindCatRow(l2Row, "l2");
+  bindCatRowHScroll(l1Row);
+  bindCatRowHScroll(l2Row);
+}
+function buildL2TagEl(name, l2, active) {
+  const tag = span("pb-cat-tag pb-l2-tag");
+  tag.setAttribute("data-cat-name", name);
+  tag.textContent = name;
+  if (active) tag.classList.add("pb-cat-active");
+  if (l2?.color) {
+    const alpha = active ? 0.55 : 0.28;
+    tag.style.background = `color-mix(in srgb, ${l2.color} ${Math.round(alpha * 100)}%, transparent)`;
+    tag.style.color = l2.color;
+    tag.style.border = "none";
+    tag.style.boxShadow = "none";
+  }
+  tag.addEventListener("click", () => {
+    if (window.__pb_dragging) return;
+    dispatch({ type: "preset/setCats", l2: name });
+  });
+  attachL2Popup(tag, name, l2?.color || "");
+  return tag;
+}
+function createAddL2Button(getL1) {
+  const addL2 = span("pb-cat-tag pb-cat-add");
   addL2.textContent = "+";
-  addL2.style.opacity = "0.5";
+  addL2.title = "\u6DFB\u52A0\u4E8C\u7EA7\u5206\u7C7B";
   addL2.addEventListener("click", () => {
+    const l1 = getL1();
+    if (!l1) return;
     const palette = getGroupColors();
     let color = palette[Object.keys(l1.children).length % palette.length];
     const wrap = div();
@@ -6110,9 +6393,7 @@ function renderCats() {
       if (e.key === "Enter") done();
     });
   });
-  l2Row.appendChild(addL2);
-  bindCatRowHScroll(l1Row);
-  bindCatRowHScroll(l2Row);
+  return addL2;
 }
 function bindCatRowHScroll(row) {
   row.addEventListener(
@@ -6135,7 +6416,7 @@ function bindCatRowHScroll(row) {
   let startLeft = 0;
   row.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
-    if (e.target.closest("input, textarea, button")) return;
+    if (e.target.closest("input, textarea, button, .pb-cat-tag")) return;
     dragging = true;
     moved2 = false;
     startX = e.clientX;
@@ -6377,6 +6658,7 @@ var _popupTimer = null;
 var _catEdit = null;
 function attachL1Popup(tag, name) {
   tag.addEventListener("pointerenter", () => {
+    if (window.__pb_dragging) return;
     if (_popupTimer) clearTimeout(_popupTimer);
     showCatPopup(tag, [
       { label: "\u270F\uFE0F", title: "\u4FEE\u6539", onClick: () => openL1Edit(tag, name) },
@@ -6397,6 +6679,7 @@ function attachL1Popup(tag, name) {
 }
 function attachL2Popup(tag, name, currentColor) {
   tag.addEventListener("pointerenter", () => {
+    if (window.__pb_dragging) return;
     if (_popupTimer) clearTimeout(_popupTimer);
     showCatPopup(tag, [
       { label: "\u270F\uFE0F", title: "\u4FEE\u6539", onClick: () => openL2Edit(tag, name, currentColor) },
@@ -6416,8 +6699,9 @@ function attachL2Popup(tag, name, currentColor) {
   });
 }
 function showCatPopup(anchor, actions) {
+  if (window.__pb_dragging) return;
   hideCatPopup();
-  const popup = div();
+  const popup = div("pb-cat-popup");
   popup.style.cssText = "position:fixed;z-index:10007;display:flex;gap:2px;padding:3px;background:var(--pb-panel);border:1px solid var(--pb-border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4);";
   for (const a of actions) {
     const btn = document.createElement("button");
@@ -6445,8 +6729,15 @@ function showCatPopup(anchor, actions) {
   _popup = popup;
 }
 function hideCatPopup() {
+  if (_popupTimer) {
+    clearTimeout(_popupTimer);
+    _popupTimer = null;
+  }
   _popup?.remove();
   _popup = null;
+  document.querySelectorAll(".pb-cat-popup").forEach((n) => {
+    if (n !== _popup) n.remove();
+  });
 }
 function placeNear(el, anchor, minW = 240) {
   const rect = anchor.getBoundingClientRect();
@@ -6584,7 +6875,7 @@ function closeCatEdit() {
 init_pipe();
 init_dom();
 init_state();
-var CSS6 = (
+var CSS7 = (
   /*css*/
   `
 .pb-output-section {
@@ -6691,7 +6982,7 @@ function renderSegments(segs) {
   }).join("");
 }
 function renderOutput() {
-  injectCSS("output", CSS6);
+  injectCSS("output", CSS7);
   _css6 = true;
   const slot = $("pbOutputSlot");
   if (!slot) return;
@@ -6748,7 +7039,7 @@ function renderOutput() {
 init_state();
 init_pipe();
 init_dom();
-var CSS7 = (
+var CSS8 = (
   /*css*/
   `
 .pb-settings { padding: 8px; }
@@ -6777,7 +7068,7 @@ var CSS7 = (
 var _css7 = false;
 function renderSettings() {
   if (!_css7) {
-    injectCSS("settings", CSS7);
+    injectCSS("settings", CSS8);
     _css7 = true;
   }
   const area = $("pbSettingsSlot");
