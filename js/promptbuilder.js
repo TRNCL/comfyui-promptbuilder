@@ -5322,9 +5322,13 @@ function showAc(input, box) {
 function navigateAc(delta) {
   if (!_items.length) return;
   _active2 = (_active2 + delta + _items.length) % _items.length;
-  layer().querySelectorAll(".pb-ac-item").forEach((el, i) => {
+  const l = layer();
+  const items = l.querySelectorAll(".pb-ac-item");
+  items.forEach((el, i) => {
     el.classList.toggle("pb-active", i === _active2);
   });
+  const activeEl = items[_active2];
+  activeEl?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 function selectAc(_input2, _box3) {
   if (!_items.length || _active2 < 0) return false;
