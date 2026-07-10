@@ -629,7 +629,7 @@ var WEIGHT_MIN = 0.1;
 var WEIGHT_MAX = 5;
 function clampWeight(n) {
   if (!Number.isFinite(n)) return 1;
-  const r = Math.round(n * 100) / 100;
+  const r = Math.round(n * 10) / 10;
   return Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, r));
 }
 function splitPromptParts(text) {
@@ -1016,6 +1016,23 @@ function reorderRecordKeys(rec, from, to) {
   for (const k of keys) rec[k] = next[k];
   return true;
 }
+function renameRecordKey(rec, oldKey, newKey, mapValue) {
+  if (!oldKey || !newKey || oldKey === newKey) return false;
+  if (!(oldKey in rec) || newKey in rec) return false;
+  const keys = Object.keys(rec);
+  const next = {};
+  for (const k of keys) {
+    if (k === oldKey) {
+      const v = rec[oldKey];
+      next[newKey] = mapValue ? mapValue(v) : v;
+    } else {
+      next[k] = rec[k];
+    }
+  }
+  for (const k of Object.keys(rec)) delete rec[k];
+  for (const k of Object.keys(next)) rec[k] = next[k];
+  return true;
+}
 function applyOp(op) {
   switch (op.type) {
     case "chip/add": {
@@ -1352,19 +1369,17 @@ function applyOp(op) {
     }
     case "preset/renameL1": {
       if (!op.newName || op.newName === op.oldName || state.presets.children[op.newName]) return NOOP;
-      state.presets.children[op.newName] = state.presets.children[op.oldName];
-      delete state.presets.children[op.oldName];
+      if (!renameRecordKey(state.presets.children, op.oldName, op.newName)) return NOOP;
       if (state.l1Cat === op.oldName) state.l1Cat = op.newName;
       return pr();
     }
     case "preset/renameL2": {
       const l1 = state.presets.children[state.l1Cat];
       if (!l1 || !op.newName || l1.children[op.newName]) return NOOP;
-      const cat = l1.children[op.oldName];
-      if (!cat) return NOOP;
-      cat.name = op.newName;
-      l1.children[op.newName] = cat;
-      delete l1.children[op.oldName];
+      if (!renameRecordKey(l1.children, op.oldName, op.newName, (cat) => {
+        cat.name = op.newName;
+        return cat;
+      })) return NOOP;
       if (state.l2Cat === op.oldName) state.l2Cat = op.newName;
       return pr();
     }
@@ -2410,19 +2425,17 @@ function onToolbarPointerDown(e) {
 function fillToolbar(multi, count, weight) {
   if (_weightEditing) return;
   const tb = getToolbar();
-  const w = fmtWeight(weight);
-  const wBtn = `<button type="button" class="pb-tb-weight" title="\u6743\u91CD \xB7 \u70B9\u51FB\u7F16\u8F91 \xB7 \u6EDA\u8F6E\xB10.1">${w}</button>`;
   if (multi) {
     tb.innerHTML = `
       <span class="pb-tb-count">${count} \u9879</span>
-      ${wBtn}
       <button type="button" data-act="bypass" title="\u6279\u91CF\u542F\u7528/\u7981\u7528">\u{1F441}</button>
       <button type="button" data-act="translate" title="\u6279\u91CF\u5F3A\u5236\u7FFB\u8BD1">\u{1F310}</button>
       <button type="button" data-act="delete" title="\u6279\u91CF\u5220\u9664">\xD7</button>
     `;
   } else {
+    const w = fmtWeight(weight);
     tb.innerHTML = `
-      ${wBtn}
+      <button type="button" class="pb-tb-weight" title="\u6743\u91CD \xB7 \u70B9\u51FB\u7F16\u8F91 \xB7 \u6EDA\u8F6E\xB10.1">${w}</button>
       <button type="button" data-act="bypass" title="\u542F\u7528/\u7981\u7528">\u{1F441}</button>
       <button type="button" data-act="edit" title="\u7F16\u8F91\u4E2D\u82F1\u6587">\u270F\uFE0F</button>
       <button type="button" data-act="translate" title="\u7FFB\u8BD1\u6B64\u8BCD\uFF08\u5F3A\u5236\uFF09">\u{1F310}</button>
@@ -6373,6 +6386,7 @@ var CSS6 = (
 `
 );
 var _css5 = false;
+var _lastRenderedL1 = "";
 function renderPresets() {
   if (!_css5) {
     injectCSS("presets", CSS6);
@@ -6380,6 +6394,9 @@ function renderPresets() {
   }
   const el = $("pbPresetsArea");
   if (!el) return;
+  const prevL1Scroll = $("pbPresetCats")?.scrollLeft ?? 0;
+  const prevL2Scroll = $("pbPresetCatsL2")?.scrollLeft ?? 0;
+  const l1Changed = _lastRenderedL1 !== "" && _lastRenderedL1 !== state.l1Cat;
   hideWordToolbar();
   closeWordEdit();
   closeCatEdit();
@@ -6406,6 +6423,11 @@ function renderPresets() {
   `;
   renderCats();
   renderWords();
+  const l1Row = $("pbPresetCats");
+  const l2Row = $("pbPresetCatsL2");
+  if (l1Row) l1Row.scrollLeft = prevL1Scroll;
+  if (l2Row) l2Row.scrollLeft = l1Changed ? 0 : prevL2Scroll;
+  _lastRenderedL1 = state.l1Cat;
 }
 function renderCats() {
   const l1Row = $("pbPresetCats");
