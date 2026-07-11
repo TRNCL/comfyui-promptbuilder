@@ -126,7 +126,7 @@
                 "cnText": "伪娘"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "身份": {
             "name": "身份",
@@ -392,7 +392,7 @@
                 "cnText": "截肢者"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "二次元角色": {
             "name": "二次元角色",
@@ -646,7 +646,7 @@
                 "cnText": "非人"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "年龄": {
             "name": "年龄",
@@ -700,7 +700,7 @@
                 "cnText": "正太"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "皮肤": {
             "name": "皮肤",
@@ -758,7 +758,7 @@
                 "cnText": "油性"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "身材": {
             "name": "身材",
@@ -816,7 +816,7 @@
                 "cnText": "肌肉"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "脸型": {
             "name": "脸型",
@@ -862,7 +862,7 @@
                 "cnText": "三角脸"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "头发": {
             "name": "头发",
@@ -1096,7 +1096,7 @@
                 "cnText": "发翼"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "面部": {
             "name": "面部",
@@ -1230,7 +1230,7 @@
                 "cnText": "纹身"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "耳朵": {
             "name": "耳朵",
@@ -1476,7 +1476,7 @@
                 "cnText": "角上的头发"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "眉毛": {
             "name": "眉毛",
@@ -1498,7 +1498,7 @@
                 "cnText": "V字眉"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "眼睛": {
             "name": "眼睛",
@@ -2068,7 +2068,7 @@
                 "cnText": "阿嘿颜"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "瞳孔": {
             "name": "瞳孔",
@@ -2190,7 +2190,7 @@
                 "cnText": "眼睛里有符号"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "鼻子": {
             "name": "鼻子",
@@ -2240,7 +2240,7 @@
                 "cnText": "动物口鼻部"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "嘴巴": {
             "name": "嘴巴",
@@ -2426,7 +2426,7 @@
                 "cnText": "嘴角画着口水滴形状的缺口"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "牙齿": {
             "name": "牙齿",
@@ -2496,7 +2496,7 @@
                 "cnText": "鲨鱼牙"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "舌头": {
             "name": "舌头",
@@ -2538,7 +2538,7 @@
                 "cnText": "小舌头|口盖垂|悬雍垂"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "指甲": {
             "name": "指甲",
@@ -2592,7 +2592,7 @@
                 "cnText": "棕色马甲"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "肩部": {
             "name": "肩部",
@@ -2614,7 +2614,7 @@
                 "cnText": "腋窝皱痕"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "胸部": {
             "name": "胸部",
@@ -2688,7 +2688,7 @@
                 "cnText": "半露前胸"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "腰部": {
             "name": "腰部",
@@ -2702,7 +2702,7 @@
                 "cnText": "纤细的腰"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "腹部": {
             "name": "腹部",
@@ -2736,7 +2736,7 @@
                 "cnText": "怀孕"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           },
           "翅膀": {
             "name": "翅膀",
@@ -2814,7 +2814,7 @@
                 "cnText": "带翅膀的头盔"
               }
             ],
-            "color": "#FF7B02"
+            "color": "#1B6B2E"
           }
         }
       },
@@ -2997,7 +2997,7 @@
                 "cnText": "修女服"
               }
             ],
-            "color": "#E65480"
+            "color": "#E03131"
           },
           "风格": {
             "name": "风格",
@@ -3135,7 +3135,7 @@
                 "cnText": "模因服装"
               }
             ],
-            "color": "#E65480"
+            "color": "#E03131"
           },
           "休闲装": {
             "name": "休闲装",
@@ -3233,7 +3233,7 @@
                 "cnText": "耸肩（服装）"
               }
             ],
-            "color": "#E65480"
+            "color": "#E03131"
           },
           "运动服": {
             "name": "运动服",
@@ -3283,7 +3283,7 @@
                 "cnText": "武道服"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "泳装": {
             "name": "泳装",
@@ -3517,7 +3517,7 @@
                 "cnText": "男用泳裤"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "制服": {
             "name": "制服",
@@ -3751,7 +3751,7 @@
                 "cnText": "多色款比基尼"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "上衣": {
             "name": "上衣",
@@ -4049,7 +4049,7 @@
                 "cnText": "偷衣服"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "外套": {
             "name": "外套",
@@ -4259,7 +4259,7 @@
                 "cnText": "羽绒服"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "其他": {
             "name": "其他",
@@ -4401,7 +4401,7 @@
                 "cnText": "手臂袜带"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "腰部": {
             "name": "腰部",
@@ -4455,7 +4455,7 @@
                 "cnText": "紧身褡"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "盔甲": {
             "name": "盔甲",
@@ -4533,7 +4533,7 @@
                 "cnText": "装甲靴"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "裙子": {
             "name": "裙子",
@@ -4827,7 +4827,7 @@
                 "cnText": "碎花裙"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "与裙子互动": {
             "name": "与裙子互动",
@@ -4865,7 +4865,7 @@
                 "cnText": "敞开的裙子"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "裤子": {
             "name": "裤子",
@@ -5023,7 +5023,7 @@
                 "cnText": "条纹裤"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "与裤子互动": {
             "name": "与裤子互动",
@@ -5065,7 +5065,7 @@
                 "cnText": "破损的短裤"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "袜子": {
             "name": "袜子",
@@ -5271,7 +5271,7 @@
                 "cnText": "横条短袜"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "与袜子互动": {
             "name": "与袜子互动",
@@ -5305,7 +5305,7 @@
                 "cnText": "拉着袜子(长袜"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "材质": {
             "name": "材质",
@@ -5351,7 +5351,7 @@
                 "cnText": "紧身"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "装饰": {
             "name": "装饰",
@@ -5505,7 +5505,7 @@
                 "cnText": "胸口的袋子"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "花纹": {
             "name": "花纹",
@@ -5883,7 +5883,7 @@
                 "cnText": "猫耳造型镂空"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "鞋子": {
             "name": "鞋子",
@@ -6041,7 +6041,7 @@
                 "cnText": "日式草鞋"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "靴子": {
             "name": "靴子",
@@ -6135,7 +6135,7 @@
                 "cnText": "一只脚没穿靴子"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "鞋底": {
             "name": "鞋底",
@@ -6157,7 +6157,7 @@
                 "cnText": "马蹄铁"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "领口": {
             "name": "领口",
@@ -6439,7 +6439,7 @@
                 "cnText": "脖子上挂着口哨"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "围巾": {
             "name": "围巾",
@@ -6533,7 +6533,7 @@
                 "cnText": "围巾"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "眼镜": {
             "name": "眼镜",
@@ -6643,7 +6643,7 @@
                 "cnText": "下半无框眼镜"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "面具": {
             "name": "面具",
@@ -6749,7 +6749,7 @@
                 "cnText": "SM面具"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "手臂": {
             "name": "手臂",
@@ -6919,7 +6919,7 @@
                 "cnText": "臂镯"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "手": {
             "name": "手",
@@ -6997,7 +6997,7 @@
                 "cnText": "锁链带牵绳"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "手套": {
             "name": "手套",
@@ -7111,7 +7111,7 @@
                 "cnText": "破损的手套"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "耳饰": {
             "name": "耳饰",
@@ -7161,7 +7161,7 @@
                 "cnText": "星形耳环"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "头饰": {
             "name": "头饰",
@@ -7607,7 +7607,7 @@
                 "cnText": "单侧头上有翅膀"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "帽子": {
             "name": "帽子",
@@ -7873,7 +7873,7 @@
                 "cnText": "另一条世界线"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "发饰": {
             "name": "发饰",
@@ -8047,7 +8047,7 @@
                 "cnText": "发_圈"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "小装饰": {
             "name": "小装饰",
@@ -8249,7 +8249,7 @@
                 "cnText": "膝盖上的创可贴"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           },
           "首饰": {
             "name": "首饰",
@@ -8327,7 +8327,7 @@
                 "cnText": "项链"
               }
             ],
-            "color": "#E65480"
+            "color": "#C92A2A"
           }
         }
       },
@@ -8418,7 +8418,7 @@
                 "cnText": "情人节快乐"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "哭": {
             "name": "哭",
@@ -8468,7 +8468,7 @@
                 "cnText": "心情不好"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "不开心": {
             "name": "不开心",
@@ -8506,7 +8506,7 @@
                 "cnText": "绝望"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "蔑视": {
             "name": "蔑视",
@@ -8552,7 +8552,7 @@
                 "cnText": "在笑的"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "生气": {
             "name": "生气",
@@ -8590,7 +8590,7 @@
                 "cnText": "喊叫"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "其他表情": {
             "name": "其他表情",
@@ -8744,7 +8744,7 @@
                 "cnText": "嫌弃的眼神"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "基础动作": {
             "name": "基础动作",
@@ -9362,7 +9362,7 @@
                 "cnText": "躲藏"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "手部动作": {
             "name": "手部动作",
@@ -9952,7 +9952,7 @@
                 "cnText": "拨弄泳衣"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "手部动作(拿着某物)": {
             "name": "手部动作(拿着某物)",
@@ -10286,7 +10286,7 @@
                 "cnText": "双手搂着脖子"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "手部动作(放在某地)": {
             "name": "手部动作(放在某地)",
@@ -10468,7 +10468,7 @@
                 "cnText": "手插在口袋里"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "手部动作(抓着某物)": {
             "name": "手部动作(抓着某物)",
@@ -10550,7 +10550,7 @@
                 "cnText": "抓着手腕"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "腿部动作": {
             "name": "腿部动作",
@@ -10908,7 +10908,7 @@
                 "cnText": "腿上系着带子或工具包或枪套"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           },
           "其他动作": {
             "name": "其他动作",
@@ -11066,7 +11066,7 @@
                 "cnText": "混浴"
               }
             ],
-            "color": "#F1E58C"
+            "color": "#E6B800"
           }
         }
       },
@@ -11117,7 +11117,7 @@
                 "cnText": "色彩斑斓的"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "艺术风格": {
             "name": "艺术风格",
@@ -11383,7 +11383,7 @@
                 "cnText": "洛可可"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "艺术类型": {
             "name": "艺术类型",
@@ -11457,7 +11457,7 @@
                 "cnText": "彩铅画"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "艺术派系": {
             "name": "艺术派系",
@@ -11487,7 +11487,7 @@
                 "cnText": "ASCII艺术"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "艺术家风格": {
             "name": "艺术家风格",
@@ -11501,7 +11501,7 @@
                 "cnText": "莫奈风格"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "光照": {
             "name": "光照",
@@ -11551,7 +11551,7 @@
                 "cnText": "自然光"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "写实": {
             "name": "写实",
@@ -11581,7 +11581,7 @@
                 "cnText": "照片(拍立得)"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "素描": {
             "name": "素描",
@@ -11635,7 +11635,7 @@
                 "cnText": "剪影"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "画笔": {
             "name": "画笔",
@@ -11697,7 +11697,7 @@
                 "cnText": "线条变粗"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "颜色": {
             "name": "颜色",
@@ -12255,7 +12255,7 @@
                 "cnText": "中石板蓝色"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           },
           "背景": {
             "name": "背景",
@@ -12449,7 +12449,7 @@
                 "cnText": "背景文字"
               }
             ],
-            "color": "#00FFFF"
+            "color": "#1C7ED6"
           }
         }
       },
@@ -12480,7 +12480,7 @@
                 "cnText": "秋景"
               }
             ],
-            "color": "#1F90FF"
+            "color": "#B197FC"
           },
           "天气": {
             "name": "天气",
@@ -12566,7 +12566,7 @@
                 "cnText": "积雨云"
               }
             ],
-            "color": "#1F90FF"
+            "color": "#B197FC"
           },
           "大自然": {
             "name": "大自然",
@@ -12732,7 +12732,7 @@
                 "cnText": "室外"
               }
             ],
-            "color": "#1F90FF"
+            "color": "#B197FC"
           },
           "水": {
             "name": "水",
@@ -12778,7 +12778,7 @@
                 "cnText": "海藻"
               }
             ],
-            "color": "#1F90FF"
+            "color": "#B197FC"
           },
           "天空": {
             "name": "天空",
@@ -12864,7 +12864,7 @@
                 "cnText": "卫星"
               }
             ],
-            "color": "#1F90FF"
+            "color": "#B197FC"
           },
           "云": {
             "name": "云",
@@ -13090,7 +13090,7 @@
                 "cnText": "砧积雨云"
               }
             ],
-            "color": "#1F90FF"
+            "color": "#B197FC"
           },
           "氛围": {
             "name": "氛围",
@@ -13200,7 +13200,7 @@
                 "cnText": "强阴影"
               }
             ],
-            "color": "#1F90FF"
+            "color": "#B197FC"
           }
         }
       },
@@ -13635,7 +13635,7 @@
                 "cnText": "废墟"
               }
             ],
-            "color": "#9F20F0"
+            "color": "#7048E8"
           },
           "城市": {
             "name": "城市",
@@ -13725,7 +13725,7 @@
                 "cnText": "自动贩卖机"
               }
             ],
-            "color": "#9F20F0"
+            "color": "#7048E8"
           },
           "室内": {
             "name": "室内",
@@ -13811,7 +13811,7 @@
                 "cnText": "温室"
               }
             ],
-            "color": "#9F20F0"
+            "color": "#7048E8"
           },
           "地板": {
             "name": "地板",
@@ -13825,7 +13825,7 @@
                 "cnText": "木质地板"
               }
             ],
-            "color": "#9F20F0"
+            "color": "#7048E8"
           },
           "家具": {
             "name": "家具",
@@ -13923,7 +13923,7 @@
                 "cnText": "轮椅"
               }
             ],
-            "color": "#9F20F0"
+            "color": "#7048E8"
           },
           "床上用品": {
             "name": "床上用品",
@@ -13977,7 +13977,7 @@
                 "cnText": "小熊"
               }
             ],
-            "color": "#9F20F0"
+            "color": "#7048E8"
           },
           "浴室": {
             "name": "浴室",
@@ -14015,7 +14015,7 @@
                 "cnText": "瓷砖"
               }
             ],
-            "color": "#9F20F0"
+            "color": "#7048E8"
           }
         }
       },
@@ -14062,7 +14062,7 @@
                 "cnText": "背包"
               }
             ],
-            "color": "#BDB66B"
+            "color": "#FFE066"
           },
           "数码设备": {
             "name": "数码设备",
@@ -14112,7 +14112,7 @@
                 "cnText": "电缆"
               }
             ],
-            "color": "#BDB66B"
+            "color": "#FFE066"
           },
           "餐具": {
             "name": "餐具",
@@ -14190,7 +14190,7 @@
                 "cnText": "蜡烛"
               }
             ],
-            "color": "#BDB66B"
+            "color": "#FFE066"
           },
           "乐器": {
             "name": "乐器",
@@ -14220,7 +14220,7 @@
                 "cnText": "风铃"
               }
             ],
-            "color": "#BDB66B"
+            "color": "#FFE066"
           },
           "其它物品": {
             "name": "其它物品",
@@ -14438,7 +14438,7 @@
                 "cnText": "乳液瓶子"
               }
             ],
-            "color": "#BDB66B"
+            "color": "#FFE066"
           },
           "武器": {
             "name": "武器",
@@ -14636,7 +14636,7 @@
                 "cnText": "魔人经卷"
               }
             ],
-            "color": "#BDB66B"
+            "color": "#FFE066"
           },
           "食物": {
             "name": "食物",
@@ -14858,7 +14858,7 @@
                 "cnText": "天妇罗"
               }
             ],
-            "color": "#BDB66B"
+            "color": "#FFE066"
           },
           "动物": {
             "name": "动物",
@@ -15008,7 +15008,7 @@
                 "cnText": "松鼠"
               }
             ],
-            "color": "#BDB66B"
+            "color": "#FFE066"
           },
           "植物": {
             "name": "植物",
@@ -15138,7 +15138,7 @@
                 "cnText": "大葱"
               }
             ],
-            "color": "#BDB66B"
+            "color": "#FFE066"
           }
         }
       },
@@ -15197,7 +15197,7 @@
                 "cnText": "侧面肖像画(portrait的侧脸版)"
               }
             ],
-            "color": "#63C902"
+            "color": "#2F9E44"
           },
           "特写镜头": {
             "name": "特写镜头",
@@ -15303,7 +15303,7 @@
                 "cnText": "被抓现行"
               }
             ],
-            "color": "#63C902"
+            "color": "#2F9E44"
           },
           "其他构图": {
             "name": "其他构图",
@@ -15337,7 +15337,7 @@
                 "cnText": "3/4视角"
               }
             ],
-            "color": "#63C902"
+            "color": "#2F9E44"
           },
           "镜头角度": {
             "name": "镜头角度",
@@ -15391,7 +15391,7 @@
                 "cnText": "远景透视画法"
               }
             ],
-            "color": "#63C902"
+            "color": "#2F9E44"
           },
           "效果": {
             "name": "效果",
@@ -15433,7 +15433,7 @@
                 "cnText": "等高线强化"
               }
             ],
-            "color": "#63C902"
+            "color": "#2F9E44"
           },
           "主角动作": {
             "name": "主角动作",
@@ -15547,991 +15547,7 @@
                 "cnText": "看着屏幕"
               }
             ],
-            "color": "#63C902"
-          }
-        }
-      },
-      "汉服": {
-        "items": [],
-        "children": {
-          "唐风:": {
-            "name": "唐风:",
-            "items": [
-              {
-                "text": "hanfu, tang style outfits,<lora:hanfuTang_v32:0.7>",
-                "cnText": "唐风"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "上杉": {
-            "name": "上杉",
-            "items": [
-              {
-                "text": "orange upper shan",
-                "cnText": "橙色上杉"
-              },
-              {
-                "text": "red upper shan",
-                "cnText": "红色上杉"
-              },
-              {
-                "text": "green upper shan",
-                "cnText": "绿色上杉"
-              },
-              {
-                "text": "blue upper shan",
-                "cnText": "蓝色上杉"
-              },
-              {
-                "text": "pink upper shan",
-                "cnText": "粉色上杉"
-              },
-              {
-                "text": "yellow upper shan",
-                "cnText": "黄色上杉"
-              },
-              {
-                "text": "white upper shan",
-                "cnText": "白色上杉"
-              },
-              {
-                "text": "light blue upper shan",
-                "cnText": "淡蓝上杉"
-              },
-              {
-                "text": "light green upper shan",
-                "cnText": "浅绿上杉"
-              },
-              {
-                "text": "light red upper shan",
-                "cnText": "浅红上杉"
-              },
-              {
-                "text": "cyan blue upper shan",
-                "cnText": "青蓝上杉"
-              },
-              {
-                "text": "light purple upper shan",
-                "cnText": "浅紫上杉"
-              },
-              {
-                "text": "black with blue upper shan",
-                "cnText": "黑蓝上杉"
-              },
-              {
-                "text": "white with orange upper shan",
-                "cnText": "橙白上杉"
-              },
-              {
-                "text": "pink with black upper shan",
-                "cnText": "粉黑上杉"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "长上杉": {
-            "name": "长上杉",
-            "items": [
-              {
-                "text": "orange long upper shan",
-                "cnText": "橙色"
-              },
-              {
-                "text": "red long upper shan",
-                "cnText": "红色"
-              },
-              {
-                "text": "green long upper shan",
-                "cnText": "绿色"
-              },
-              {
-                "text": "blue long upper shan",
-                "cnText": "蓝色"
-              },
-              {
-                "text": "pink long upper shan",
-                "cnText": "粉色"
-              },
-              {
-                "text": "yellow long upper shan",
-                "cnText": "黄色"
-              },
-              {
-                "text": "white long upper shan",
-                "cnText": "白色"
-              },
-              {
-                "text": "light blue long upper shan",
-                "cnText": "淡蓝"
-              },
-              {
-                "text": "light green long upper shan",
-                "cnText": "浅绿"
-              },
-              {
-                "text": "light red long upper shan",
-                "cnText": "浅红"
-              },
-              {
-                "text": "cyan blue long upper shan",
-                "cnText": "青蓝"
-              },
-              {
-                "text": "light purple long upper shan",
-                "cnText": "浅紫"
-              },
-              {
-                "text": "black with blue long upper shan",
-                "cnText": "黑蓝"
-              },
-              {
-                "text": "white with orange long upper shan",
-                "cnText": "橙白"
-              },
-              {
-                "text": "pink with black long upper shan",
-                "cnText": "粉黑"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "齐胸破裙": {
-            "name": "齐胸破裙",
-            "items": [
-              {
-                "text": "white chest po skirt",
-                "cnText": "白色破裙"
-              },
-              {
-                "text": "red chest po skirt",
-                "cnText": "红色破裙"
-              },
-              {
-                "text": "green chest po skirt",
-                "cnText": "绿色破裙"
-              },
-              {
-                "text": "blue chest po skirt",
-                "cnText": "蓝色破裙"
-              },
-              {
-                "text": "pink chest po skirt",
-                "cnText": "粉色破裙"
-              },
-              {
-                "text": "purple chest po skirt",
-                "cnText": "紫色破裙"
-              },
-              {
-                "text": "multicolour chest po skirt",
-                "cnText": "彩色破裙"
-              },
-              {
-                "text": "purple with white chest po skirt",
-                "cnText": "紫白破裙"
-              },
-              {
-                "text": "white with yellow chest po skirt",
-                "cnText": "黄白破裙"
-              },
-              {
-                "text": "blue with white chest po skirt",
-                "cnText": "天蓝破裙"
-              },
-              {
-                "text": "orange with white chest po skirt",
-                "cnText": "橙白破裙"
-              },
-              {
-                "text": "green with white chest po skirt",
-                "cnText": "灰豆绿破裙"
-              },
-              {
-                "text": "light orange with white chest po skirt",
-                "cnText": "淡黄白破裙"
-              },
-              {
-                "text": "pink with white chest po skirt",
-                "cnText": "粉白破裙"
-              },
-              {
-                "text": "white with pink chest po skirt",
-                "cnText": "白偏粉破裙"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "齐胸褶裙": {
-            "name": "齐胸褶裙",
-            "items": [
-              {
-                "text": "white chest pleated skirt",
-                "cnText": "白色褶裙"
-              },
-              {
-                "text": "red chest pleated skirt",
-                "cnText": "红色褶裙"
-              },
-              {
-                "text": "green chest pleated skirt",
-                "cnText": "绿色褶裙"
-              },
-              {
-                "text": "blue chest pleated skirt",
-                "cnText": "蓝色褶裙"
-              },
-              {
-                "text": "pink chest pleated skirt",
-                "cnText": "粉色褶裙"
-              },
-              {
-                "text": "purple chest pleated skirt",
-                "cnText": "紫色褶裙"
-              },
-              {
-                "text": "multicolour chest pleated skirt",
-                "cnText": "彩色褶裙"
-              },
-              {
-                "text": "purple with white chest pleated skirt",
-                "cnText": "紫白褶裙"
-              },
-              {
-                "text": "white with yellow chest pleated skirt",
-                "cnText": "黄白褶裙"
-              },
-              {
-                "text": "blue with white chest pleated skirt",
-                "cnText": "天蓝褶裙"
-              },
-              {
-                "text": "orange with white chest pleated skirt",
-                "cnText": "橙白褶裙"
-              },
-              {
-                "text": "green with white chest pleated skirt",
-                "cnText": "灰豆绿褶裙"
-              },
-              {
-                "text": "light orange with white chest pleated skirt",
-                "cnText": "淡黄白褶裙"
-              },
-              {
-                "text": "pink with white chest pleated skirt",
-                "cnText": "粉白褶裙"
-              },
-              {
-                "text": "white with pink chest pleated skirt",
-                "cnText": "白偏粉褶裙"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "系带": {
-            "name": "系带",
-            "items": [
-              {
-                "text": "green waistband",
-                "cnText": "绿色系带"
-              },
-              {
-                "text": "yellow waistband",
-                "cnText": "黄色系带"
-              },
-              {
-                "text": "red waistband",
-                "cnText": "红色系带"
-              },
-              {
-                "text": "pink waistband",
-                "cnText": "粉色系带"
-              },
-              {
-                "text": "orange waistband",
-                "cnText": "橙色系带"
-              },
-              {
-                "text": "light blue waistband",
-                "cnText": "淡蓝系带"
-              },
-              {
-                "text": "light green waistband",
-                "cnText": "绿白系带"
-              },
-              {
-                "text": "green with yellow waistband",
-                "cnText": "黄绿系带"
-              },
-              {
-                "text": "purple with white waistband",
-                "cnText": "紫白系带"
-              },
-              {
-                "text": "red with white waistband",
-                "cnText": "红白系带"
-              },
-              {
-                "text": "red with black waistband",
-                "cnText": "红黑系带"
-              },
-              {
-                "text": "yellow with white waistband",
-                "cnText": "黄白系带"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "披帛": {
-            "name": "披帛",
-            "items": [
-              {
-                "text": "white pibo",
-                "cnText": "白色披帛"
-              },
-              {
-                "text": "orange pibo",
-                "cnText": "橙色披帛"
-              },
-              {
-                "text": "black pibo",
-                "cnText": "黑色披帛"
-              },
-              {
-                "text": "pink pibo",
-                "cnText": "粉色披帛"
-              },
-              {
-                "text": "red pibo",
-                "cnText": "红色披帛"
-              },
-              {
-                "text": "purple pibo",
-                "cnText": "紫色披帛"
-              },
-              {
-                "text": "light green pibo",
-                "cnText": "浅绿披帛"
-              },
-              {
-                "text": "white with yellow pibo",
-                "cnText": "黄白披帛"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "宋风:": {
-            "name": "宋风:",
-            "items": [
-              {
-                "text": "hanfu, song style outfits,<lora:hanfuSong_v31:0.7>",
-                "cnText": "宋风"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "短衫": {
-            "name": "短衫",
-            "items": [
-              {
-                "text": "purple short shan",
-                "cnText": "紫色短杉"
-              },
-              {
-                "text": "red short shan",
-                "cnText": "红色短杉"
-              },
-              {
-                "text": "green short shan",
-                "cnText": "绿色短杉"
-              },
-              {
-                "text": "blue short shan",
-                "cnText": "蓝色短杉"
-              },
-              {
-                "text": "pink short shan",
-                "cnText": "粉色短杉"
-              },
-              {
-                "text": "yellow short shan",
-                "cnText": "黄色短杉"
-              },
-              {
-                "text": "white short shan",
-                "cnText": "白色短杉"
-              },
-              {
-                "text": "light blue short shan",
-                "cnText": "淡蓝短杉"
-              },
-              {
-                "text": "light green short shan",
-                "cnText": "浅绿短杉"
-              },
-              {
-                "text": "light red short shan",
-                "cnText": "浅红短杉"
-              },
-              {
-                "text": "cyan blue short shan",
-                "cnText": "青蓝短杉"
-              },
-              {
-                "text": "light purple short shan",
-                "cnText": "浅紫短杉"
-              },
-              {
-                "text": "black with blue short shan",
-                "cnText": "黑蓝短杉"
-              },
-              {
-                "text": "white with yellow short shan",
-                "cnText": "黄白短杉"
-              },
-              {
-                "text": "light yellow with green with white short shan",
-                "cnText": "浅黄白绿短"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "长衫": {
-            "name": "长衫",
-            "items": [
-              {
-                "text": "purple long shan",
-                "cnText": "紫色长杉"
-              },
-              {
-                "text": "red long shan",
-                "cnText": "红色长杉"
-              },
-              {
-                "text": "green long shan",
-                "cnText": "绿色长杉"
-              },
-              {
-                "text": "blue long shan",
-                "cnText": "蓝色长杉"
-              },
-              {
-                "text": "pink long shan",
-                "cnText": "粉色长杉"
-              },
-              {
-                "text": "yellow long shan",
-                "cnText": "黄色长杉"
-              },
-              {
-                "text": "white long shan",
-                "cnText": "白色长杉"
-              },
-              {
-                "text": "light blue long shan",
-                "cnText": "淡蓝长杉"
-              },
-              {
-                "text": "light green long shan",
-                "cnText": "浅绿长杉"
-              },
-              {
-                "text": "light red long shan",
-                "cnText": "浅红长杉"
-              },
-              {
-                "text": "cyan blue long shan",
-                "cnText": "青蓝长杉"
-              },
-              {
-                "text": "light purple long shan",
-                "cnText": "浅紫长杉"
-              },
-              {
-                "text": "black with blue long shan",
-                "cnText": "黑蓝长杉"
-              },
-              {
-                "text": "white with yellow long shan",
-                "cnText": "黄白长杉"
-              },
-              {
-                "text": "light yellow with green with white long shan",
-                "cnText": "浅黄白绿长"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "百褶裙": {
-            "name": "百褶裙",
-            "items": [
-              {
-                "text": "white pleated skirt",
-                "cnText": "白裙"
-              },
-              {
-                "text": "red pleated skirt",
-                "cnText": "红裙"
-              },
-              {
-                "text": "green pleated skirt",
-                "cnText": "绿裙"
-              },
-              {
-                "text": "blue pleated skirt",
-                "cnText": "蓝裙"
-              },
-              {
-                "text": "pink pleated skirt",
-                "cnText": "粉裙"
-              },
-              {
-                "text": "light blue pleated skirt",
-                "cnText": "浅蓝裙"
-              },
-              {
-                "text": "white golden pleated skirt",
-                "cnText": "白金裙"
-              },
-              {
-                "text": "gradient green pleated skirt",
-                "cnText": "渐变绿裙"
-              },
-              {
-                "text": "translucent white pleated skirt",
-                "cnText": "半透白裙"
-              },
-              {
-                "text": "red cyan gradient pleated skirt",
-                "cnText": "红青渐变"
-              },
-              {
-                "text": "red green gradient pleated skirt",
-                "cnText": "红绿渐变"
-              },
-              {
-                "text": "green with white pleated skirt",
-                "cnText": "白绿相间"
-              },
-              {
-                "text": "light yellow with green with white pleated skirt",
-                "cnText": "浅黄绿相间"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "宋抹": {
-            "name": "宋抹",
-            "items": [
-              {
-                "text": "orange songmo",
-                "cnText": "橙色宋抹"
-              },
-              {
-                "text": "red songmo",
-                "cnText": "红色宋抹"
-              },
-              {
-                "text": "green songmo",
-                "cnText": "绿色宋抹"
-              },
-              {
-                "text": "blue songmo",
-                "cnText": "蓝色宋抹"
-              },
-              {
-                "text": "pink songmo",
-                "cnText": "粉色宋抹"
-              },
-              {
-                "text": "yellow songmo",
-                "cnText": "黄色宋抹"
-              },
-              {
-                "text": "white songmo",
-                "cnText": "白色宋抹"
-              },
-              {
-                "text": "purple songmo",
-                "cnText": "紫色宋抹"
-              },
-              {
-                "text": "green floral songmo",
-                "cnText": "绿碎花宋抹"
-              },
-              {
-                "text": "purple floral songmo",
-                "cnText": "紫碎花宋抹"
-              },
-              {
-                "text": "cyan floral songmo",
-                "cnText": "青碎花宋抹"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "明风:": {
-            "name": "明风:",
-            "items": [
-              {
-                "text": "hanfu, ming style outfits,<lora:hanfuMing_v31:0.7>",
-                "cnText": "明风"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "上衣": {
-            "name": "上衣",
-            "items": [
-              {
-                "text": "short coat",
-                "cnText": "短袄"
-              },
-              {
-                "text": "long coat",
-                "cnText": "长袄"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "裙子": {
-            "name": "裙子",
-            "items": [
-              {
-                "text": "mamian skirt",
-                "cnText": "马面裙"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "领子": {
-            "name": "领子",
-            "items": [
-              {
-                "text": "overlapping collar",
-                "cnText": "交领"
-              },
-              {
-                "text": "round collar",
-                "cnText": "圆领"
-              },
-              {
-                "text": "standing collar",
-                "cnText": "立领"
-              },
-              {
-                "text": "square collar",
-                "cnText": "方领"
-              }
-            ],
-            "color": "#B22122"
-          },
-          "装饰": {
-            "name": "装饰",
-            "items": [
-              {
-                "text": "overlapping collar",
-                "cnText": "云肩"
-              },
-              {
-                "text": "embroidery",
-                "cnText": "刺绣"
-              },
-              {
-                "text": "woven gold",
-                "cnText": "织金"
-              },
-              {
-                "text": "makeup flower",
-                "cnText": "妆花"
-              },
-              {
-                "text": "bufu",
-                "cnText": "补服"
-              }
-            ],
-            "color": "#B22122"
-          }
-        }
-      },
-      "魔法系": {
-        "items": [],
-        "children": {
-          "魔法1.0": {
-            "name": "魔法1.0",
-            "items": [
-              {
-                "text": "((water drops)),wet clothes,((beautiful detailed water)),((floating)),dynamic angle",
-                "cnText": "水魔法"
-              },
-              {
-                "text": "beautiful detailed glow, (detailed ice), beautiful detailed water",
-                "cnText": "冰魔法"
-              },
-              {
-                "text": "beautiful detailed glow,detailed ice,beautiful detailed water,(floating palaces:1.2),(ice crystal texture wings),（Iridescence and rainbow hair:2.5）",
-                "cnText": "冰系改"
-              },
-              {
-                "text": "beautiful detailed glow,detailed ice,beautiful detailed water, (floating palaces:1.3),(((ice crystal texture wings)))",
-                "cnText": "星冰乐"
-              },
-              {
-                "text": "((detailed beautiful snow forest with trees)), ((snowflakes)), floating",
-                "cnText": "森林冰"
-              },
-              {
-                "text": "(((crystals texture Hair))),((beautiful detailed glass hair)),((glass shaped texture hand)),((crystallize texture body)),gem body,hands as clear as jewels,crystallization of clothes,((crystals texture skin)),sparkle, lens flare, light leaks,broken glass,detailed glass shaped clothes,beautiful detailed gemstone sky, gemstone sea, crystals texture flowers,((detailed crystallized clothing))",
-                "cnText": "结晶法"
-              },
-              {
-                "text": "beautiful detailed glow,((flames of war)),(((nuclear explosion behide)))",
-                "cnText": "核爆法"
-              },
-              {
-                "text": "((breeze)), flying splashes, flying petals, wind",
-                "cnText": "风魔法"
-              },
-              {
-                "text": "((surrounded by heavy floating sand flow and floating sharp stones)),((((ink)))),((illustration)),((watercolor))",
-                "cnText": "流沙法"
-              },
-              {
-                "text": "(detailed light), ((lightning in hand)),lightning surrounds,(((lightning chain)))",
-                "cnText": "雷电法"
-              },
-              {
-                "text": "(sunlight),(angel),dynamic angle, floating, wing, halo, floating white silk,(Holy Light),silver stars",
-                "cnText": "圣光法"
-              },
-              {
-                "text": "beautiful detailed pampas grass field, open hakama, surrounded by floating sakura, yellow full moon, beautiful detailed dark midnight sky, messy white long hair",
-                "cnText": "苇名法"
-              },
-              {
-                "text": "beautiful and delicate water, the finest grass, very delicate light, nature, painting, water spray, breeze, flowers and grass meadow, near the water edge, (sunset, starry sky in a circle), randomly distributed clouds, river, splashing water, falling petals",
-                "cnText": "自然法"
-              },
-              {
-                "text": "(detailed light) , feather, leaves, nature, (sunlight), river, (forest),(bloom)",
-                "cnText": "森林法"
-              },
-              {
-                "text": "floating and rainbow long hair,Iridescence and rainbow, beautiful detailed starry sky",
-                "cnText": "虹彩法"
-              },
-              {
-                "text": "chain ring, chain storm, dark chain,((wholeblack bloomer)), darkside, night, deep dark, darkness, ((dark clouds)),((ruins)),shadow, death garden",
-                "cnText": "暗锁法"
-              },
-              {
-                "text": "beautiful detailed glow, floating ashes, beautiful and detailed explosion, red moon, fire, fire cloud, wings on fire, a cloudy sky, smoke of gunpowder, burning, black dress, dove of peace, (floating cloud:1.2)",
-                "cnText": "火烧云"
-              },
-              {
-                "text": "beautiful detailed glow, detailed ice, beautiful detailed water, (magic circle:1.2), (floating palaces:1.3)",
-                "cnText": "城堡法"
-              },
-              {
-                "text": "(water bloom), (delicate glow), (breeze), long Flowers meadow,(((sunset)), (less stars form a circle), randomly distributed clouds, (rivers), (willows with branches falling into the water)",
-                "cnText": "黄昏法"
-              },
-              {
-                "text": "((colorful bubble)),(floating),detailed light",
-                "cnText": "泡泡法"
-              },
-              {
-                "text": "((rose)), (vine), cage, bandage, red rope, (detail light), falling rose petals",
-                "cnText": "蔷薇法"
-              },
-              {
-                "text": "(starry tornado:1.4), starry Nebula, beautiful detailed sky",
-                "cnText": "星空法"
-              },
-              {
-                "text": "((moon)), starry sky, (lighting particle), fog, snow,(bloom)",
-                "cnText": "月亮法"
-              },
-              {
-                "text": "beautiful detailed glow, detailed ice, beautiful detailed water, (cold full moon), snowflake, (floating cloud:1.2)",
-                "cnText": "雪月法"
-              },
-              {
-                "text": "((burning forest)), spark, light leaks, burning sky, flame, flames burning around, (flying sparks)",
-                "cnText": "森火法"
-              },
-              {
-                "text": "((destroyed)),explosion, buildings in disarray, The residual eaves DuanBi, cumulus, mouldy, floating, wind, Dead end machine,(broken robot),(Mechanical robot girl), in the rubble of a devastated city",
-                "cnText": "废土法"
-              },
-              {
-                "text": "mecha clothes, robot girl, sliver bodysuit,((sliver)) and (broken) body",
-                "cnText": "战甲法"
-              },
-              {
-                "text": "Extremely gorgeous metal style, Metal crown with ornate stripes, Various metals background, Sputtered molten iron, floating hair, Hair like melted metal, Clothes made of silver, Clothes with gold lace, flowing gold and silver, everything flowing and melt, flowing iron, flowing silver, lace flowing and melt",
-                "cnText": "黄金法"
-              },
-              {
-                "text": "mecha clothes, robot girl",
-                "cnText": "机娘法"
-              },
-              {
-                "text": "ink,(((bone))), (((ribs))), rose, black hair, blue eyes, greyscale, no shadow, simple background, bright skin",
-                "cnText": "死灵法"
-              },
-              {
-                "text": "(((gorgeous crystal armor))),(((crystal wings))),((altocumulus)),(clear_sky),(snow mountain),((flowery flowers)),(flowery bubbles),cloud map plane, crystal, crystal poppies,Brilliant light, thick_coating, glass tint,(watercolor)",
-                "cnText": "水晶法"
-              },
-              {
-                "text": "((an extremely delicate and beautiful)),floating, (detailed wet clothes), (detailed light),feather, nature, (sunlight), river, floating palace, beautiful and delicate water,(bloom),(shine)",
-                "cnText": "水森法"
-              },
-              {
-                "text": "(blue spark),(red and blue hair),blue eyes, burning sky,flame,Rainbow in the sky,((Flames burning ice)),(((fire butterflies))),(((ice crystal texture wings))),(Flying sparks),(detailed ice),((a lot of luminous ice crystals)),((burning feathers)),(feathers made of ice),(frozen feathers),(((ice and fire together)))",
-                "cnText": "冰火法"
-              },
-              {
-                "text": "(anger), dragon horns, (silver armor), metal, complex pattern, cape, indifference",
-                "cnText": "龙骑士"
-              },
-              {
-                "text": "((full body)),(helpless),tear, crying,(((((falling from the sky))))),((Weathering With You)),((falling)),((face towards the sky))，(hair flows upwards),((disheveled hair)),(1 girl), floating, beautiful detailed sky",
-                "cnText": "坠落法"
-              },
-              {
-                "text": "((underwater)),(beautiful detailed water),((coral)),dynamic angle, floating,(detailed light),floating hair,(splash),((fishes)),leaves dress, feather, nature,(sunlight),(underwater forest),(bloom),(detailed glow),drenched, seaweed, fish,(((Tyndall effect)))",
-                "cnText": "水下法"
-              },
-              {
-                "text": "(extremely detailed CG unity 8k wallpaper),(((masterpiece))), (((best quality))), ((ultra-detailed)), (best illustration),(best shadow), ((an extremely delicate and beautiful)),dynamic angle,floating, fairyland,dynamic angle,sea of flowers,beautiful detailed garden,wind,classic,spring, (detailed light),feather, nature, (sunlight), river, forest,(((floating palace))),((the best building)),beautiful and delicate water,(painting),(sketch),(bloom),(shine)",
-                "cnText": "秘境法"
-              },
-              {
-                "text": "(((masterpiece))), ((the best quality, super fine illustrations, beautiful and delicate water)), ((very delicate light)), ((nature, painting)), ((fine lighting, more transparent stars, high-quality snowflakes, high-quality mountains, very fine 8KCG wallpapers)), (plateau), (((snow mountain))), sunrise, randomly distributed clouds, (snow field), cliff, ((rotating star sky)), ((lake in mountain stream)), luminous particles",
-                "cnText": "摄影法"
-              },
-              {
-                "text": "1980s (style),simple background, retro artstyle",
-                "cnText": "摩登法"
-              },
-              {
-                "text": "(white hair), red long hair, red eyes, (full body), (((with sword))), angry face, (beautiful detailed eyes), Blood drop,Blood fog, floating hair, disheveled hair, Splashing blood,(Bloodstain)",
-                "cnText": "血魔法"
-              },
-              {
-                "text": "((dragon)), ((dragon background))",
-                "cnText": "唤龙术"
-              },
-              {
-                "text": "hair fluttering in the wind,((mechanical arm armor)),((mechanical body armor)),riding motor, bodysuit,((ruins of city in war, fire, burning cars, burning buildings)),air force fleet in the sky",
-                "cnText": "战姬法"
-              },
-              {
-                "text": "mecha clothes, robot girl, sliver bodysuit, dragon wings, ((a dragon stands behind the girl)), beautiful detailed sliver dragon armor",
-                "cnText": "龙机法"
-              },
-              {
-                "text": "((Beautiful butterflies in detail)),((Beautiful stars in detail)),(((halter dress ))),particle,(Starry sky in beautiful detail),(Hazy fog),(Ruins of beautiful details),(((Standing on the surface of the sea)))",
-                "cnText": "星蝶术"
-              },
-              {
-                "text": "blonde wavy hair, (shiny long hair), ((Gothic Lolita)), blue white skirt, ((short skirt)), black Headdress, bowknot, (((hair ornament))), (hair flower), Lace, cross-laced footwear, ribbon-trimmed sleeves, building architecture, ((gothic architecture)), starry sky, outdoors, church, (castle)",
-                "cnText": "学院法"
-              },
-              {
-                "text": "walking, waves, wind,(((glistening light of waves))),(detailed sunset glow),(floating flow),((coral)),(Luminous),coast,(floating colorful bubbles),beautiful detailed sky,(fluorescence),detailed shadow,(conch),beautiful detailed water, starfish, meteor, rainbow,(seabirds),(glinting stars), (glowworm),(splash),detailed cloud, shell,(fireworks)",
-                "cnText": "星霞海"
-              },
-              {
-                "text": "beautiful detailed sky, night, stars, (red plum blossom),((winter)),(((snowflakes))), ((red and white flowers))，(starry sky),(sitting),((colorful)),scenery, lantern,(starfall)",
-                "cnText": "冬雪法"
-              }
-            ],
-            "color": "#FF6B6B"
-          },
-          "魔法1.5": {
-            "name": "魔法1.5",
-            "items": [
-              {
-                "text": "((((melt)))),(((((black and white melt))))),(((wear Black and white Taoist robes))),((((gold and silver lace)))),(((gold and silver lace lace))),(((flowing ((black)) and white background))),extremely detailed gorgeous tiara",
-                "cnText": "万物熔炉"
-              },
-              {
-                "text": "Floating black ashes, Beautiful and detailed black, red moon, ((The black clouds)), (black Wings) , a black cloudy sky, burning, black dress, ((Black fog)), Red eyes, (black smoke), ((Black feathers floating in the air)),bat, (floating black cloud:1.5),",
-                "cnText": "暗鸦法"
-              },
-              {
-                "text": "dynamic angle, finely detail, (bloom), (shine), glinting stars, ((((best detailed fireworks)))), ((((depth of field)))), (((hanabi))),(((backlight))),",
-                "cnText": "花火基础"
-              },
-              {
-                "text": "stars in the eyes, messy floating hair, colored inner hair, Starry sky adorns hair, (lots of big colorful Bubble), (pearl), (Galaxy), depth of field",
-                "cnText": "星之彩"
-              },
-              {
-                "text": "stars in the eyes, messy floating hair, colored inner hair, Starry sky adorns hair, depth of field",
-                "cnText": "沉入星海"
-              },
-              {
-                "text": "dynamic angle, detailed wet clothes, blank stare, overexplosure, floating, black long straight, red eyes, aqua eyes, gradient eyes, ((blood)), white dress, frills, ((expressionless)), extremely beautiful detailed water, ((lying on the lake)), (bloodred water:1.5), (red background:1.3)",
-                "cnText": "百溺法"
-              },
-              {
-                "text": "((messy hair)),(grassland),(yellow eyes),incredibly absurdres,(gold hair),floating hair,Large number of environments,the medieval ,grace,prospect,water eyes,wind,breeze,god ray,lawn,Mountains and lakes in the distance,The sun shines through the trees,A vast expanse of grassland",
-                "cnText": "辉煌阳光法"
-              },
-              {
-                "text": "Starry sky adorns hair, sparkling anime eyes,beautiful detailed stars,blighting stars,emerging dark purple across with white hair,multicolored hair,beautiful detailed sky, beautiful detailed water, cinematic lighting, dramatic angle,",
-                "cnText": "星鬓法"
-              },
-              {
-                "text": "There are many scattered luminous petals,Hidden in the light yellow flowers,Depth of field,Many flying drops of water,Many scattered leaves,branch ,angle ,contour deepening,cinematic angle",
-                "cnText": "森罗法"
-              },
-              {
-                "text": "sunlight, extremely light, extremely clothes, Holy Light, dynamic angle, Light particle, very long hair, white hair, yellow eyes, glowing eyes, expressionless, ((light smile)), ((((white Tulle skirt)))), white silk, looking at viewer, angel wings, large wings, multiple wings, angel halo, (((starry sky))), dusk sky, Floating light spot, Lots of feathers",
-                "cnText": "星天使"
-              },
-              {
-                "text": "blonde hair, yellow eyes, white skin, mature female, sunrise, golden sky, magnificent architecture, beautiful detailed sky, overexposure, delicate gold metal decorations",
-                "cnText": "黄金律"
-              },
-              {
-                "text": "mechanical prosthesis,mecha coverage,emerging dark purple across with white hair,fluorescent purple,cool movement,rose red eyes,beatiful detailed cyberpunk city, hd semirealistic anime cg concept art digital painting",
-                "cnText": "机械姬"
-              },
-              {
-                "text": "(incredibly absurdres), (highly detailed beautiful fishtail:1.6), (((human hands))), (the lower body is a fish:1.9)AND(no human thigh:1.2), seaweed, (full body), (white seashell), (curved and slender fish tail), (the lower body is bare:1.1), {beautiful tailfin}, ((underwater)), (illustration), detailed water, ((fishes)), (floating), watercolor (medium), (small whirlpool), ((The sensation of water flowing)), (detailed scales on a mermaid)",
-                "cnText": "人鱼法"
-              },
-              {
-                "text": "Blood Mist, background Urban rooftop,despair,Blood Cherry Blossom,torn clothes,crying with eyes open,solo,Blood Rain,bandages,Gunpowder smoke,beautiful deatailed shadow, Splashing blood,dust,tyndall effect",
-                "cnText": "末日"
-              },
-              {
-                "text": "Space opera,Space port,robot arm,elbow gloves,night,glisten,stare,cyberpunk,((((citylight)))),science fiction,bodysuit,Mechanical armor headdress,(bare shoulders)",
-                "cnText": "碎梦"
-              },
-              {
-                "text": "dynamic angle,rainbow hair,detailed cute anime face,((loli)),flower,cry,water,corrugated,flowers tire,broken glass,(broken screen),atlantis,transparent glass",
-                "cnText": "幻碎梦"
-              },
-              {
-                "text": "(white hair),(((red streaked hair))), red eyes, (((full body))),(red hair), (((((Hold a red sword))))), (angry face),((Blood drop)),((Blood fog)),light shafts, soft focus, ((Splashing blood))),Long hair,((Bloodstain)),Fighting stance,{{{{{watercolor (medium)}}}},(((masterpiece))),((white clock)),((ultradetailed)),((Covered in blood)),flowing hair,Exquisite Flame,dynamic angle, floating, (shine), extremely delicate and beautiful girls, bright skin, lying red petals,Holy lighting",
-                "cnText": "血改法"
-              },
-              {
-                "text": "dramatic shadows,black and white,monochrome,{{comic}},cross necklace,Cassock",
-                "cnText": "留影术"
-              },
-              {
-                "text": "((ink)),(water color),bloom effect,detailed beautiful grassland with petal,flower,butterfly,necklace,smile,petal,(((surrounded by heavy floating petal flow)))",
-                "cnText": "飘花法"
-              }
-            ],
-            "color": "#C92A2A"
+            "color": "#2F9E44"
           }
         }
       },
@@ -16614,7 +15630,7 @@
                 "cnText": "用户名"
               }
             ],
-            "color": "#FFE066"
+            "color": "#C92A2A"
           },
           "人": {
             "name": "人",
@@ -16752,42 +15768,61 @@
                 "cnText": "斗鸡眼"
               }
             ],
-            "color": "#E6A800"
-          },
-          "Embeddings": {
-            "name": "Embeddings",
+            "color": "#C92A2A"
+          }
+        }
+      },
+      "触发词": {
+        "items": [],
+        "children": {
+          "画师": {
+            "name": "画师",
             "items": [
               {
-                "text": "AS-YoungV2-neg",
+                "text": "@style_mgk000",
                 "cnText": ""
               },
               {
-                "text": "BadDream",
+                "text": "stylecrymachina",
                 "cnText": ""
               },
               {
-                "text": "badhandv4",
-                "cnText": ""
-              },
-              {
-                "text": "BadNegAnatomyV1-neg",
-                "cnText": ""
-              },
-              {
-                "text": "EasyNegative",
-                "cnText": ""
-              },
-              {
-                "text": "FastNegativeV2",
+                "text": "usnr",
                 "cnText": ""
               }
             ],
-            "color": "#69DB7C"
+            "color": "#FF6B6B"
+          },
+          "风格": {
+            "name": "风格",
+            "items": [
+              {
+                "text": "masterpiece",
+                "cnText": "杰作"
+              },
+              {
+                "text": "best quality",
+                "cnText": "极品"
+              },
+              {
+                "text": "very aesthetic",
+                "cnText": "非常美观"
+              },
+              {
+                "text": "anime_coloring",
+                "cnText": "动漫着色"
+              },
+              {
+                "text": "chiaroscuro",
+                "cnText": "明暗对比"
+              }
+            ],
+            "color": "#FF6B6B"
           }
         }
       }
     }
   },
-  "l1Cat": "人物",
-  "l2Cat": "对象"
+  "l1Cat": "触发词",
+  "l2Cat": "风格"
 }
