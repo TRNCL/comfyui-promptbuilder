@@ -1758,6 +1758,26 @@ var PANEL_CSS = (
 );
 var _rightWidth = 260;
 var _presetCollapsed = false;
+function applyPresetCollapsedUI() {
+  const presetsArea = $("pbPresetsArea");
+  const row = $("pbRowDivider");
+  if (!presetsArea || !row) return;
+  if (_presetCollapsed) {
+    const h2 = presetsArea.querySelector(".pb-preset-header");
+    const b = presetsArea.querySelector(".pb-preset-body");
+    if (h2) h2.style.display = "none";
+    if (b) b.style.display = "none";
+    presetsArea.style.height = "auto";
+    presetsArea.style.flex = "none";
+    row.style.cssText = "min-height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--pb-text-dim);cursor:row-resize;";
+    row.textContent = `${state.l1Cat || "\u8BCD\u5E93"} \u25BC`;
+  } else {
+    if (row.textContent && row.textContent.includes("\u25BC")) {
+      row.style.cssText = "";
+      row.textContent = "";
+    }
+  }
+}
 function getPanel() {
   let panel = $("pbMainPanel");
   if (!panel) {
@@ -1943,14 +1963,7 @@ function bindEvents(panel) {
           } else if (dy < -30) {
             collapsed = true;
             _presetCollapsed = true;
-            const h2 = presetsArea.querySelector(".pb-preset-header");
-            const b = presetsArea.querySelector(".pb-preset-body");
-            if (h2) h2.style.display = "none";
-            if (b) b.style.display = "none";
-            presetsArea.style.height = "auto";
-            presetsArea.style.flex = "none";
-            row.style.cssText = "min-height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--pb-text-dim);cursor:row-resize;";
-            row.textContent = `${state.l1Cat || "\u8BCD\u5E93"} \u25BC`;
+            applyPresetCollapsedUI();
             return;
           }
         }
@@ -6428,6 +6441,7 @@ function renderPresets() {
   if (l1Row) l1Row.scrollLeft = prevL1Scroll;
   if (l2Row) l2Row.scrollLeft = l1Changed ? 0 : prevL2Scroll;
   _lastRenderedL1 = state.l1Cat;
+  applyPresetCollapsedUI();
 }
 function renderCats() {
   const l1Row = $("pbPresetCats");
