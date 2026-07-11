@@ -2259,20 +2259,36 @@ function activeChipWeight() {
   const w = findChip(_active.chip.id)?.chip.weight;
   return Number.isFinite(w) ? w : 1;
 }
+var WEIGHT_UNDO_COALESCE_MS = 500;
+var _weightUndoCoalescing = false;
+var _weightUndoTimer = null;
 function applyWeightDelta(delta) {
   const ids = toolbarTargetIds();
   if (!ids.length) return;
+  const opt = _weightUndoCoalescing ? { noUndo: true } : void 0;
+  let ok = false;
   if (ids.length > 1) {
-    dispatch({ type: "chip/batchAdjustWeight", chipIds: ids, delta });
+    ok = dispatch({ type: "chip/batchAdjustWeight", chipIds: ids, delta }, opt);
   } else {
     const chip = findChip(ids[0])?.chip;
     if (!chip) return;
-    dispatch({
-      type: "chip/update",
-      chipId: chip.id,
-      patch: { weight: clamp(Math.round((chip.weight + delta) * 10) / 10, 0.1, 5) }
-    });
+    ok = dispatch(
+      {
+        type: "chip/update",
+        chipId: chip.id,
+        patch: { weight: clamp(Math.round((chip.weight + delta) * 10) / 10, 0.1, 5) }
+      },
+      opt
+    );
   }
+  if (!ok) return;
+  _weightUndoCoalescing = true;
+  if (_weightUndoTimer) clearTimeout(_weightUndoTimer);
+  _weightUndoTimer = setTimeout(() => {
+    _weightUndoCoalescing = false;
+    _weightUndoTimer = null;
+    updateUndoButtons();
+  }, WEIGHT_UNDO_COALESCE_MS);
   if (_active) rebindActiveAfterRender(_active.chip.id);
 }
 function commitWeightValue(raw) {
