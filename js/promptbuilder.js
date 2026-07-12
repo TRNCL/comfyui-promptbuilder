@@ -19,7 +19,9 @@ var init_types = __esm({
       settings: "promptbuildernext_settings",
       cats: "promptbuildernext_state",
       panelGeo: "promptbuildernext_panelgeo",
-      colWidths: "promptbuildernext_colwidths"
+      colWidths: "promptbuildernext_colwidths",
+      /** 工作区分组格式预设列表 */
+      layouts: "promptbuildernext_layouts"
     };
     GROUP_COLORS = [
       "#FF6B6B",
@@ -198,6 +200,7 @@ function defaultSettings() {
     scale: "mid",
     translator: "mymemory",
     theme: "dark",
+    tagSource: "danbooru",
     customApi: { url: "", method: "POST", body: "", responseField: "" }
   };
 }
@@ -702,6 +705,160 @@ function parseWeightedPrompt(text) {
   return out;
 }
 
+// src/model/layoutPresets.ts
+init_types();
+init_state();
+init_dom();
+init_factory();
+var _layouts = [];
+var _loaded = false;
+function getLayoutPresets() {
+  ensureLoaded();
+  return _layouts;
+}
+function ensureLayoutPresetsLoaded() {
+  ensureLoaded();
+}
+function ensureLoaded() {
+  if (_loaded) return;
+  _layouts = loadFromLs();
+  _loaded = true;
+}
+function loadFromLs() {
+  try {
+    const raw = localStorage.getItem(LS_KEYS.layouts);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data)) return [];
+    return data.filter((x) => x && typeof x === "object" && Array.isArray(x.positive)).map((x) => ({
+      id: String(x.id || gid()),
+      name: String(x.name || "\u672A\u547D\u540D"),
+      createdAt: typeof x.createdAt === "number" ? x.createdAt : Date.now(),
+      positive: normalizePositive(x.positive)
+    })).filter((x) => x.positive.length > 0);
+  } catch {
+    return [];
+  }
+}
+function normalizePositive(groups) {
+  if (!Array.isArray(groups)) return [];
+  const out = [];
+  for (const g of groups) {
+    if (!g || typeof g !== "object") continue;
+    const o = g;
+    const boxesRaw = Array.isArray(o.boxes) ? o.boxes : [];
+    const boxes = boxesRaw.filter((b) => !!b && typeof b === "object").map((b) => ({
+      enabled: b.enabled !== false,
+      break: !!b.break
+    }));
+    if (!boxes.length) boxes.push({ enabled: true, break: false });
+    out.push({
+      name: String(o.name || "\u5206\u7EC4"),
+      color: String(o.color || "#74C0FC"),
+      enabled: o.enabled !== false,
+      collapsed: !!o.collapsed,
+      break: !!o.break,
+      boxes
+    });
+  }
+  return out;
+}
+function saveLayoutPresetsToLs() {
+  try {
+    localStorage.setItem(LS_KEYS.layouts, JSON.stringify(_layouts));
+  } catch {
+  }
+}
+function extractLayoutFromCur() {
+  return cur.workspace.map((g) => ({
+    name: g.name,
+    color: g.color,
+    enabled: g.enabled,
+    collapsed: g.collapsed,
+    break: g.break,
+    boxes: (g.inputboxes.length ? g.inputboxes : [{ enabled: true, break: false, chips: [] }]).map((b) => ({
+      enabled: b.enabled,
+      break: b.break
+    }))
+  }));
+}
+function buildWorkspaceFromLayout(positive) {
+  const groups = [];
+  for (const lg of positive) {
+    const boxes = (lg.boxes.length ? lg.boxes : [{ enabled: true, break: false }]).map((lb) => {
+      const box = mkBox();
+      box.enabled = lb.enabled;
+      box.break = lb.break;
+      return box;
+    });
+    groups.push({
+      id: gid(),
+      name: lg.name || "\u5206\u7EC4",
+      color: lg.color || "#74C0FC",
+      enabled: lg.enabled !== false,
+      collapsed: !!lg.collapsed,
+      break: !!lg.break,
+      inputboxes: boxes
+    });
+  }
+  if (!groups.length) {
+    const box = mkBox();
+    groups.push({
+      id: gid(),
+      name: "\u5206\u7EC4",
+      color: "#74C0FC",
+      enabled: true,
+      collapsed: false,
+      break: false,
+      inputboxes: [box]
+    });
+  }
+  return groups;
+}
+function collectPositiveChips() {
+  const chips = [];
+  for (const g of cur.workspace) {
+    for (const b of g.inputboxes) {
+      for (const c of b.chips) chips.push(c);
+    }
+  }
+  return chips;
+}
+function addLayoutPreset(name, positive) {
+  ensureLoaded();
+  const preset = {
+    id: gid(),
+    name: name.trim() || "\u672A\u547D\u540D\u683C\u5F0F",
+    createdAt: Date.now(),
+    positive: normalizePositive(positive)
+  };
+  if (!preset.positive.length) {
+    preset.positive = [{
+      name: "\u5206\u7EC4",
+      color: "#74C0FC",
+      enabled: true,
+      collapsed: false,
+      break: false,
+      boxes: [{ enabled: true, break: false }]
+    }];
+  }
+  _layouts = [..._layouts, preset];
+  saveLayoutPresetsToLs();
+  return preset;
+}
+function removeLayoutPreset(id) {
+  ensureLoaded();
+  const next = _layouts.filter((x) => x.id !== id);
+  if (next.length === _layouts.length) return false;
+  _layouts = next;
+  saveLayoutPresetsToLs();
+  return true;
+}
+function findLayoutPreset(id) {
+  ensureLoaded();
+  return _layouts.find((x) => x.id === id) || null;
+}
+
 // src/app/persist.ts
 function loadPresetsFromLS() {
   try {
@@ -805,7 +962,11 @@ function initFromStorage() {
       ...settings,
       customApi: { ...state.settings.customApi, ...settings.customApi || {} }
     };
+    if (state.settings.tagSource !== "gelbooru" && state.settings.tagSource !== "danbooru") {
+      state.settings.tagSource = "danbooru";
+    }
   }
+  ensureLayoutPresetsLoaded();
 }
 function serializeNodeState() {
   const data = {
@@ -981,6 +1142,24 @@ function getSelectedIdsInWorkspaceOrder() {
   return out;
 }
 
+// src/utils/textSep.ts
+var _lastMode = null;
+function commitSepMode(mode) {
+  _lastMode = mode;
+}
+function resolveNextSepMode(texts) {
+  if (_lastMode === "space") return "underscore";
+  if (_lastMode === "underscore") return "space";
+  const hasSpace = texts.some((t) => /\s/.test(t));
+  return hasSpace ? "underscore" : "space";
+}
+function applySepMode(text, mode) {
+  const raw = text ?? "";
+  if (!raw) return null;
+  const next = mode === "underscore" ? raw.replace(/\s+/g, "_") : raw.replace(/_+/g, " ").replace(/\s+/g, " ").trim();
+  return next !== raw ? next : null;
+}
+
 // src/model/ops.ts
 var NOOP = {
   changed: false,
@@ -1149,6 +1328,24 @@ function applyOp(op) {
       if (!n) return NOOP;
       return ws();
     }
+    case "chip/setTextSeparator": {
+      if (op.mode !== "space" && op.mode !== "underscore") return NOOP;
+      let n = 0;
+      const idSet = op.chipIds?.length ? new Set(op.chipIds) : null;
+      for (const g of allGroups()) {
+        for (const b of g.inputboxes) {
+          for (const c of b.chips) {
+            if (idSet && !idSet.has(c.id)) continue;
+            const next = applySepMode(c.text, op.mode);
+            if (next == null) continue;
+            c.text = next;
+            n++;
+          }
+        }
+      }
+      if (!n) return NOOP;
+      return ws();
+    }
     case "chip/batchMove": {
       if (!op.chipIds.length) return NOOP;
       const to = findBox(op.toBoxId);
@@ -1248,6 +1445,45 @@ function applyOp(op) {
       cur.workspace = op.workspace.length ? op.workspace : [mkGroup("\u4EBA\u7269", void 0, state.settings.theme)];
       cur.negativeGroup = op.negativeGroup || mkNegativeGroup();
       cur.focusedBox = op.focusedBox || cur.workspace[0]?.inputboxes[0]?.id || "";
+      pruneSelection();
+      return ws();
+    }
+    case "layout/save": {
+      const name = (op.name || "").trim();
+      if (!name) return NOOP;
+      const positive = extractLayoutFromCur();
+      if (!positive.length) return NOOP;
+      addLayoutPreset(name, positive);
+      return {
+        changed: true,
+        undoable: false,
+        persistNode: false,
+        persistPresets: false,
+        persistSettings: false,
+        scopes: []
+      };
+    }
+    case "layout/remove": {
+      if (!op.id || !removeLayoutPreset(op.id)) return NOOP;
+      return {
+        changed: true,
+        undoable: false,
+        persistNode: false,
+        persistPresets: false,
+        persistSettings: false,
+        scopes: []
+      };
+    }
+    case "layout/apply": {
+      const preset = findLayoutPreset(op.id);
+      if (!preset?.positive?.length) return NOOP;
+      const chips = collectPositiveChips();
+      const workspace = buildWorkspaceFromLayout(preset.positive);
+      const firstBox = workspace[0]?.inputboxes[0];
+      if (!firstBox) return NOOP;
+      firstBox.chips = chips;
+      cur.workspace = workspace;
+      cur.focusedBox = firstBox.id;
       pruneSelection();
       return ws();
     }
@@ -1821,6 +2057,8 @@ function buildPanel() {
     <span style="font-size:12px;font-weight:600;color:var(--pb-text-dim);">\u5DE5\u4F5C\u533A</span>
     <div style="display:flex;gap:4px;">
       <button type="button" id="pbTranslateBtn" class="pb-btn" style="font-size:11px;padding:2px 8px;height:26px;">\u7FFB\u8BD1</button>
+      <button type="button" id="pbSepToggleBtn" class="pb-btn" style="font-size:11px;padding:2px 8px;height:26px;" title="\u5168\u90E8\u7EDF\u4E00\u4E3A\u4E0B\u5212\u7EBF\u6216\u7A7A\u683C\uFF1B\u518D\u70B9\u5207\u6362\u53E6\u4E00\u79CD">\u5206\u8BCD\u7B26</button>
+      <button type="button" id="pbLayoutBtn" class="pb-btn" style="font-size:11px;padding:2px 8px;height:26px;" title="\u4FDD\u5B58/\u5E94\u7528\u6B63\u9762\u5206\u7EC4\u683C\u5F0F\u9884\u8BBE">\u683C\u5F0F \u25BE</button>
       <button type="button" id="pbClearBtn" class="pb-btn" style="font-size:11px;padding:2px 8px;height:26px;">\u6E05\u7A7A</button>
     </div>
   `;
@@ -2426,6 +2664,24 @@ function onToolbarPointerDown(e) {
     if (_active) rebindActiveAfterRender(_active.chip.id);
     return;
   }
+  if (act === "sep") {
+    const sepIds = toolbarTargetIds();
+    if (!sepIds.length) return;
+    const texts = sepIds.map((id) => findChip(id)?.chip.text || "").filter(Boolean);
+    let mode = resolveNextSepMode(texts);
+    let ok = dispatch({ type: "chip/setTextSeparator", mode, chipIds: sepIds });
+    if (!ok) {
+      mode = mode === "space" ? "underscore" : "space";
+      ok = dispatch({ type: "chip/setTextSeparator", mode, chipIds: sepIds });
+    }
+    if (ok) {
+      commitSepMode(mode);
+    } else {
+      toast("\u6CA1\u6709\u53EF\u8F6C\u6362\u7684\u7A7A\u683C\u6216\u4E0B\u5212\u7EBF", "warn");
+    }
+    if (_active) rebindActiveAfterRender(_active.chip.id);
+    return;
+  }
   if (act === "edit") {
     if (ids.length !== 1 || !_active) return;
     const chipId = _active.chip.id;
@@ -2457,6 +2713,7 @@ function fillToolbar(multi, count, weight) {
   if (multi) {
     tb.innerHTML = `
       <span class="pb-tb-count">${count} \u9879</span>
+      <button type="button" data-act="sep" title="\u9009\u4E2D\u9879\u7EDF\u4E00\u4E3A\u4E0B\u5212\u7EBF\u6216\u7A7A\u683C\uFF1B\u518D\u70B9\u5207\u6362\u53E6\u4E00\u79CD">\u5206\u8BCD\u7B26</button>
       <button type="button" data-act="bypass" title="\u6279\u91CF\u542F\u7528/\u7981\u7528">\u{1F441}</button>
       <button type="button" data-act="translate" title="\u6279\u91CF\u5F3A\u5236\u7FFB\u8BD1">\u{1F310}</button>
       <button type="button" data-act="delete" title="\u6279\u91CF\u5220\u9664">\xD7</button>
@@ -2465,6 +2722,7 @@ function fillToolbar(multi, count, weight) {
     const w = fmtWeight(weight);
     tb.innerHTML = `
       <button type="button" class="pb-tb-weight" title="\u6743\u91CD \xB7 \u70B9\u51FB\u7F16\u8F91 \xB7 \u6EDA\u8F6E\xB10.1">${w}</button>
+      <button type="button" data-act="sep" title="\u6B64\u8BCD\u7EDF\u4E00\u4E3A\u4E0B\u5212\u7EBF\u6216\u7A7A\u683C\uFF1B\u518D\u70B9\u5207\u6362\u53E6\u4E00\u79CD">\u5206\u8BCD\u7B26</button>
       <button type="button" data-act="bypass" title="\u542F\u7528/\u7981\u7528">\u{1F441}</button>
       <button type="button" data-act="edit" title="\u7F16\u8F91\u4E2D\u82F1\u6587">\u270F\uFE0F</button>
       <button type="button" data-act="translate" title="\u7FFB\u8BD1\u6B64\u8BCD\uFF08\u5F3A\u5236\uFF09">\u{1F310}</button>
@@ -5271,17 +5529,37 @@ init_dom();
 init_state();
 
 // src/services/danbooru.ts
-var TAG_FILE = "tags_sqlite_2026-05-18.json";
+init_state();
+var TAG_SOURCE_FILES = {
+  danbooru: "tags_sqlite_2026-05-18.json",
+  gelbooru: "gelbooru_tags.json"
+};
+var TAG_SOURCE_LABELS = {
+  danbooru: "Danbooru",
+  gelbooru: "Gelbooru"
+};
 var _index = [];
-var _loading = false;
-var _loaded = false;
+var _loadedSource = null;
 var _loadPromise = null;
+var _loadingSource = null;
+function currentSource() {
+  return state.settings.tagSource === "gelbooru" ? "gelbooru" : "danbooru";
+}
 function getDanbooruIndex() {
-  if (!_loaded && !_loading) void load();
-  return _index;
+  const src = currentSource();
+  if (_loadedSource !== src) void load(src);
+  return _loadedSource === src ? _index : [];
 }
 function preloadTagIndex() {
-  return load();
+  return load(currentSource());
+}
+function reloadTagIndex(source) {
+  const src = source ?? currentSource();
+  _loadedSource = null;
+  _index = [];
+  _loadPromise = null;
+  _loadingSource = null;
+  return load(src);
 }
 function resolveScriptBase() {
   let base = ".";
@@ -5314,26 +5592,33 @@ function normalizeTags(data) {
   out.sort((a, b) => b.postCount - a.postCount);
   return out;
 }
-async function load() {
-  if (_loaded) return;
-  if (_loadPromise) return _loadPromise;
-  _loading = true;
+async function load(source) {
+  if (_loadedSource === source) return;
+  if (_loadPromise && _loadingSource === source) return _loadPromise;
+  const file = TAG_SOURCE_FILES[source];
+  _loadingSource = source;
   _loadPromise = (async () => {
     try {
       const base = resolveScriptBase();
-      const url = `${base}/${TAG_FILE}`;
+      const url = `${base}/${file}`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
+      if (currentSource() !== source) return;
       _index = normalizeTags(data);
-      console.log(`[PromptBuilder] danbooru tags loaded: ${_index.length} from ${TAG_FILE}`);
-      _loaded = true;
+      _loadedSource = source;
+      console.log(`[PromptBuilder] tags loaded: ${_index.length} from ${file} (${source})`);
     } catch (e) {
-      console.warn("[PromptBuilder] danbooru tags load failed", e);
-      _index = [];
-      _loaded = true;
+      console.warn(`[PromptBuilder] tags load failed (${file})`, e);
+      if (currentSource() === source) {
+        _index = [];
+        _loadedSource = source;
+      }
     } finally {
-      _loading = false;
+      if (_loadingSource === source) {
+        _loadingSource = null;
+        _loadPromise = null;
+      }
     }
   })();
   return _loadPromise;
@@ -5425,8 +5710,9 @@ function showAc(input, box) {
     const bp = isPrefix(b.text, b.cnText, termFold, term) ? 0 : 1;
     return ap - bp || a.text.length - b.text.length;
   });
+  const tagSource = state.settings.tagSource === "gelbooru" ? "gelbooru" : "danbooru";
   const seen = new Set(presets.map((r) => r.text));
-  const danbooru = [];
+  const external = [];
   const starts = [];
   const includes = [];
   for (const d of getDanbooruIndex()) {
@@ -5436,19 +5722,19 @@ function showAc(input, box) {
     const hit = {
       text: d.text,
       cnText: d.cnText,
-      source: "danbooru",
+      source: tagSource,
       postCount: d.postCount
     };
     if (isPrefix(d.text, d.cnText, termFold, term)) starts.push(hit);
     else includes.push(hit);
   }
   for (const h2 of [...starts, ...includes]) {
-    if (danbooru.length >= MAX_DANBOORU) break;
+    if (external.length >= MAX_DANBOORU) break;
     if (seen.has(h2.text)) continue;
-    danbooru.push(h2);
+    external.push(h2);
     seen.add(h2.text);
   }
-  danbooru.sort((a, b) => {
+  external.sort((a, b) => {
     const ap = isPrefix(a.text, a.cnText, termFold, term) ? 0 : 1;
     const bp = isPrefix(b.text, b.cnText, termFold, term) ? 0 : 1;
     if (ap !== bp) return ap - bp;
@@ -5456,7 +5742,7 @@ function showAc(input, box) {
   });
   const results = [
     ...presets.slice(0, MAX_PRESET),
-    ...danbooru
+    ...external
   ].slice(0, MAX_RESULTS);
   if (!results.length) {
     hideAc();
@@ -5469,7 +5755,7 @@ function showAc(input, box) {
   _items.forEach((item, i) => {
     const el = div("pb-ac-item");
     if (i === _active2) el.classList.add("pb-active");
-    const srcLabel = item.source === "preset" ? "\u8BCD\u5E93" : "danbooru";
+    const srcLabel = item.source === "preset" ? "\u8BCD\u5E93" : item.source === "gelbooru" ? "gelbooru" : "danbooru";
     el.innerHTML = `
       <span class="pb-ac-main">${escapeHtml(item.text)}</span>
       ${item.cnText ? `<span class="pb-ac-sub">${escapeHtml(item.cnText)}</span>` : ""}
@@ -7292,6 +7578,7 @@ function renderOutput() {
 init_state();
 init_pipe();
 init_dom();
+init_toast();
 var CSS8 = (
   /*css*/
   `
@@ -7306,9 +7593,17 @@ var CSS8 = (
 }
 .pb-segctrl button:last-child { border-right: none; }
 .pb-segctrl button.pb-segctrl-active { background: var(--pb-accent); color: #fff; }
+/* \u7FFB\u8BD1\u5F15\u64CE / \u6807\u7B7E\u8865\u5168\u6E90\u7B49\u4E0B\u62C9\uFF1A\u540C\u4E00\u5957\u5916\u89C2 */
 .pb-sel {
+  box-sizing: border-box;
+  min-width: 96px; height: 22px; padding: 0 6px;
   background: var(--pb-bg); border: 1px solid var(--pb-border); border-radius: 4px;
-  color: var(--pb-text); font-size: 10px; padding: 2px 4px;
+  color: var(--pb-text); font-size: 10px; font-family: inherit; line-height: 20px;
+  cursor: pointer; outline: none; vertical-align: middle;
+}
+.pb-sel:focus { border-color: var(--pb-accent); }
+.pb-sel option {
+  background: var(--pb-bg); color: var(--pb-text);
 }
 .pb-custom-api-row { padding: 4px 0; display: flex; flex-direction: column; gap: 4px; }
 .pb-custom-api-row input, .pb-custom-api-row textarea {
@@ -7320,10 +7615,8 @@ var CSS8 = (
 );
 var _css7 = false;
 function renderSettings() {
-  if (!_css7) {
-    injectCSS("settings", CSS8);
-    _css7 = true;
-  }
+  injectCSS("settings", CSS8);
+  _css7 = true;
   const area = $("pbSettingsSlot");
   if (!area) return;
   area.innerHTML = `
@@ -7346,12 +7639,19 @@ function renderSettings() {
       </div>
       <div class="pb-custom-api-row" id="pbCustomApiRow" style="display:none;">
         <input type="text" id="pbApiUrl" placeholder="API URL ({text} {src} {tgt})">
-        <select id="pbApiMethod" class="pb-sel" style="width:100%;">
+        <select id="pbApiMethod" class="pb-sel" style="width:100%;min-width:0;height:auto;padding:2px 4px;">
           <option value="GET">GET</option>
           <option value="POST">POST</option>
         </select>
         <textarea id="pbApiBody" placeholder="\u8BF7\u6C42\u4F53 JSON \u6A21\u677F"></textarea>
         <input type="text" id="pbApiField" placeholder="\u54CD\u5E94\u5B57\u6BB5\u8DEF\u5F84">
+      </div>
+      <div class="pb-setting-row">
+        <span class="pb-setting-label">\u6807\u7B7E\u8865\u5168\u6E90</span>
+        <select class="pb-sel" id="pbSelTagSource" title="\u5DE5\u4F5C\u533A\u8F93\u5165\u65F6\u7684\u7AD9\u5916\u6807\u7B7E\u5E93">
+          <option value="danbooru">${TAG_SOURCE_LABELS.danbooru}</option>
+          <option value="gelbooru">${TAG_SOURCE_LABELS.gelbooru}</option>
+        </select>
       </div>
       <div class="pb-setting-row">
         <span class="pb-setting-label">\u4E3B\u9898</span>
@@ -7369,6 +7669,18 @@ function renderSettings() {
     sel.value = state.settings.translator;
     sel.addEventListener("change", () => {
       dispatch({ type: "settings/patch", patch: { translator: sel.value } });
+    });
+  }
+  const tagSel = $("pbSelTagSource");
+  if (tagSel) {
+    tagSel.value = state.settings.tagSource === "gelbooru" ? "gelbooru" : "danbooru";
+    tagSel.addEventListener("change", () => {
+      const next = tagSel.value === "gelbooru" ? "gelbooru" : "danbooru";
+      if (next === state.settings.tagSource) return;
+      dispatch({ type: "settings/patch", patch: { tagSource: next } });
+      void reloadTagIndex(next).then(() => {
+        toast(`\u6807\u7B7E\u8865\u5168\u5DF2\u5207\u6362\u4E3A ${TAG_SOURCE_LABELS[next]}`, "ok");
+      });
     });
   }
   const persistApi = () => {
@@ -7432,6 +7744,8 @@ function applySettings() {
   syncSeg("pbSegTheme", s.theme);
   const sel = $("pbSelTranslator");
   if (sel) sel.value = s.translator;
+  const tagSel = $("pbSelTagSource");
+  if (tagSel) tagSel.value = s.tagSource === "gelbooru" ? "gelbooru" : "danbooru";
   const row = $("pbCustomApiRow");
   if (row) row.style.display = s.translator === "custom" ? "" : "none";
   if (s.translator === "custom") {
@@ -7453,6 +7767,173 @@ function syncSeg(id, value) {
 
 // src/index.ts
 init_toast();
+
+// src/ui/layoutMenu.ts
+init_toast();
+var _menu = null;
+var _outsideBound = false;
+function ensureMenu() {
+  if (_menu) return _menu;
+  _menu = document.createElement("div");
+  _menu.className = "pb-layout-menu";
+  _menu.style.cssText = [
+    "position:fixed",
+    "z-index:10010",
+    "min-width:160px",
+    "max-width:240px",
+    "max-height:280px",
+    "overflow-y:auto",
+    "padding:4px",
+    "background:var(--pb-panel)",
+    "border:1px solid var(--pb-border)",
+    "border-radius:6px",
+    "box-shadow:var(--pb-shadow-md)",
+    "display:none"
+  ].join(";");
+  document.body.appendChild(_menu);
+  return _menu;
+}
+function hideMenu() {
+  if (_menu) _menu.style.display = "none";
+}
+function itemBtn(label, opts) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = label;
+  b.style.cssText = [
+    "display:block",
+    "width:100%",
+    "text-align:left",
+    "padding:6px 8px",
+    "border:none",
+    "border-radius:4px",
+    "background:transparent",
+    `color:${opts?.danger ? "var(--pb-danger)" : "var(--pb-text)"}`,
+    `font-size:${opts?.dim ? "11px" : "12px"}`,
+    `opacity:${opts?.dim ? "0.75" : "1"}`,
+    "cursor:pointer"
+  ].join(";");
+  b.addEventListener("pointerenter", () => {
+    b.style.background = "var(--pb-border)";
+  });
+  b.addEventListener("pointerleave", () => {
+    b.style.background = "transparent";
+  });
+  return b;
+}
+function rebuildMenu() {
+  const menu = ensureMenu();
+  menu.innerHTML = "";
+  const save2 = itemBtn("\u4FDD\u5B58\u5F53\u524D\u683C\u5F0F\u2026");
+  save2.addEventListener("click", () => {
+    hideMenu();
+    const name = window.prompt("\u683C\u5F0F\u540D\u79F0", "\u6211\u7684\u5206\u7EC4\u683C\u5F0F");
+    if (name == null) return;
+    const n = name.trim();
+    if (!n) {
+      toast("\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A", "warn");
+      return;
+    }
+    const ok = dispatch({ type: "layout/save", name: n });
+    if (ok) toast(`\u5DF2\u4FDD\u5B58\u683C\u5F0F\u300C${n}\u300D`, "ok");
+    else toast("\u4FDD\u5B58\u5931\u8D25", "warn");
+  });
+  menu.appendChild(save2);
+  const sep = document.createElement("div");
+  sep.style.cssText = "height:1px;background:var(--pb-border);margin:4px 0;";
+  menu.appendChild(sep);
+  const list = getLayoutPresets();
+  if (!list.length) {
+    const empty = document.createElement("div");
+    empty.textContent = "\u5C1A\u65E0\u683C\u5F0F\u9884\u8BBE";
+    empty.style.cssText = "padding:8px;font-size:11px;color:var(--pb-text-dim);";
+    menu.appendChild(empty);
+    return;
+  }
+  for (const p of list) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;gap:2px;";
+    const apply = itemBtn(p.name);
+    apply.style.flex = "1";
+    apply.title = "\u5E94\u7528\u6B64\u683C\u5F0F\uFF08\u8BCD\u6761\u5C06\u96C6\u4E2D\u5230\u7B2C\u4E00\u7EC4\u7B2C\u4E00\u6846\uFF0C\u53EF\u64A4\u9500\uFF09";
+    apply.addEventListener("click", () => {
+      hideMenu();
+      if (!window.confirm(
+        `\u5E94\u7528\u683C\u5F0F\u300C${p.name}\u300D\uFF1F
+\u5C06\u91CD\u5EFA\u6B63\u9762\u5206\u7EC4\u7ED3\u6784\uFF0C\u6240\u6709\u8BCD\u4F1A\u79FB\u5230\u7B2C\u4E00\u7EC4\u7B2C\u4E00\u4E2A\u8F93\u5165\u6846\uFF08\u8D1F\u9762\u4E0D\u53D8\uFF0C\u53EF\u64A4\u9500\uFF09\u3002`
+      )) {
+        return;
+      }
+      const ok = dispatch({ type: "layout/apply", id: p.id });
+      if (ok) toast(`\u5DF2\u5E94\u7528\u300C${p.name}\u300D\uFF0C\u8BCD\u5728\u7B2C\u4E00\u6846`, "ok");
+      else toast("\u5E94\u7528\u5931\u8D25", "warn");
+    });
+    const del = itemBtn("\xD7", { danger: true });
+    del.style.cssText += ";width:28px;flex:none;text-align:center;padding:6px 0;";
+    del.title = "\u5220\u9664\u6B64\u683C\u5F0F";
+    del.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!window.confirm(`\u5220\u9664\u683C\u5F0F\u300C${p.name}\u300D\uFF1F`)) return;
+      const ok = dispatch({ type: "layout/remove", id: p.id });
+      if (ok) {
+        toast("\u5DF2\u5220\u9664", "ok");
+        rebuildMenu();
+        const btn = document.getElementById("pbLayoutBtn");
+        if (btn && _menu) {
+          const rect = btn.getBoundingClientRect();
+          placeMenu(rect);
+          _menu.style.display = "";
+        }
+      }
+    });
+    row.appendChild(apply);
+    row.appendChild(del);
+    menu.appendChild(row);
+  }
+}
+function placeMenu(anchor) {
+  const menu = ensureMenu();
+  menu.style.display = "";
+  const mw = menu.offsetWidth || 180;
+  const mh = menu.offsetHeight || 120;
+  let left = anchor.left;
+  let top = anchor.bottom + 4;
+  if (left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8;
+  if (top + mh > window.innerHeight - 8) top = Math.max(8, anchor.top - mh - 4);
+  menu.style.left = Math.max(8, left) + "px";
+  menu.style.top = top + "px";
+}
+function bindLayoutMenu() {
+  const btn = document.getElementById("pbLayoutBtn");
+  if (!btn) return;
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const menu = ensureMenu();
+    const isOpen = menu.style.display !== "none";
+    if (isOpen) {
+      hideMenu();
+      return;
+    }
+    rebuildMenu();
+    placeMenu(btn.getBoundingClientRect());
+  });
+  if (!_outsideBound) {
+    _outsideBound = true;
+    document.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (!_menu || _menu.style.display === "none") return;
+        const t = e.target;
+        if (_menu.contains(t)) return;
+        if (e.target?.closest?.("#pbLayoutBtn")) return;
+        hideMenu();
+      },
+      true
+    );
+  }
+}
+
+// src/index.ts
 window.__comfyApp = app;
 initFromStorage();
 void preloadTagIndex();
@@ -7606,9 +8087,33 @@ function bindButtons() {
       if (btn) btn.disabled = false;
     }
   });
+  document.getElementById("pbSepToggleBtn")?.addEventListener("click", () => {
+    const chips = [
+      ...cur.workspace.flatMap((g) => g.inputboxes.flatMap((b) => b.chips)),
+      ...cur.negativeGroup.inputboxes.flatMap((b) => b.chips)
+    ];
+    if (!chips.length) {
+      toast("\u5DE5\u4F5C\u533A\u6CA1\u6709\u8BCD\u8BED", "warn");
+      return;
+    }
+    const texts = chips.map((c) => c.text);
+    let mode = resolveNextSepMode(texts);
+    let ok = dispatch({ type: "chip/setTextSeparator", mode });
+    if (!ok) {
+      mode = mode === "space" ? "underscore" : "space";
+      ok = dispatch({ type: "chip/setTextSeparator", mode });
+    }
+    if (ok) {
+      commitSepMode(mode);
+      toast(mode === "underscore" ? "\u5DF2\u5168\u90E8\u6539\u4E3A\u4E0B\u5212\u7EBF\u8FDE\u63A5" : "\u5DF2\u5168\u90E8\u6539\u4E3A\u7A7A\u683C\u8FDE\u63A5", "ok");
+    } else {
+      toast("\u6CA1\u6709\u53EF\u8F6C\u6362\u7684\u7A7A\u683C\u6216\u4E0B\u5212\u7EBF", "warn");
+    }
+  });
   document.getElementById("pbClearBtn")?.addEventListener("click", () => {
     dispatch({ type: "workspace/clear" });
   });
+  bindLayoutMenu();
   document.getElementById("pbGenerateBtn")?.addEventListener("click", () => {
     try {
       app.queuePrompt(0, 1);
