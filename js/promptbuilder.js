@@ -275,10 +275,10 @@ function normalizeCategories() {
     state.l2Cat = "";
     return;
   }
-  if (!state.presets.children[state.l1Cat]) state.l1Cat = l1Keys[0];
+  if (!Object.prototype.hasOwnProperty.call(state.presets.children, state.l1Cat)) state.l1Cat = l1Keys[0];
   const l2Keys = Object.keys(state.presets.children[state.l1Cat].children || {});
   if (l2Keys.length === 0) state.l2Cat = "";
-  else if (!state.presets.children[state.l1Cat].children[state.l2Cat]) state.l2Cat = l2Keys[0];
+  else if (!Object.prototype.hasOwnProperty.call(state.presets.children[state.l1Cat].children, state.l2Cat)) state.l2Cat = l2Keys[0];
 }
 function markPresetIndexDirty() {
   _presetDirty = true;
@@ -468,8 +468,11 @@ async function translateGoogle(text, pair, signal) {
 async function translateCustom(text, pair, signal) {
   const cfg = state.settings.customApi;
   if (!cfg.url) throw new Error("\u81EA\u5B9A\u4E49 API \u672A\u914D\u7F6E");
-  const esc = (s, json) => json ? s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n") : s;
-  const fill = (tpl, json) => tpl.replace(/\{text\}/g, esc(text, json)).replace(/\{src\}/g, pair.src).replace(/\{tgt\}/g, pair.tgt);
+  const values = { text, src: pair.src, tgt: pair.tgt };
+  const fill = (tpl, json) => tpl.replace(/\{(text|src|tgt)\}/g, (_, key) => {
+    const value = String(values[key]);
+    return json ? JSON.stringify(value).slice(1, -1) : encodeURIComponent(value);
+  });
   const opts = {
     method: cfg.method,
     signal,
@@ -544,17 +547,7 @@ function formatChip(chip) {
   return chip.weight !== 1 ? `(${chip.text}:${chip.weight})` : chip.text;
 }
 function buildGroupText(g) {
-  const segments = [];
-  for (const box of g.inputboxes) {
-    if (!box.enabled) continue;
-    const parts = box.chips.filter((c) => c.enabled).map(formatChip);
-    if (!parts.length) continue;
-    const content2 = parts.join(", ");
-    segments.push(box.break ? `BREAK, ${content2}, BREAK` : content2);
-  }
-  if (!segments.length) return "";
-  const content = segments.join(", ");
-  return g.break ? `BREAK, ${content}, BREAK` : content;
+  return buildGroupSegments(g).map((s) => s.text).join("");
 }
 function buildPositiveText() {
   return cur.workspace.filter((g) => g.enabled).map(buildGroupText).filter(Boolean).join(", ");
@@ -573,29 +566,21 @@ function countWordsAndChars(text) {
 }
 function buildGroupSegments(g) {
   const segs = [];
-  if (g.break) segs.push({ text: "BREAK", isBreak: true });
-  const boxParts = [];
   for (const box of g.inputboxes) {
     if (!box.enabled) continue;
     const parts = box.chips.filter((c) => c.enabled).map(formatChip);
     if (!parts.length) continue;
     const content = parts.join(", ");
-    if (box.break) {
-      if (boxParts.length) {
-        segs.push({ text: boxParts.join(", "), color: g.color });
-        boxParts.length = 0;
-      }
-      segs.push({ text: "BREAK", isBreak: true });
-      segs.push({ text: content, color: g.color });
-      segs.push({ text: "BREAK", isBreak: true });
-    } else {
-      boxParts.push(content);
-    }
+    if (box.break) segs.push({ text: "BREAK", isBreak: true });
+    segs.push({ text: content, color: g.color });
+    if (box.break) segs.push({ text: "BREAK", isBreak: true });
   }
-  if (boxParts.length) segs.push({ text: boxParts.join(", "), color: g.color });
-  if (g.break) segs.push({ text: "BREAK", isBreak: true });
-  if (segs.length === 2 && segs[0].isBreak && segs[1].isBreak) return [];
-  return segs;
+  if (!segs.length) return [];
+  if (g.break) {
+    segs.unshift({ text: "BREAK", isBreak: true });
+    segs.push({ text: "BREAK", isBreak: true });
+  }
+  return segs.flatMap((seg, i) => i ? [{ text: ", ", color: g.color }, seg] : [seg]);
 }
 function buildPositiveSegments() {
   const out = [];
@@ -638,20 +623,25 @@ function clampWeight(n) {
 function splitPromptParts(text) {
   const parts = [];
   let buf = "";
-  let depth = 0;
+  const brackets = [];
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
+    if (ch === "\\") {
+      buf += ch;
+      if (i + 1 < text.length) buf += text[++i];
+      continue;
+    }
     if (ch === "(" || ch === "[") {
-      depth++;
+      brackets.push(ch);
       buf += ch;
       continue;
     }
     if (ch === ")" || ch === "]") {
-      depth = Math.max(0, depth - 1);
+      if (matchingBrackets(brackets[brackets.length - 1], ch)) brackets.pop();
       buf += ch;
       continue;
     }
-    if (ch === "," && depth === 0) {
+    if (ch === "," && brackets.length === 0) {
       const t = buf.trim();
       if (t) parts.push(t);
       buf = "";
@@ -666,24 +656,53 @@ function splitPromptParts(text) {
 function parsePromptToken(raw) {
   const s = raw.trim();
   if (!s) return { text: "", weight: 1 };
-  const wrapped = s.match(/^([(\[])\s*([\s\S]+?)\s*:\s*([+-]?\d+(?:\.\d+)?)\s*([)\]])$/);
-  if (wrapped && matchingBrackets(wrapped[1], wrapped[4])) {
-    const text = wrapped[2].trim();
-    if (text) return { text, weight: clampWeight(parseFloat(wrapped[3])) };
-  }
-  const bare = s.match(/^(.+?)\s*:\s*([+-]?\d+(?:\.\d+)?)$/);
-  if (bare) {
-    const text = bare[1].trim();
-    const w = parseFloat(bare[2]);
-    if (text && !/^\d+(\.\d+)?$/.test(text) && Number.isFinite(w) && w >= 0.05 && w <= 10) {
-      if (!/^\d+$/.test(text) || bare[2].includes(".")) {
-        if (!isLikelyAspectRatio(text, bare[2])) {
-          return { text, weight: clampWeight(w) };
-        }
+  const wrapped = findPromptBracketEnd(s) === s.length - 1;
+  const content = wrapped ? s.slice(1, -1) : s;
+  const separator = findPromptWeightSeparator(content);
+  if (separator !== -1) {
+    const text = content.slice(0, separator).trim();
+    const weightText = content.slice(separator + 1).trim();
+    if (text && /^[+-]?\d+(?:\.\d+)?$/.test(weightText)) {
+      const weight = Number(weightText);
+      if (wrapped || !/^\d+(\.\d+)?$/.test(text) && Number.isFinite(weight) && weight >= 0.05 && weight <= 10 && !isLikelyAspectRatio(text, weightText)) {
+        return { text, weight: clampWeight(weight) };
       }
     }
   }
   return { text: s, weight: 1 };
+}
+function findPromptBracketEnd(text) {
+  if (text[0] !== "(" && text[0] !== "[") return -1;
+  const brackets = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "\\") {
+      i++;
+    } else if (ch === "(" || ch === "[") {
+      brackets.push(ch);
+    } else if (ch === ")" || ch === "]") {
+      if (!matchingBrackets(brackets.pop(), ch)) return -1;
+      if (!brackets.length) return i;
+    }
+  }
+  return -1;
+}
+function findPromptWeightSeparator(text) {
+  const brackets = [];
+  let separator = -1;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "\\") {
+      i++;
+    } else if (ch === "(" || ch === "[") {
+      brackets.push(ch);
+    } else if (ch === ")" || ch === "]") {
+      if (!matchingBrackets(brackets.pop(), ch)) return -1;
+    } else if (ch === ":" && !brackets.length) {
+      separator = i;
+    }
+  }
+  return brackets.length ? -1 : separator;
 }
 function matchingBrackets(open, close) {
   return open === "(" && close === ")" || open === "[" && close === "]";
@@ -860,12 +879,28 @@ function findLayoutPreset(id) {
 }
 
 // src/app/persist.ts
+function isValidPresets(data) {
+  const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+  const optionalString = (value) => value === void 0 || typeof value === "string";
+  const validItems = (items) => Array.isArray(items) && items.every((item) =>
+    isRecord(item) && typeof item.text === "string" && optionalString(item.cnText)
+  );
+  if (!isRecord(data) || !isRecord(data.children)) return false;
+  if (data.items !== void 0 && !validItems(data.items)) return false;
+  return Object.values(data.children).every((l1) => {
+    if (!isRecord(l1) || !isRecord(l1.children)) return false;
+    if (l1.items !== void 0 && !validItems(l1.items)) return false;
+    return Object.values(l1.children).every((l2) =>
+      isRecord(l2) && validItems(l2.items) && optionalString(l2.name) && optionalString(l2.color)
+    );
+  });
+}
 function loadPresetsFromLS() {
   try {
     const raw = localStorage.getItem(LS_KEYS.presets);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (data?.children && typeof data.children === "object") return data;
+    if (isValidPresets(data)) return data;
   } catch {
   }
   return null;
@@ -1028,9 +1063,8 @@ function syncWidgets() {
 }
 function saveNodeState() {
   if (!activeNode) return;
-  if (activeNode.properties) {
-    activeNode.properties["pb_state_next"] = serializeNodeState();
-  }
+  activeNode.properties ||= {};
+  activeNode.properties["pb_state_next"] = serializeNodeState();
   syncWidgets();
 }
 
@@ -1642,9 +1676,10 @@ function applyOp(op) {
       return pr();
     }
     case "preset/replace": {
+      if (!isValidPresets(op.presets)) return NOOP;
       state.presets = op.presets;
-      if (op.l1Cat) state.l1Cat = op.l1Cat;
-      if (op.l2Cat) state.l2Cat = op.l2Cat;
+      if (typeof op.l1Cat === "string") state.l1Cat = op.l1Cat;
+      if (typeof op.l2Cat === "string") state.l2Cat = op.l2Cat;
       normalizeCategories();
       markPresetIndexDirty();
       return pr();
@@ -1771,7 +1806,6 @@ function getRedoDepth() {
 init_state();
 var _render = null;
 var _pendingScopes = /* @__PURE__ */ new Set();
-var _persistNodeTimer = null;
 var _gateHooked = false;
 function setRenderer(fn) {
   _render = fn;
@@ -1792,10 +1826,6 @@ function flushPendingRender() {
   _pendingScopes.add("output");
   flushRender();
 }
-function schedulePersistNode() {
-  if (_persistNodeTimer) clearTimeout(_persistNodeTimer);
-  _persistNodeTimer = setTimeout(() => saveNodeState(), 200);
-}
 function dispatch(op, options) {
   const captureUndo = !options?.noUndo;
   const before = captureUndo ? cloneUndoSnapshot() : null;
@@ -1804,7 +1834,8 @@ function dispatch(op, options) {
   if (result.undoable && before) {
     recordUndoSnapshot(before);
   }
-  if (result.persistNode) schedulePersistNode();
+  // ComfyUI may serialize or queue the node before the next timer/frame.
+  if (result.persistNode) saveNodeState();
   if (result.persistPresets) savePresetsToLS();
   if (result.persistSettings) saveSettingsToLS();
   if (result.scopes.length) {
@@ -5786,7 +5817,7 @@ function navigateAc(delta) {
   activeEl?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 function selectAc(_input2, _box3) {
-  if (!_items.length || _active2 < 0) return false;
+  if (_input !== _input2 || _box2?.id !== _box3.id || !_items.length || _active2 < 0) return false;
   pick(_active2);
   return true;
 }
@@ -5872,6 +5903,14 @@ var CSS5 = (
 );
 var _css4 = false;
 var _colorPicker = null;
+var _workspaceDrafts = /* @__PURE__ */ new Map();
+var _skipWorkspaceDraftCapture = false;
+function resetWorkspaceDrafts() {
+  _workspaceDrafts.clear();
+  // The old node's inputs are still mounted until renderWorkspace replaces them.
+  _skipWorkspaceDraftCapture = true;
+  hideAc();
+}
 function renderWorkspace() {
   if (!_css4) {
     injectCSS("workspace", CSS5);
@@ -5882,6 +5921,27 @@ function renderWorkspace() {
   const scrollTop = el.scrollTop;
   const panel = $("pbMainPanel");
   const panelScroll = panel?.scrollTop ?? 0;
+  const focusWasInWorkspace = el.contains(document.activeElement);
+  const focusDefaultBox = focusWasInWorkspace || _skipWorkspaceDraftCapture || !el.querySelector(".pb-chip-input");
+  let focusedDraftBox = null;
+  if (!_skipWorkspaceDraftCapture) {
+    el.querySelectorAll(".pb-inputbox[data-box-id] .pb-chip-input").forEach((input) => {
+      const boxId = input.closest(".pb-inputbox").getAttribute("data-box-id");
+      _workspaceDrafts.set(boxId, {
+        value: input.value,
+        start: input.selectionStart,
+        end: input.selectionEnd,
+        direction: input.selectionDirection
+      });
+      if (document.activeElement === input) focusedDraftBox = boxId;
+    });
+  }
+  _skipWorkspaceDraftCapture = false;
+  const boxIds = new Set([...cur.workspace, cur.negativeGroup].flatMap((g) => g.inputboxes.map((b) => b.id)));
+  for (const id of _workspaceDrafts.keys()) {
+    if (!boxIds.has(id)) _workspaceDrafts.delete(id);
+  }
+  hideAc();
   el.querySelectorAll("[data-sortable]").forEach((node) => {
     destroySortable(node._sortable);
     node._sortable = null;
@@ -5906,12 +5966,18 @@ function renderWorkspace() {
   el.appendChild(renderGroup(cur.negativeGroup, true));
   el.scrollTop = scrollTop;
   if (panel) panel.scrollTop = panelScroll;
-  if (cur.focusedBox) {
+  // Preserve the active input without pulling focus away from other controls.
+  const focusBox = focusedDraftBox || (focusDefaultBox && document.activeElement === document.body ? cur.focusedBox : null);
+  if (focusBox) {
     const input = el.querySelector(
-      `.pb-inputbox[data-box-id="${cur.focusedBox}"] .pb-chip-input`
+      `.pb-inputbox[data-box-id="${focusBox}"] .pb-chip-input`
     );
     if (input) {
       input.focus({ preventScroll: true });
+      const draft = _workspaceDrafts.get(focusBox);
+      if (draft && draft.start != null && draft.end != null) {
+        input.setSelectionRange(draft.start, draft.end, draft.direction || "none");
+      }
       el.scrollTop = scrollTop;
       if (panel) panel.scrollTop = panelScroll;
     }
@@ -6002,11 +6068,22 @@ function renderBox(group, box, isNeg) {
   }
   const input = document.createElement("input");
   input.className = "pb-chip-input";
+  input.value = _workspaceDrafts.get(box.id)?.value || "";
   input.placeholder = "\u8F93\u5165\u8BCD\u8BED\uFF0C\u9017\u53F7\u5206\u9694\u2026";
+  let composing = false;
+  input.addEventListener("compositionstart", () => {
+    composing = true;
+    hideAc();
+  });
+  input.addEventListener("compositionend", () => {
+    composing = false;
+    showAc(input, box);
+  });
   input.addEventListener("focus", () => {
     if (cur.focusedBox !== box.id) dispatch({ type: "focus/box", boxId: box.id });
   });
   input.addEventListener("keydown", (e) => {
+    if (composing || e.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter") {
       e.preventDefault();
       const text = input.value.trim();
@@ -6026,8 +6103,10 @@ function renderBox(group, box, isNeg) {
     } else if (e.key === "Tab") {
       if (selectAc(input, box)) e.preventDefault();
     } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      navigateAc(e.key === "ArrowDown" ? 1 : -1);
-      e.preventDefault();
+      if (_input === input && _items.length) {
+        navigateAc(e.key === "ArrowDown" ? 1 : -1);
+        e.preventDefault();
+      }
     } else if (e.key === "Escape") hideAc();
   });
   input.addEventListener("blur", () => {
@@ -6035,7 +6114,9 @@ function renderBox(group, box, isNeg) {
       if (document.activeElement !== input) hideAc();
     }, 120);
   });
-  input.addEventListener("input", () => showAc(input, box));
+  input.addEventListener("input", (e) => {
+    if (!composing && !e.isComposing) showAc(input, box);
+  });
   header.appendChild(input);
   header.appendChild(iconBtn(box.enabled ? "\u{1F441}" : "\u{1F6AB}", () => {
     dispatch({ type: "box/toggle", boxId: box.id, field: "enabled" });
@@ -6114,6 +6195,7 @@ function startRename(nameSpan, g) {
   };
   input.addEventListener("blur", finish);
   input.addEventListener("keydown", (e) => {
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter") {
       e.preventDefault();
       finish();
@@ -6274,6 +6356,14 @@ function bindPresetList(el) {
       if (isSortableSilent()) return;
       const session = getDragSession();
       const item = evt.item;
+      if (session?.kind !== "chip" && evt.from === evt.to && evt.oldIndex != null && evt.newIndex != null && evt.oldIndex !== evt.newIndex) {
+        if (!isDragging()) beginDrag();
+        dispatch({
+          type: "preset/reorderItems",
+          fromIndex: evt.oldIndex,
+          toIndex: evt.newIndex
+        });
+      }
       if (session?.kind === "preset") {
         if (item?.getAttribute("data-pb-clone") === "1") {
           try {
@@ -6283,14 +6373,6 @@ function bindPresetList(el) {
         }
         finishDrag2();
         return;
-      }
-      if (session?.kind !== "chip" && evt.from === evt.to && evt.oldIndex != null && evt.newIndex != null && evt.oldIndex !== evt.newIndex) {
-        if (!isDragging()) beginDrag();
-        dispatch({
-          type: "preset/reorderItems",
-          fromIndex: evt.oldIndex,
-          toIndex: evt.newIndex
-        });
       }
       if (session?.kind === "chip") {
         queueRenderAfterDrag();
@@ -7962,23 +8044,28 @@ function renderAll() {
   updateUndoButtons();
 }
 function openNode(node) {
+  const switchingNode = activeNode !== node;
+  if (switchingNode) resetWorkspaceDrafts();
   setActiveNode(node);
   const panel = getPanel();
   if (node.id != null) panel.dataset.activeNode = String(node.id);
   clearUndo();
   clearSelection();
-  loadNodeIntoCur(node);
+  if (switchingNode) loadNodeIntoCur(node);
   renderAll();
   showPanel();
 }
 function softReloadActiveNode(node) {
   const panel = getPanel();
-  if (panel.classList.contains("pb-hidden")) return;
   const activeId = panel.dataset.activeNode;
   if (activeId == null || String(node.id) !== activeId) return;
+  // onConfigure can reuse both node IDs and instances for a new workflow state.
+  clearUndo();
+  clearSelection();
+  resetWorkspaceDrafts();
   setActiveNode(node);
   loadNodeIntoCur(node);
-  renderAll();
+  if (!panel.classList.contains("pb-hidden")) renderAll();
 }
 function doUndo() {
   undo();
@@ -8013,14 +8100,15 @@ function importPresetsOnly() {
     if (!file) return;
     try {
       const data = JSON.parse(await file.text());
-      if (data.presets) {
-        dispatch({
+      if (data?.presets) {
+        const imported = dispatch({
           type: "preset/replace",
           presets: data.presets,
           l1Cat: data.l1Cat,
           l2Cat: data.l2Cat
         });
-        toast("\u8BCD\u5E93\u5DF2\u5BFC\u5165", "ok");
+        if (imported) toast("\u8BCD\u5E93\u5DF2\u5BFC\u5165", "ok");
+        else toast("\u8BCD\u5E93\u683C\u5F0F\u65E0\u6548\uFF0C\u539F\u8BCD\u5E93\u5DF2\u4FDD\u7559", "error");
       } else {
         toast("\u6587\u4EF6\u4E2D\u6CA1\u6709\u8BCD\u5E93\u6570\u636E", "warn");
       }
@@ -8122,8 +8210,17 @@ function bindButtons() {
   });
 }
 function bindKeys() {
+  const inPanelScope = (target) => !!target?.closest?.("#pbMainPanel, .pb-chip-toolbar, .pb-chip-edit-panel, .pb-ac-layer, .pb-color-picker, .pb-layout-menu, .pb-word-toolbar, .pb-word-edit, .pb-cat-popup, .pb-cat-edit");
+  let ownsKeyboard = inPanelScope(document.activeElement);
+  document.addEventListener("pointerdown", (e) => {
+    ownsKeyboard = inPanelScope(e.target);
+  }, true);
+  document.addEventListener("focusin", (e) => {
+    ownsKeyboard = inPanelScope(e.target);
+  }, true);
   document.addEventListener("keydown", (e) => {
     if (!isPanelVisible()) return;
+    if (e.isComposing || e.keyCode === 229) return;
     const t = e.target;
     const inField = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
     const mod = e.ctrlKey || e.metaKey;
@@ -8132,6 +8229,8 @@ function bindKeys() {
       toggleMinimized();
       return;
     }
+    if ($("pbMainPanel")?.classList.contains("pb-minimized")) return;
+    if (!ownsKeyboard || t !== document.body && !inPanelScope(t)) return;
     if (inField) return;
     if (e.key === "Escape") {
       clearSelection();
